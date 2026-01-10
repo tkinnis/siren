@@ -156,19 +156,21 @@ class _FileExplorerState extends State<FileExplorer> {
     await _rebuildFlatList();
   }
 
-  void _onKeyEvent(RawKeyEvent event) {
-    if (event is! RawKeyDownEvent) return;
+  KeyEventResult _onKeyEvent(RawKeyEvent event) {
+    if (event is! RawKeyDownEvent) return KeyEventResult.ignored;
 
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
       if (_selectedIndex < _flatList.length - 1) {
         setState(() => _selectedIndex++);
         _scrollToSelected();
       }
+      return KeyEventResult.handled;
     } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
       if (_selectedIndex > 0) {
         setState(() => _selectedIndex--);
         _scrollToSelected();
       }
+      return KeyEventResult.handled;
     } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
        if (_selectedIndex >= 0 && _selectedIndex < _flatList.length) {
          final item = _flatList[_selectedIndex];
@@ -187,6 +189,7 @@ class _FileExplorerState extends State<FileExplorer> {
            }
          }
        }
+       return KeyEventResult.handled;
     } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
       if (_selectedIndex >= 0 && _selectedIndex < _flatList.length) {
          final item = _flatList[_selectedIndex];
@@ -204,6 +207,7 @@ class _FileExplorerState extends State<FileExplorer> {
            }
          }
        }
+       return KeyEventResult.handled;
     } else if (event.logicalKey == LogicalKeyboardKey.enter) {
        if (_selectedIndex >= 0 && _selectedIndex < _flatList.length) {
          final item = _flatList[_selectedIndex];
@@ -213,7 +217,10 @@ class _FileExplorerState extends State<FileExplorer> {
            Provider.of<AppState>(context, listen: false).openFile(item.path);
          }
        }
+       return KeyEventResult.handled;
     }
+    
+    return KeyEventResult.ignored;
   }
 
   void _scrollToSelected() {
@@ -364,8 +371,7 @@ class _FileExplorerState extends State<FileExplorer> {
           child: Focus(
             focusNode: appState.explorerFocusNode,
             onKey: (node, event) {
-              _onKeyEvent(event);
-              return KeyEventResult.handled;
+              return _onKeyEvent(event);
             },
             child: ScrollablePositionedList.builder(
               itemCount: _flatList.length,
