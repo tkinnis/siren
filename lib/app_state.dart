@@ -47,6 +47,15 @@ class AppState extends ChangeNotifier {
 
   AppState() {
     _initChannel();
+    // Default to current directory now that sandbox is disabled
+    try {
+      _explorerRootPath = Directory.current.path;
+    } catch (e) {
+      debugPrint('Could not get current directory: $e');
+      // Fallback to home if possible
+      final envVars = Platform.environment;
+      _explorerRootPath = envVars['HOME'] ?? envVars['USERPROFILE'];
+    }
   }
 
   void _initChannel() {
