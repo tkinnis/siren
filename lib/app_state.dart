@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
@@ -10,7 +11,7 @@ class AppState extends ChangeNotifier {
   final Map<String, String> _fileContents = {};
 
   // File Explorer
-  String? _currentDirectory;
+  String? _explorerRootPath;
 
   // View Settings
   bool _isRenderedView = true;
@@ -20,7 +21,7 @@ class AppState extends ChangeNotifier {
   // Getters
   List<String> get openFilePaths => List.unmodifiable(_openFilePaths);
   int get activeTabIndex => _activeTabIndex;
-  String? get currentDirectory => _currentDirectory;
+  String? get explorerRootPath => _explorerRootPath;
   bool get isRenderedView => _isRenderedView;
   double get fontSize => _fontSize;
   bool get isLoading => _isLoading;
@@ -46,9 +47,6 @@ class AppState extends ChangeNotifier {
 
   AppState() {
     _initChannel();
-    // Default to home directory or documents if possible, or just null
-    // We can try to get the current directory
-    _currentDirectory = Directory.current.path;
   }
 
   void _initChannel() {
@@ -62,9 +60,16 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  Future<void> setDirectory(String path) async {
-    _currentDirectory = path;
-    notifyListeners();
+  Future<void> openDirectory() async {
+    try {
+      final String? directoryPath = await getDirectoryPath();
+      if (directoryPath != null) {
+        _explorerRootPath = directoryPath;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error opening directory: $e');
+    }
   }
 
   Future<void> openFile(String path) async {
