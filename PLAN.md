@@ -26,3 +26,9 @@
 - [x] **Window Styling**: Transparent title bar, unified look.
 - [x] **Zoom Controls**: Keyboard shortcuts (Cmd+, Cmd-) handling.
 - [x] **Empty State**: Drag & drop target or "Open File" button.
+
+## Phase 7: Editor & Navigation
+- [x] **File Explorer**: Sidebar to browse directories and filter `.md` files.
+- [x] **Tabs System**: Manage multiple open files with drag-and-drop support.
+- [x] **Split View**: Resizable or fixed sidebar layout.
+- [x] **State Refactor**: Support multiple file contexts and directory tracking.
