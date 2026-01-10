@@ -217,14 +217,49 @@ class _FileExplorerState extends State<FileExplorer> {
   }
 
   void _scrollToSelected() {
-    if (_selectedIndex >= 0 && _itemScrollController.isAttached) {
-      _itemScrollController.scrollTo(
-        index: _selectedIndex,
-        duration: const Duration(milliseconds: 100),
-        curve: Curves.easeOut,
-        alignment: 0.5, // Center it if possible
-      );
+    if (_selectedIndex < 0 || !_itemScrollController.isAttached) return;
+
+    final positions = _itemPositionsListener.itemPositions.value;
+    
+    // 1. Check if currently visible
+    bool isVisible = false;
+    if (positions.isNotEmpty) {
+      for (final pos in positions) {
+        if (pos.index == _selectedIndex) {
+           // Check edges. Leading must be >= 0 (or close enough) and trailing <= 1.
+           if (pos.itemLeadingEdge >= -0.05 && pos.itemTrailingEdge <= 1.05) {
+             isVisible = true;
+           }
+           break;
+        }
+      }
     }
+
+    if (isVisible) return;
+
+    // 2. Not visible, determine alignment
+    double alignment = 0.5;
+    if (positions.isNotEmpty) {
+       final minIndex = positions.map((e) => e.index).reduce((a, b) => a < b ? a : b);
+       
+       if (_selectedIndex < minIndex) {
+         alignment = 0.0;
+       } else {
+         // Scrolling down, center it
+         alignment = 0.5; 
+       }
+    } else {
+       alignment = 0.0;
+    }
+    
+    if (_selectedIndex == 0) alignment = 0.0;
+
+    _itemScrollController.scrollTo(
+      index: _selectedIndex,
+      duration: const Duration(milliseconds: 100),
+      curve: Curves.easeOut,
+      alignment: alignment,
+    );
   }
 
   Future<void> _revealPath(String filePath) async {
