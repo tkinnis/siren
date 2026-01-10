@@ -1,19 +1,272 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'app_state.dart';
 
-class FileExplorer extends StatelessWidget {
+class ExplorerItem {
+  final String path;
+  final int depth;
+  final bool isDirectory;
+  bool isExpanded;
+
+  ExplorerItem({
+    required this.path,
+    required this.depth,
+    required this.isDirectory,
+    this.isExpanded = false,
+  });
+}
+
+class FileExplorer extends StatefulWidget {
   const FileExplorer({super.key});
+
+  @override
+  State<FileExplorer> createState() => _FileExplorerState();
+}
+
+class _FileExplorerState extends State<FileExplorer> {
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
+  
+  List<ExplorerItem> _flatList = [];
+  Set<String> _expandedPaths = {};
+  int _selectedIndex = -1;
+  String? _currentRoot;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Defer initialization to allow context access via addPostFrameCallback if needed,
+    // but here we can just listen to changes in didChangeDependencies
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      final appState = Provider.of<AppState>(context, listen: false);
+      appState.setExplorerRevealCallback(_revealPath);
+      _initialized = true;
+      _updateTree(appState.explorerRootPath);
+    } else {
+       // Watch for root changes
+      final appState = Provider.of<AppState>(context);
+      if (appState.explorerRootPath != _currentRoot) {
+        _updateTree(appState.explorerRootPath);
+      }
+    }
+  }
+
+  Future<void> _updateTree(String? newRoot) async {
+    if (newRoot == _currentRoot) return;
+    _currentRoot = newRoot;
+    _expandedPaths.clear();
+    _flatList.clear();
+    _selectedIndex = -1;
+
+    if (newRoot != null) {
+      _expandedPaths.add(newRoot); // Always expand root
+      await _rebuildFlatList();
+    } else {
+      setState(() {});
+    }
+  }
+
+  Future<void> _rebuildFlatList() async {
+    if (_currentRoot == null) return;
+    
+    final List<ExplorerItem> newList = [];
+    await _traverse(_currentRoot!, 0, newList);
+    
+    if (mounted) {
+      setState(() {
+        _flatList = newList;
+      });
+    }
+  }
+
+  Future<void> _traverse(String dirPath, int depth, List<ExplorerItem> list) async {
+    // Determine if expanded. Root is always expanded effectively (we list its children at depth 0)
+    // Actually, let's treat the root content as starting at depth 0 without showing the root folder itself?
+    // Or show the root folder? The design shows a header for the root.
+    // So we list the children of _currentRoot.
+    
+    final dir = Directory(dirPath);
+    if (!await dir.exists()) return;
+
+    try {
+      final List<FileSystemEntity> entities = await dir.list().toList();
+      
+       final filtered = entities.where((entity) {
+          final name = path.basename(entity.path);
+          if (name.startsWith('.')) return false;
+          if (entity is Directory) return true;
+          if (entity is File) {
+            return name.toLowerCase().endsWith('.md') ||
+                name.toLowerCase().endsWith('.markdown');
+          }
+          return false;
+        }).toList();
+
+        // Sort: Directories first, then files
+        filtered.sort((a, b) {
+          if (a is Directory && b is File) return -1;
+          if (a is File && b is Directory) return 1;
+          return path.basename(a.path).toLowerCase().compareTo(
+                path.basename(b.path).toLowerCase(),
+              );
+        });
+
+        for (final entity in filtered) {
+           final isDir = entity is Directory;
+           final itemPath = entity.path;
+           final item = ExplorerItem(
+             path: itemPath,
+             depth: depth,
+             isDirectory: isDir,
+             isExpanded: _expandedPaths.contains(itemPath),
+           );
+           
+           list.add(item);
+           
+           if (isDir && _expandedPaths.contains(itemPath)) {
+             await _traverse(itemPath, depth + 1, list);
+           }
+        }
+
+    } catch (e) {
+      debugPrint("Error traversing $dirPath: $e");
+    }
+  }
+  
+  Future<void> _toggleExpansion(int index) async {
+    final item = _flatList[index];
+    if (!item.isDirectory) return;
+
+    if (_expandedPaths.contains(item.path)) {
+      _expandedPaths.remove(item.path);
+    } else {
+      _expandedPaths.add(item.path);
+    }
+
+    await _rebuildFlatList();
+  }
+
+  void _onKeyEvent(RawKeyEvent event) {
+    if (event is! RawKeyDownEvent) return;
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      if (_selectedIndex < _flatList.length - 1) {
+        setState(() => _selectedIndex++);
+        _scrollToSelected();
+      }
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      if (_selectedIndex > 0) {
+        setState(() => _selectedIndex--);
+        _scrollToSelected();
+      }
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+       if (_selectedIndex >= 0 && _selectedIndex < _flatList.length) {
+         final item = _flatList[_selectedIndex];
+         if (item.isDirectory) {
+           if (!_expandedPaths.contains(item.path)) {
+             _toggleExpansion(_selectedIndex);
+           } else {
+             // Select first child
+             if (_selectedIndex + 1 < _flatList.length) {
+                final nextItem = _flatList[_selectedIndex + 1];
+                if (nextItem.depth > item.depth) {
+                   setState(() => _selectedIndex++);
+                   _scrollToSelected();
+                }
+             }
+           }
+         }
+       }
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      if (_selectedIndex >= 0 && _selectedIndex < _flatList.length) {
+         final item = _flatList[_selectedIndex];
+         if (item.isDirectory && _expandedPaths.contains(item.path)) {
+           _toggleExpansion(_selectedIndex);
+         } else {
+           // Jump to parent
+           // Iterate backwards to find item with depth - 1
+           for (int i = _selectedIndex - 1; i >= 0; i--) {
+             if (_flatList[i].depth < item.depth) {
+               setState(() => _selectedIndex = i);
+               _scrollToSelected();
+               break;
+             }
+           }
+         }
+       }
+    } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+       if (_selectedIndex >= 0 && _selectedIndex < _flatList.length) {
+         final item = _flatList[_selectedIndex];
+         if (item.isDirectory) {
+           _toggleExpansion(_selectedIndex);
+         } else {
+           Provider.of<AppState>(context, listen: false).openFile(item.path);
+         }
+       }
+    }
+  }
+
+  void _scrollToSelected() {
+    if (_selectedIndex >= 0 && _itemScrollController.isAttached) {
+      _itemScrollController.scrollTo(
+        index: _selectedIndex,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+        alignment: 0.5, // Center it if possible
+      );
+    }
+  }
+
+  Future<void> _revealPath(String filePath) async {
+    if (_currentRoot == null) return;
+    
+    // Check if path is within root
+    if (!path.isWithin(_currentRoot!, filePath)) return;
+
+    // Expand all parents
+    var parent = path.dirname(filePath);
+    bool changed = false;
+    while (path.isWithin(_currentRoot!, parent) || path.equals(_currentRoot!, parent)) {
+       // Stop if we reach root or go above
+       if (parent.length < _currentRoot!.length) break;
+       
+       if (parent != _currentRoot && !_expandedPaths.contains(parent)) {
+         _expandedPaths.add(parent);
+         changed = true;
+       }
+       if (parent == _currentRoot) break;
+       parent = path.dirname(parent);
+    }
+    
+    if (changed) {
+      await _rebuildFlatList();
+    }
+    
+    // Find index
+    final index = _flatList.indexWhere((item) => item.path == filePath);
+    if (index != -1) {
+      setState(() => _selectedIndex = index);
+      _scrollToSelected();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final rootPath = appState.explorerRootPath;
-
-    if (rootPath == null) {
-      return Center(
+    
+    if (_currentRoot == null) {
+       // ... existing empty state code ...
+        return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -36,7 +289,7 @@ class FileExplorer extends StatelessWidget {
     return Column(
       children: [
         // Header
-        Container(
+         Container(
           height: 40,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.centerLeft,
@@ -47,7 +300,7 @@ class FileExplorer extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  path.basename(rootPath).toUpperCase(),
+                  path.basename(_currentRoot!).toUpperCase(),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
@@ -56,12 +309,10 @@ class FileExplorer extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              IconButton(
+               IconButton(
                 icon: const Icon(Icons.close, size: 16),
                 onPressed: () {
-                  // TODO: Implement "Close Folder" in AppState (set root to null)
-                  // For now, we can just re-open
-                  appState.openDirectory();
+                   appState.openDirectory();
                 },
                 tooltip: 'Change Folder',
                 splashRadius: 16,
@@ -74,213 +325,73 @@ class FileExplorer extends StatelessWidget {
             ],
           ),
         ),
-        // Tree
         Expanded(
-          child: SingleChildScrollView(
-            child: FileTreeItem(
-              dirPath: rootPath,
-              level: 0,
-              isRoot: true,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class FileTreeItem extends StatefulWidget {
-  final String dirPath;
-  final int level;
-  final bool isRoot;
-
-  const FileTreeItem({
-    super.key,
-    required this.dirPath,
-    required this.level,
-    this.isRoot = false,
-  });
-
-  @override
-  State<FileTreeItem> createState() => _FileTreeItemState();
-}
-
-class _FileTreeItemState extends State<FileTreeItem> {
-  bool _isExpanded = false;
-  List<FileSystemEntity> _children = [];
-  bool _loaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.isRoot) {
-      _isExpanded = true;
-      _loadChildren();
-    }
-  }
-
-  @override
-  void didUpdateWidget(FileTreeItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.dirPath != oldWidget.dirPath) {
-      _children = []; // Clear current
-      _loaded = false;
-      if (widget.isRoot) {
-        _isExpanded = true;
-      }
-      _loadChildren();
-    }
-  }
-
-  Future<void> _loadChildren() async {
-    final dir = Directory(widget.dirPath);
-    try {
-      if (await dir.exists()) {
-        final List<FileSystemEntity> entities = await dir.list().toList();
-        
-        final filtered = entities.where((entity) {
-          final name = path.basename(entity.path);
-          if (name.startsWith('.')) return false;
-          if (entity is Directory) return true;
-          if (entity is File) {
-            return name.toLowerCase().endsWith('.md') ||
-                name.toLowerCase().endsWith('.markdown');
-          }
-          return false;
-        }).toList();
-
-        // Sort: Directories first, then files
-        filtered.sort((a, b) {
-          if (a is Directory && b is File) return -1;
-          if (a is File && b is Directory) return 1;
-          return path.basename(a.path).toLowerCase().compareTo(
-                path.basename(b.path).toLowerCase(),
-              );
-        });
-
-        if (mounted) {
-          setState(() {
-            _children = filtered;
-            _loaded = true;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error loading directory: $e');
-    }
-  }
-
-  void _toggleExpand() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-    });
-    if (_isExpanded && !_loaded) {
-      _loadChildren();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (widget.isRoot) {
-      // For root, we just show the children (header is handled by parent)
-      if (!_loaded) return const LinearProgressIndicator(minHeight: 2);
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: _children.map((e) {
-          if (e is Directory) {
-            return FileTreeItem(dirPath: e.path, level: 0);
-          } else {
-            return _FileNode(filePath: e.path, level: 0);
-          }
-        }).toList(),
-      );
-    }
-
-    final name = path.basename(widget.dirPath);
-    final paddingLeft = 8.0 + (widget.level * 12.0);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          onTap: _toggleExpand,
-          hoverColor: Theme.of(context).hoverColor,
-          child: Padding(
-            padding: EdgeInsets.only(left: paddingLeft, top: 4, bottom: 4, right: 8),
-            child: Row(
-              children: [
-                Icon(
-                  _isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
-                  size: 16,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  _isExpanded ? Icons.folder_open : Icons.folder,
-                  size: 16,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    name,
-                    style: const TextStyle(fontSize: 13),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          child: Focus(
+            focusNode: appState.explorerFocusNode,
+            onKey: (node, event) {
+              _onKeyEvent(event);
+              return KeyEventResult.handled;
+            },
+            child: ScrollablePositionedList.builder(
+              itemCount: _flatList.length,
+              itemScrollController: _itemScrollController,
+              itemPositionsListener: _itemPositionsListener,
+              itemBuilder: (context, index) {
+                final item = _flatList[index];
+                final isSelected = index == _selectedIndex;
+                final name = path.basename(item.path);
+                final paddingLeft = 8.0 + (item.depth * 16.0);
+                
+                return InkWell(
+                  onTap: () {
+                    setState(() => _selectedIndex = index);
+                    if (item.isDirectory) {
+                      _toggleExpansion(index);
+                    } else {
+                      appState.openFile(item.path);
+                    }
+                  },
+                  child: Container(
+                    color: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.15) : null,
+                    padding: EdgeInsets.only(left: paddingLeft, top: 4, bottom: 4, right: 8),
+                    child: Row(
+                      children: [
+                        if (item.isDirectory)
+                          Icon(
+                            _expandedPaths.contains(item.path) ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                            size: 16,
+                            color: Colors.grey,
+                          )
+                        else
+                          const SizedBox(width: 16),
+                        const SizedBox(width: 4),
+                        Icon(
+                          item.isDirectory ? (_expandedPaths.contains(item.path) ? Icons.folder_open : Icons.folder) : Icons.description,
+                          size: 16,
+                          color: item.isDirectory ? Theme.of(context).colorScheme.primary : Colors.grey,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            name,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                              fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ),
-        if (_isExpanded)
-          Column(
-            children: _children.map((e) {
-              if (e is Directory) {
-                return FileTreeItem(dirPath: e.path, level: widget.level + 1);
-              } else {
-                return _FileNode(filePath: e.path, level: widget.level + 1);
-              }
-            }).toList(),
-          ),
       ],
-    );
-  }
-}
-
-class _FileNode extends StatelessWidget {
-  final String filePath;
-  final int level;
-
-  const _FileNode({required this.filePath, required this.level});
-
-  @override
-  Widget build(BuildContext context) {
-    final appState = context.read<AppState>();
-    final fileName = path.basename(filePath);
-    final paddingLeft = 28.0 + (level * 12.0); // Indent to match folder text
-
-    return InkWell(
-      onTap: () => appState.openFile(filePath),
-      onDoubleTap: () => appState.openFile(filePath), // Same action for now
-      hoverColor: Theme.of(context).hoverColor,
-      child: Padding(
-        padding: EdgeInsets.only(left: paddingLeft, top: 4, bottom: 4, right: 8),
-        child: Row(
-          children: [
-            const Icon(Icons.description, size: 16, color: Colors.grey),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                fileName,
-                style: const TextStyle(fontSize: 13),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

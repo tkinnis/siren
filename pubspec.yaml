@@ -17,6 +17,7 @@ dependencies:
   markdown: ^7.3.0
   path: ^1.9.1
   provider: ^6.1.5+1
+  scrollable_positioned_list: ^0.3.8
   webview_flutter: ^4.13.1
   webview_flutter_wkwebview: ^3.23.5
   window_manager: ^0.5.1

@@ -163,6 +163,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 appState.openFileAndSetDirectory(file.path);
               }
           },
+          const SingleActivator(LogicalKeyboardKey.keyL, meta: true): () {
+            appState.explorerFocusNode.requestFocus();
+          },
         },
         child: Focus(
           autofocus: true,

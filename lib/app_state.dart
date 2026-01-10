@@ -18,6 +18,10 @@ class AppState extends ChangeNotifier {
   bool _isRenderedView = true;
   double _fontSize = 14.0;
   bool _isLoading = false;
+  
+  // Focus & Navigation
+  final FocusNode explorerFocusNode = FocusNode();
+  Function(String path)? _onRevealInExplorer;
 
   // Getters
   List<String> get openFilePaths => List.unmodifiable(_openFilePaths);
@@ -59,6 +63,20 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  @override
+  void dispose() {
+    explorerFocusNode.dispose();
+    super.dispose();
+  }
+
+  void setExplorerRevealCallback(Function(String path) callback) {
+    _onRevealInExplorer = callback;
+  }
+
+  void _revealInExplorer(String path) {
+    _onRevealInExplorer?.call(path);
+  }
+
   void _initChannel() {
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'openFile') {
@@ -94,6 +112,7 @@ class AppState extends ChangeNotifier {
     if (existingIndex != -1) {
       _activeTabIndex = existingIndex;
       notifyListeners();
+      _revealInExplorer(path);
       return;
     }
 
@@ -107,6 +126,7 @@ class AppState extends ChangeNotifier {
         _fileContents[path] = content;
         _openFilePaths.add(path);
         _activeTabIndex = _openFilePaths.length - 1;
+        _revealInExplorer(path);
       }
     } catch (e) {
       debugPrint('Error reading file: $e');
@@ -145,6 +165,7 @@ class AppState extends ChangeNotifier {
     if (index >= 0 && index < _openFilePaths.length) {
       _activeTabIndex = index;
       notifyListeners();
+      _revealInExplorer(_openFilePaths[index]);
     }
   }
 
