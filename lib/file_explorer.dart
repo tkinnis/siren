@@ -177,7 +177,7 @@ class _FileTreeItemState extends State<FileTreeItem> {
           if (e is Directory) {
             return FileTreeItem(dirPath: e.path, level: 0);
           } else {
-            return _FileNode(path: e.path, level: 0);
+            return _FileNode(filePath: e.path, level: 0);
           }
         }).toList(),
       );
@@ -226,7 +226,7 @@ class _FileTreeItemState extends State<FileTreeItem> {
               if (e is Directory) {
                 return FileTreeItem(dirPath: e.path, level: widget.level + 1);
               } else {
-                return _FileNode(path: e.path, level: widget.level + 1);
+                return _FileNode(filePath: e.path, level: widget.level + 1);
               }
             }).toList(),
           ),
@@ -236,24 +236,20 @@ class _FileTreeItemState extends State<FileTreeItem> {
 }
 
 class _FileNode extends StatelessWidget {
-  final String path;
+  final String filePath;
   final int level;
 
-  const _FileNode({required this.path, required this.level});
+  const _FileNode({required this.filePath, required this.level});
 
   @override
   Widget build(BuildContext context) {
     final appState = context.read<AppState>();
-    final name = path.basename(this.path); // Use explicit this.path or rename variable
-    // Using simple path.basename(path) works if imported correctly.
-    // To avoid confusion with the package path, let's just use it.
-    
-    final fileName = path.basename(path);
+    final fileName = path.basename(filePath);
     final paddingLeft = 28.0 + (level * 12.0); // Indent to match folder text
 
     return InkWell(
-      onTap: () => appState.openFile(path),
-      onDoubleTap: () => appState.openFile(path), // Same action for now
+      onTap: () => appState.openFile(filePath),
+      onDoubleTap: () => appState.openFile(filePath), // Same action for now
       hoverColor: Theme.of(context).hoverColor,
       child: Padding(
         padding: EdgeInsets.only(left: paddingLeft, top: 4, bottom: 4, right: 8),
