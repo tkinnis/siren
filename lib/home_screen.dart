@@ -88,8 +88,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               },
             ),
-             PlatformMenuItem(
+            PlatformMenuItem(
               label: 'Open Folder...',
+              shortcut: const SingleActivator(LogicalKeyboardKey.keyO, meta: true, shift: true),
               onSelected: () async {
                  if (mounted) {
                   context.read<AppState>().openDirectory();
@@ -162,6 +163,9 @@ class _HomeScreenState extends State<HomeScreen> {
               if (file != null && mounted) {
                 appState.openFileAndSetDirectory(file.path);
               }
+          },
+          const SingleActivator(LogicalKeyboardKey.keyO, meta: true, shift: true): () {
+            appState.openDirectory();
           },
           const SingleActivator(LogicalKeyboardKey.keyL, meta: true): () {
             appState.explorerFocusNode.requestFocus();
