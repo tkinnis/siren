@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'app_state.dart';
@@ -10,70 +12,221 @@ import 'file_explorer.dart';
 import 'raw_view.dart';
 import 'rendered_view.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  double _sidebarWidth = 250.0;
+  bool _isResizing = false;
+
+  void _handleResize(DragUpdateDetails details) {
+    setState(() {
+      _sidebarWidth = (_sidebarWidth + details.delta.dx).clamp(150.0, 500.0);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
 
-    return CallbackShortcuts(
-      bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.equal, meta: true): () {
-          appState.increaseFontSize();
+    return PlatformMenuBar(
+      menus: [
+        PlatformMenu(
+          label: 'Siren',
+          menus: [
+            if (Platform.isMacOS)
+              PlatformMenuItemGroup(
+                members: [
+                  PlatformMenuItem(
+                    label: 'About Siren',
+                    onSelected: () {
+                      showAboutDialog(
+                        context: context,
+                        applicationName: 'Siren',
+                        applicationVersion: '0.1.0',
+                      );
+                    },
+                  ),
+                ],
+              ),
+            if (Platform.isMacOS)
+              PlatformMenuItemGroup(
+                members: [
+                  PlatformMenuItem(
+                    label: 'Quit Siren',
+                    shortcut:
+                        const SingleActivator(LogicalKeyboardKey.keyQ, meta: true),
+                    onSelected: () {
+                      exit(0);
+                    },
+                  ),
+                ],
+              ),
+          ],
+        ),
+        PlatformMenu(
+          label: 'File',
+          menus: [
+            PlatformMenuItem(
+              label: 'Open...',
+              shortcut: const SingleActivator(LogicalKeyboardKey.keyO, meta: true),
+              onSelected: () async {
+                 const XTypeGroup typeGroup = XTypeGroup(
+                  label: 'Markdown',
+                  extensions: <String>['md', 'markdown'],
+                );
+                final XFile? file = await openFile(
+                  acceptedTypeGroups: <XTypeGroup>[typeGroup],
+                );
+                if (file != null && mounted) {
+                  // Open file AND set explorer root to parent
+                  context.read<AppState>().openFileAndSetDirectory(file.path);
+                }
+              },
+            ),
+             PlatformMenuItem(
+              label: 'Open Folder...',
+              onSelected: () async {
+                 if (mounted) {
+                  context.read<AppState>().openDirectory();
+                 }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Close Tab',
+              shortcut: const SingleActivator(LogicalKeyboardKey.keyW, meta: true),
+              onSelected: () {
+                 if (mounted) {
+                  context.read<AppState>().closeCurrentFile();
+                 }
+              },
+            ),
+          ],
+        ),
+        PlatformMenu(
+          label: 'View',
+          menus: [
+            PlatformMenuItem(
+              label: 'Toggle Preview',
+              shortcut: const SingleActivator(LogicalKeyboardKey.keyP, meta: true, shift: true),
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().toggleViewMode();
+                }
+              },
+            ),
+             PlatformMenuItem(
+              label: 'Zoom In',
+              shortcut: const SingleActivator(LogicalKeyboardKey.equal, meta: true),
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().increaseFontSize();
+                }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Zoom Out',
+              shortcut: const SingleActivator(LogicalKeyboardKey.minus, meta: true),
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().decreaseFontSize();
+                }
+              },
+            ),
+          ],
+        ),
+      ],
+      child: CallbackShortcuts(
+        bindings: <ShortcutActivator, VoidCallback>{
+          const SingleActivator(LogicalKeyboardKey.equal, meta: true): () {
+            appState.increaseFontSize();
+          },
+          const SingleActivator(LogicalKeyboardKey.minus, meta: true): () {
+            appState.decreaseFontSize();
+          },
+           const SingleActivator(LogicalKeyboardKey.keyW, meta: true): () {
+            appState.closeCurrentFile();
+          },
+          const SingleActivator(LogicalKeyboardKey.keyO, meta: true): () async {
+             const XTypeGroup typeGroup = XTypeGroup(
+                label: 'Markdown',
+                extensions: <String>['md', 'markdown'],
+              );
+              final XFile? file = await openFile(
+                acceptedTypeGroups: <XTypeGroup>[typeGroup],
+              );
+              if (file != null && mounted) {
+                appState.openFileAndSetDirectory(file.path);
+              }
+          },
         },
-        const SingleActivator(LogicalKeyboardKey.minus, meta: true): () {
-          appState.decreaseFontSize();
-        },
-      },
-      child: Focus(
-        autofocus: true,
-        child: DropTarget(
-          onDragDone: (detail) {
-            if (detail.files.isNotEmpty) {
-              for (final file in detail.files) {
-                 if (file.path.endsWith('.md') ||
-                    file.path.endsWith('.markdown')) {
-                  appState.openFile(file.path);
+        child: Focus(
+          autofocus: true,
+          child: DropTarget(
+            onDragDone: (detail) {
+              if (detail.files.isNotEmpty) {
+                for (final file in detail.files) {
+                  if (file.path.endsWith('.md') ||
+                      file.path.endsWith('.markdown')) {
+                    appState.openFile(file.path);
+                  }
                 }
               }
-            }
-          },
-          child: Scaffold(
-            body: Column(
-              children: [
-                _buildToolbar(context, appState),
-                Expanded(
-                  child: Row(
-                    children: [
-                      // File Explorer Sidebar
-                      Container(
-                        width: 250,
-                        color: Theme.of(context).colorScheme.surface,
-                        child: const FileExplorer(),
-                      ),
-                      const VerticalDivider(width: 1, thickness: 1),
-                      // Main Editor Area
-                      Expanded(
-                        child: Column(
-                          children: [
-                            const EditorTabs(),
-                            Expanded(
-                              child: appState.isLoading
-                                  ? const Center(child: CircularProgressIndicator())
-                                  : appState.activeTabIndex == -1
-                                  ? _buildEmptyState(context)
-                                  : appState.isRenderedView
-                                  ? const RenderedView()
-                                  : const MarkdownRawView(),
-                            ),
-                          ],
+            },
+            child: Scaffold(
+              body: Column(
+                children: [
+                  _buildToolbar(context, appState),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // File Explorer Sidebar
+                        SizedBox(
+                          width: _sidebarWidth,
+                          child: const FileExplorer(),
                         ),
-                      ),
-                    ],
+                        // Resizer
+                        MouseRegion(
+                          cursor: SystemMouseCursors.resizeColumn,
+                          child: GestureDetector(
+                            onHorizontalDragUpdate: _handleResize,
+                            onHorizontalDragStart: (_) => setState(() => _isResizing = true),
+                            onHorizontalDragEnd: (_) => setState(() => _isResizing = false),
+                            child: Container(
+                              width: 5,
+                              color: _isResizing 
+                                ? Theme.of(context).colorScheme.primary.withOpacity(0.5) 
+                                : Colors.transparent,
+                                child: const VerticalDivider(width: 1, thickness: 1),
+                            ),
+                          ),
+                        ),
+                        // Main Editor Area
+                        Expanded(
+                          child: Column(
+                            children: [
+                              const EditorTabs(),
+                              Expanded(
+                                child: appState.isLoading
+                                    ? const Center(child: CircularProgressIndicator())
+                                    : appState.activeTabIndex == -1
+                                        ? _buildEmptyState(context)
+                                        : appState.isRenderedView
+                                            ? const RenderedView()
+                                            : const MarkdownRawView(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -102,20 +255,11 @@ class HomeScreen extends StatelessWidget {
           Positioned.fill(
             child: DragToMoveArea(child: Container(color: Colors.transparent)),
           ),
-          // Centered Title
+          // Centered Breadcrumbs (replacing simple title)
           Positioned(
             left: 80, // Space for traffic lights
-            right: 80, // Space for action buttons (approx)
-            child: Center(
-              child: Text(
-                'Siren',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: isDark ? Colors.white70 : Colors.black87,
-                ),
-              ),
-            ),
+            right: 180, // Space for action buttons
+            child: _Breadcrumbs(filePath: appState.currentFilePath),
           ),
           // Action Buttons on the Right
           Positioned(
@@ -125,8 +269,8 @@ class HomeScreen extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _DesktopIconButton(
-                  icon: Icons.create_new_folder_outlined, // Changed icon to represent "Open Folder" conceptually or just keep open file
+                 _DesktopIconButton(
+                  icon: Icons.folder_open,
                   tooltip: 'Open File',
                   onPressed: () async {
                     const XTypeGroup typeGroup = XTypeGroup(
@@ -136,8 +280,8 @@ class HomeScreen extends StatelessWidget {
                     final XFile? file = await openFile(
                       acceptedTypeGroups: <XTypeGroup>[typeGroup],
                     );
-                    if (file != null) {
-                      appState.openFile(file.path);
+                    if (file != null && mounted) {
+                      appState.openFileAndSetDirectory(file.path);
                     }
                   },
                 ),
@@ -202,16 +346,68 @@ class HomeScreen extends StatelessWidget {
                 acceptedTypeGroups: <XTypeGroup>[typeGroup],
               );
               if (file != null) {
-                Provider.of<AppState>(
-                  context,
-                  listen: false,
-                ).openFile(file.path);
+                if(context.mounted) {
+                   Provider.of<AppState>(
+                    context,
+                    listen: false,
+                  ).openFileAndSetDirectory(file.path);
+                }
               }
             },
             icon: const Icon(Icons.folder_open),
             label: const Text('Open Markdown File'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _Breadcrumbs extends StatelessWidget {
+  final String? filePath;
+
+  const _Breadcrumbs({this.filePath});
+
+  @override
+  Widget build(BuildContext context) {
+    if (filePath == null) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final parts = path.split(filePath!);
+    // Show last 3 parts if too long, or all if short
+    final displayParts = parts.length > 4 ? ['...', ...parts.sublist(parts.length - 3)] : parts;
+
+    return Center(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+             for (int i = 0; i < displayParts.length; i++) ...[
+               if (i > 0)
+                 Padding(
+                   padding: const EdgeInsets.symmetric(horizontal: 4),
+                   child: Icon(
+                     Icons.chevron_right,
+                     size: 14,
+                     color: isDark ? Colors.white30 : Colors.black26,
+                   ),
+                 ),
+               Text(
+                 displayParts[i],
+                 style: TextStyle(
+                   fontSize: 12,
+                   color: i == displayParts.length - 1
+                       ? (isDark ? Colors.white : Colors.black87)
+                       : (isDark ? Colors.white54 : Colors.black54),
+                   fontWeight: i == displayParts.length - 1
+                       ? FontWeight.w600
+                       : FontWeight.normal,
+                 ),
+               ),
+             ],
+          ],
+        ),
       ),
     );
   }

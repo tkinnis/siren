@@ -119,6 +119,19 @@ class _FileTreeItemState extends State<FileTreeItem> {
     }
   }
 
+  @override
+  void didUpdateWidget(FileTreeItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.dirPath != oldWidget.dirPath) {
+      _children = []; // Clear current
+      _loaded = false;
+      if (widget.isRoot) {
+        _isExpanded = true;
+      }
+      _loadChildren();
+    }
+  }
+
   Future<void> _loadChildren() async {
     final dir = Directory(widget.dirPath);
     try {

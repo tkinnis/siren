@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as path;
 import 'package:window_manager/window_manager.dart';
 
 class AppState extends ChangeNotifier {
@@ -81,6 +82,12 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<void> openFileAndSetDirectory(String filePath) async {
+    await openFile(filePath);
+    _explorerRootPath = path.dirname(filePath);
+    notifyListeners();
+  }
+
   Future<void> openFile(String path) async {
     // If already open, just switch to it
     final existingIndex = _openFilePaths.indexOf(path);
@@ -125,6 +132,13 @@ class AppState extends ChangeNotifier {
     }
     
     notifyListeners();
+  }
+
+  void closeCurrentFile() {
+    final path = currentFilePath;
+    if (path != null) {
+      closeFile(path);
+    }
   }
 
   void setActiveTab(int index) {
