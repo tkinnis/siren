@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'app_state.dart';
+import 'editor_tabs.dart';
+import 'file_explorer.dart';
 import 'raw_view.dart';
 import 'rendered_view.dart';
 
@@ -29,10 +31,11 @@ class HomeScreen extends StatelessWidget {
         child: DropTarget(
           onDragDone: (detail) {
             if (detail.files.isNotEmpty) {
-              final file = detail.files.first;
-              if (file.path.endsWith('.md') ||
-                  file.path.endsWith('.markdown')) {
-                appState.openFile(file.path);
+              for (final file in detail.files) {
+                 if (file.path.endsWith('.md') ||
+                    file.path.endsWith('.markdown')) {
+                  appState.openFile(file.path);
+                }
               }
             }
           },
@@ -41,13 +44,34 @@ class HomeScreen extends StatelessWidget {
               children: [
                 _buildToolbar(context, appState),
                 Expanded(
-                  child: appState.isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : appState.currentContent.isEmpty
-                      ? _buildEmptyState(context)
-                      : appState.isRenderedView
-                      ? const RenderedView()
-                      : const MarkdownRawView(),
+                  child: Row(
+                    children: [
+                      // File Explorer Sidebar
+                      Container(
+                        width: 250,
+                        color: Theme.of(context).colorScheme.surface,
+                        child: const FileExplorer(),
+                      ),
+                      const VerticalDivider(width: 1, thickness: 1),
+                      // Main Editor Area
+                      Expanded(
+                        child: Column(
+                          children: [
+                            const EditorTabs(),
+                            Expanded(
+                              child: appState.isLoading
+                                  ? const Center(child: CircularProgressIndicator())
+                                  : appState.activeTabIndex == -1
+                                  ? _buildEmptyState(context)
+                                  : appState.isRenderedView
+                                  ? const RenderedView()
+                                  : const MarkdownRawView(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -83,17 +107,14 @@ class HomeScreen extends StatelessWidget {
             left: 80, // Space for traffic lights
             right: 80, // Space for action buttons (approx)
             child: Center(
-              child: appState.currentFilePath != null
-                  ? Text(
-                      appState.currentFilePath!.split('/').last,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: isDark ? Colors.white70 : Colors.black87,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    )
-                  : const SizedBox.shrink(),
+              child: Text(
+                'Siren',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
             ),
           ),
           // Action Buttons on the Right
@@ -105,7 +126,7 @@ class HomeScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _DesktopIconButton(
-                  icon: Icons.folder_open,
+                  icon: Icons.create_new_folder_outlined, // Changed icon to represent "Open Folder" conceptually or just keep open file
                   tooltip: 'Open File',
                   onPressed: () async {
                     const XTypeGroup typeGroup = XTypeGroup(

@@ -4,17 +4,41 @@ import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 class AppState extends ChangeNotifier {
-  String? _currentFilePath;
-  String _currentContent = '';
+  // Tab Management
+  final List<String> _openFilePaths = [];
+  int _activeTabIndex = -1;
+  final Map<String, String> _fileContents = {};
+
+  // File Explorer
+  String? _currentDirectory;
+
+  // View Settings
   bool _isRenderedView = true;
   double _fontSize = 14.0;
   bool _isLoading = false;
 
-  String? get currentFilePath => _currentFilePath;
-  String get currentContent => _currentContent;
+  // Getters
+  List<String> get openFilePaths => List.unmodifiable(_openFilePaths);
+  int get activeTabIndex => _activeTabIndex;
+  String? get currentDirectory => _currentDirectory;
   bool get isRenderedView => _isRenderedView;
   double get fontSize => _fontSize;
   bool get isLoading => _isLoading;
+
+  String? get currentFilePath {
+    if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
+      return _openFilePaths[_activeTabIndex];
+    }
+    return null;
+  }
+
+  String get currentContent {
+    final path = currentFilePath;
+    if (path != null) {
+      return _fileContents[path] ?? '';
+    }
+    return '';
+  }
 
   static const MethodChannel _channel = MethodChannel(
     'com.example.siren/files',
@@ -22,6 +46,9 @@ class AppState extends ChangeNotifier {
 
   AppState() {
     _initChannel();
+    // Default to home directory or documents if possible, or just null
+    // We can try to get the current directory
+    _currentDirectory = Directory.current.path;
   }
 
   void _initChannel() {
@@ -35,16 +62,30 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  Future<void> setDirectory(String path) async {
+    _currentDirectory = path;
+    notifyListeners();
+  }
+
   Future<void> openFile(String path) async {
+    // If already open, just switch to it
+    final existingIndex = _openFilePaths.indexOf(path);
+    if (existingIndex != -1) {
+      _activeTabIndex = existingIndex;
+      notifyListeners();
+      return;
+    }
+
     _isLoading = true;
     notifyListeners();
 
     try {
       final file = File(path);
       if (await file.exists()) {
-        _currentContent = await file.readAsString();
-        _currentFilePath = path;
-        await windowManager.setTitle(_currentFilePath!.split('/').last);
+        final content = await file.readAsString();
+        _fileContents[path] = content;
+        _openFilePaths.add(path);
+        _activeTabIndex = _openFilePaths.length - 1;
       }
     } catch (e) {
       debugPrint('Error reading file: $e');
@@ -53,6 +94,49 @@ class AppState extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void closeFile(String path) {
+    final index = _openFilePaths.indexOf(path);
+    if (index == -1) return;
+
+    _openFilePaths.removeAt(index);
+    _fileContents.remove(path);
+
+    if (_openFilePaths.isEmpty) {
+      _activeTabIndex = -1;
+    } else if (_activeTabIndex >= index) {
+      // If we closed the active tab or a tab before it, adjust index
+      _activeTabIndex = (_activeTabIndex - 1).clamp(0, _openFilePaths.length - 1);
+    }
+    
+    notifyListeners();
+  }
+
+  void setActiveTab(int index) {
+    if (index >= 0 && index < _openFilePaths.length) {
+      _activeTabIndex = index;
+      notifyListeners();
+    }
+  }
+
+  void reorderTabs(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final String item = _openFilePaths.removeAt(oldIndex);
+    _openFilePaths.insert(newIndex, item);
+
+    // Update active tab index to follow the moved item
+    if (_activeTabIndex == oldIndex) {
+      _activeTabIndex = newIndex;
+    } else if (_activeTabIndex > oldIndex && _activeTabIndex <= newIndex) {
+      _activeTabIndex--;
+    } else if (_activeTabIndex < oldIndex && _activeTabIndex >= newIndex) {
+      _activeTabIndex++;
+    }
+
+    notifyListeners();
   }
 
   void toggleViewMode() {
@@ -71,8 +155,10 @@ class AppState extends ChangeNotifier {
   }
 
   void setContent(String content) {
-    _currentContent = content;
-    // content changed, maybe unsaved? For read-only we might not need this unless we reload.
-    notifyListeners();
+    final path = currentFilePath;
+    if (path != null) {
+      _fileContents[path] = content;
+      notifyListeners();
+    }
   }
 }
