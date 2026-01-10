@@ -379,6 +379,8 @@ class _FileExplorerState extends State<FileExplorer> {
                 
                 return InkWell(
                   onTap: () {
+                    // Request focus so keyboard navigation works immediately
+                    appState.explorerFocusNode.requestFocus();
                     setState(() => _selectedIndex = index);
                     if (item.isDirectory) {
                       _toggleExpansion(index);
