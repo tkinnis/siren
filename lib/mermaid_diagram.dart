@@ -15,23 +15,43 @@ class MermaidDiagram extends StatefulWidget {
 class _MermaidDiagramState extends State<MermaidDiagram> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  double _height = 100;
 
   @override
   void initState() {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
+      ..addJavaScriptChannel(
+        'HeightChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          final double? newHeight = double.tryParse(message.message);
+          if (newHeight != null && newHeight != _height) {
+            setState(() {
+              _height = newHeight;
+            });
+          }
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) {
             setState(() {
               _isLoading = false;
             });
+            _updateHeight();
           },
         ),
       )
       ..loadHtmlString(_getHtml(widget.code, widget.isDark));
+  }
+
+  void _updateHeight() async {
+    // Small delay to ensure Mermaid has finished rendering
+    await Future.delayed(const Duration(milliseconds: 500));
+    await _controller.runJavaScript(
+      'HeightChannel.postMessage(document.body.scrollHeight.toString());',
+    );
   }
 
   @override
@@ -46,6 +66,7 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
     // Escaping backticks and other characters in code
     final encodedCode = const HtmlEscape().convert(code);
     final theme = isDark ? 'dark' : 'default';
+    final bgColor = isDark ? '#1E1E1E' : '#ffffff';
 
     return '''
       <!DOCTYPE html>
@@ -53,12 +74,31 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-          body { margin: 0; padding: 0; background-color: transparent; }
-          .mermaid { display: flex; justify-content: center; }
+          body { 
+            margin: 0; 
+            padding: 0; 
+            background-color: $bgColor; 
+            overflow: hidden; 
+          }
+          .mermaid { 
+            display: flex; 
+            justify-content: center; 
+            padding: 10px;
+          }
         </style>
         <script type="module">
           import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-          mermaid.initialize({ startOnLoad: true, theme: '$theme' });
+          mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: '$theme',
+            securityLevel: 'loose',
+          });
+          
+          // Watch for changes and report height
+          const observer = new ResizeObserver(entries => {
+            HeightChannel.postMessage(document.body.scrollHeight.toString());
+          });
+          observer.observe(document.body);
         </script>
       </head>
       <body>
@@ -72,14 +112,19 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
 
   @override
   Widget build(BuildContext context) {
-    // A fixed height is problematic for diagrams.
-    // Ideally we'd get the height from the webview content.
-    // For now, let's use a reasonable default or AspectRatio.
-    // Better yet, we can use a JS channel to report height.
-
-    // For this prototype, I'll set a fixed height that's scrollable if needed
-    // or just large enough.
-
-    return SizedBox(height: 300, child: WebViewWidget(controller: _controller));
+    return SizedBox(
+      height: _height,
+      child: Stack(
+        children: [
+          WebViewWidget(controller: _controller),
+          // Overlay to intercept gestures and prevent scroll trapping
+          Positioned.fill(
+            child: Container(
+              color: Colors.transparent,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

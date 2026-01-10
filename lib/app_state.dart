@@ -29,6 +29,8 @@ class AppState extends ChangeNotifier {
       if (call.method == 'openFile') {
         final String path = call.arguments as String;
         await openFile(path);
+        await windowManager.show();
+        await windowManager.focus();
       }
     });
   }

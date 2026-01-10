@@ -1,3 +1,4 @@
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,20 +26,31 @@ class HomeScreen extends StatelessWidget {
       },
       child: Focus(
         autofocus: true,
-        child: Scaffold(
-          body: Column(
-            children: [
-              _buildToolbar(context, appState),
-              Expanded(
-                child: appState.isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : appState.currentContent.isEmpty
-                    ? _buildEmptyState(context)
-                    : appState.isRenderedView
-                    ? const RenderedView()
-                    : const MarkdownRawView(),
-              ),
-            ],
+        child: DropTarget(
+          onDragDone: (detail) {
+            if (detail.files.isNotEmpty) {
+              final file = detail.files.first;
+              if (file.path.endsWith('.md') ||
+                  file.path.endsWith('.markdown')) {
+                appState.openFile(file.path);
+              }
+            }
+          },
+          child: Scaffold(
+            body: Column(
+              children: [
+                _buildToolbar(context, appState),
+                Expanded(
+                  child: appState.isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : appState.currentContent.isEmpty
+                      ? _buildEmptyState(context)
+                      : appState.isRenderedView
+                      ? const RenderedView()
+                      : const MarkdownRawView(),
+                ),
+              ],
+            ),
           ),
         ),
       ),

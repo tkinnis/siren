@@ -19,46 +19,48 @@ class RenderedView extends StatelessWidget {
     final fontSize = appState.fontSize;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Markdown(
-      data: content,
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
-      selectable: true,
-      styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-        p: GoogleFonts.roboto(fontSize: fontSize),
-        h1: GoogleFonts.roboto(
-          fontSize: fontSize * 2.0,
-          fontWeight: FontWeight.bold,
+      child: MarkdownBody(
+        data: content,
+        selectable: true,
+        styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+          p: GoogleFonts.roboto(fontSize: fontSize),
+          h1: GoogleFonts.roboto(
+            fontSize: fontSize * 2.0,
+            fontWeight: FontWeight.bold,
+          ),
+          h2: GoogleFonts.roboto(
+            fontSize: fontSize * 1.75,
+            fontWeight: FontWeight.bold,
+          ),
+          h3: GoogleFonts.roboto(
+            fontSize: fontSize * 1.5,
+            fontWeight: FontWeight.bold,
+          ),
+          h4: GoogleFonts.roboto(
+            fontSize: fontSize * 1.25,
+            fontWeight: FontWeight.bold,
+          ),
+          h5: GoogleFonts.roboto(
+            fontSize: fontSize * 1.15,
+            fontWeight: FontWeight.bold,
+          ),
+          h6: GoogleFonts.roboto(
+            fontSize: fontSize * 1.0,
+            fontWeight: FontWeight.bold,
+          ),
+          code: GoogleFonts.firaCode(
+            backgroundColor: isDark
+                ? const Color(0xFF282C34)
+                : const Color(0xFFF0F0F0),
+            fontSize: fontSize * 0.9,
+          ),
         ),
-        h2: GoogleFonts.roboto(
-          fontSize: fontSize * 1.75,
-          fontWeight: FontWeight.bold,
-        ),
-        h3: GoogleFonts.roboto(
-          fontSize: fontSize * 1.5,
-          fontWeight: FontWeight.bold,
-        ),
-        h4: GoogleFonts.roboto(
-          fontSize: fontSize * 1.25,
-          fontWeight: FontWeight.bold,
-        ),
-        h5: GoogleFonts.roboto(
-          fontSize: fontSize * 1.15,
-          fontWeight: FontWeight.bold,
-        ),
-        h6: GoogleFonts.roboto(
-          fontSize: fontSize * 1.0,
-          fontWeight: FontWeight.bold,
-        ),
-        code: GoogleFonts.firaCode(
-          backgroundColor: isDark
-              ? const Color(0xFF282C34)
-              : const Color(0xFFF0F0F0),
-          fontSize: fontSize * 0.9,
-        ),
+        builders: {
+          'code': CodeElementBuilder(isDark: isDark, fontSize: fontSize),
+        },
       ),
-      builders: {
-        'code': CodeElementBuilder(isDark: isDark, fontSize: fontSize),
-      },
     );
   }
 }

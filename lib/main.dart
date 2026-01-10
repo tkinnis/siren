@@ -18,7 +18,7 @@ void main() async {
   );
 
   // Wait for the window manager to be ready before showing the window
-  await windowManager.waitUntilReadyToShow(windowOptions, () async {
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
   });

@@ -18,7 +18,8 @@ class MarkdownRawView extends StatelessWidget {
     final theme = isDark ? atomOneDarkTheme : atomOneLightTheme;
 
     // Extract background color from theme or fallback
-    final backgroundColor = theme['root']?.backgroundColor ??
+    final backgroundColor =
+        theme['root']?.backgroundColor ??
         (isDark ? const Color(0xFF282C34) : const Color(0xFFFAFAFA));
 
     return Container(
