@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -28,19 +27,32 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
         onMessageReceived: (JavaScriptMessage message) {
           final double? newHeight = double.tryParse(message.message);
           if (newHeight != null && newHeight != _height) {
-            setState(() {
-              _height = newHeight;
-            });
+            if (mounted) {
+              setState(() {
+                _height = newHeight;
+              });
+            }
+          }
+        },
+      )
+      ..addJavaScriptChannel(
+        'ScrollChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          final deltaY = double.tryParse(message.message);
+          if (deltaY != null && mounted) {
+            _forwardScroll(deltaY);
           }
         },
       )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) {
-            setState(() {
-              _isLoading = false;
-            });
-            _updateHeight();
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+              _updateHeight();
+            }
           },
         ),
       )
@@ -53,6 +65,19 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
     await _controller.runJavaScript(
       'HeightChannel.postMessage(document.body.scrollHeight.toString());',
     );
+  }
+
+  void _forwardScroll(double deltaY) {
+    final scrollable = Scrollable.maybeOf(context);
+    if (scrollable != null && scrollable.position.hasPixels) {
+      final newPos = scrollable.position.pixels + deltaY;
+      scrollable.position.jumpTo(
+        newPos.clamp(
+          scrollable.position.minScrollExtent,
+          scrollable.position.maxScrollExtent,
+        ),
+      );
+    }
   }
 
   @override
@@ -89,17 +114,24 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
         </style>
         <script type="module">
           import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-          mermaid.initialize({ 
-            startOnLoad: true, 
+          mermaid.initialize({
+            startOnLoad: true,
             theme: '$theme',
             securityLevel: 'loose',
           });
-          
+
           // Watch for changes and report height
           const observer = new ResizeObserver(entries => {
             HeightChannel.postMessage(document.body.scrollHeight.toString());
           });
           observer.observe(document.body);
+
+          // Forward scroll events to Flutter
+          document.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            ScrollChannel.postMessage(e.deltaY.toString());
+          }, { passive: false });
         </script>
       </head>
       <body>
@@ -115,32 +147,7 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
   Widget build(BuildContext context) {
     return SizedBox(
       height: _height,
-      child: Stack(
-        children: [
-          IgnorePointer(
-            child: WebViewWidget(controller: _controller),
-          ),
-          Positioned.fill(
-            child: Listener(
-              onPointerSignal: (event) {
-                if (event is PointerScrollEvent) {
-                  final scrollable = Scrollable.of(context);
-                  if (scrollable.position.hasPixels) {
-                    final newPos = scrollable.position.pixels + event.scrollDelta.dy;
-                    scrollable.position.jumpTo(
-                      newPos.clamp(
-                        scrollable.position.minScrollExtent,
-                        scrollable.position.maxScrollExtent,
-                      ),
-                    );
-                  }
-                }
-              },
-              behavior: HitTestBehavior.translucent,
-            ),
-          ),
-        ],
-      ),
+      child: WebViewWidget(controller: _controller),
     );
   }
 }
