@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -116,11 +117,26 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
       height: _height,
       child: Stack(
         children: [
-          WebViewWidget(controller: _controller),
-          // Overlay to intercept gestures and prevent scroll trapping
+          IgnorePointer(
+            child: WebViewWidget(controller: _controller),
+          ),
           Positioned.fill(
-            child: Container(
-              color: Colors.transparent,
+            child: Listener(
+              onPointerSignal: (event) {
+                if (event is PointerScrollEvent) {
+                  final scrollable = Scrollable.of(context);
+                  if (scrollable.position.hasPixels) {
+                    final newPos = scrollable.position.pixels + event.scrollDelta.dy;
+                    scrollable.position.jumpTo(
+                      newPos.clamp(
+                        scrollable.position.minScrollExtent,
+                        scrollable.position.maxScrollExtent,
+                      ),
+                    );
+                  }
+                }
+              },
+              behavior: HitTestBehavior.translucent,
             ),
           ),
         ],
