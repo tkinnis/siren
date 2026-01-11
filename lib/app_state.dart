@@ -10,6 +10,7 @@ class AppState extends ChangeNotifier {
   final List<String> _openFilePaths = [];
   int _activeTabIndex = -1;
   final Map<String, String> _fileContents = {};
+  final Map<String, double> _scrollOffsets = {};
 
   // File Explorer
   String? _explorerRootPath;
@@ -143,6 +144,7 @@ class AppState extends ChangeNotifier {
 
     _openFilePaths.removeAt(index);
     _fileContents.remove(path);
+    _scrollOffsets.remove(path);
 
     if (_openFilePaths.isEmpty) {
       _activeTabIndex = -1;
@@ -209,5 +211,11 @@ class AppState extends ChangeNotifier {
       _fileContents[path] = content;
       notifyListeners();
     }
+  }
+
+  double getScrollOffset(String path) => _scrollOffsets[path] ?? 0.0;
+
+  void setScrollOffset(String path, double offset) {
+    _scrollOffsets[path] = offset;
   }
 }

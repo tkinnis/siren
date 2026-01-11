@@ -223,8 +223,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     : appState.activeTabIndex == -1
                                         ? _buildEmptyState(context)
                                         : appState.isRenderedView
-                                            ? const RenderedView()
-                                            : const MarkdownRawView(),
+                                            ? RenderedView(key: ValueKey(appState.currentFilePath))
+                                            : MarkdownRawView(key: ValueKey(appState.currentFilePath)),
                               ),
                             ],
                           ),
