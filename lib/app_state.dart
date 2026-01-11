@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +26,7 @@ class AppState extends ChangeNotifier {
   int _activeTabIndex = -1;
   final Map<String, String> _fileContents = {};
   final Map<String, double> _scrollOffsets = {};
+  final Map<String, StreamSubscription<FileSystemEvent>> _fileWatchers = {};
 
   // File Explorer
   String? _explorerRootPath;
@@ -115,6 +117,7 @@ class AppState extends ChangeNotifier {
           final content = await File(filePath).readAsString();
           _fileContents[filePath] = content;
           _openFilePaths.add(filePath);
+          _startWatching(filePath);
         } catch (e) {
           debugPrint('Error loading persisted file: $e');
         }
@@ -150,6 +153,10 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    for (final subscription in _fileWatchers.values) {
+      subscription.cancel();
+    }
+    _fileWatchers.clear();
     explorerFocusNode.dispose();
     super.dispose();
   }
@@ -160,6 +167,47 @@ class AppState extends ChangeNotifier {
 
   void _revealInExplorer(String path) {
     _onRevealInExplorer?.call(path);
+  }
+
+  void _startWatching(String path) {
+    if (_fileWatchers.containsKey(path)) return;
+
+    try {
+      final file = File(path);
+      _fileWatchers[path] = file.watch(events: FileSystemEvent.modify).listen(
+        (event) {
+          _onFileModified(path);
+        },
+        onError: (e) {
+          debugPrint('Error watching file $path: $e');
+        },
+      );
+    } catch (e) {
+      debugPrint('Failed to watch file $path: $e');
+    }
+  }
+
+  void _stopWatching(String path) {
+    _fileWatchers[path]?.cancel();
+    _fileWatchers.remove(path);
+  }
+
+  Future<void> _onFileModified(String path) async {
+    // Debounce or just reload?
+    // For now, simple reload.
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        // Only notify if content actually changed to avoid spurious rebuilds
+        if (_fileContents[path] != content) {
+          _fileContents[path] = content;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error reloading modified file $path: $e');
+    }
   }
 
   void _initChannel() {
@@ -215,6 +263,7 @@ class AppState extends ChangeNotifier {
         _openFilePaths.add(filePath);
         _activeTabIndex = _openFilePaths.length - 1;
         _revealInExplorer(filePath);
+        _startWatching(filePath);
         _persistState();
       }
     } catch (e) {
@@ -232,6 +281,7 @@ class AppState extends ChangeNotifier {
     _openFilePaths.removeAt(index);
     _fileContents.remove(filePath);
     _scrollOffsets.remove(filePath);
+    _stopWatching(filePath);
 
     if (_openFilePaths.isEmpty) {
       _activeTabIndex = -1;
