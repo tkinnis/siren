@@ -18,7 +18,7 @@ class RenderedView extends StatefulWidget {
 
 class _RenderedViewState extends State<RenderedView> {
   final ScrollController _scrollController = ScrollController();
-  
+
   @override
   void initState() {
     super.initState();
@@ -47,9 +47,9 @@ class _RenderedViewState extends State<RenderedView> {
         _scrollController.jumpTo(offset);
       } else {
         // Wait for attach
-         WidgetsBinding.instance.addPostFrameCallback((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
-             _scrollController.jumpTo(offset);
+            _scrollController.jumpTo(offset);
           }
         });
       }

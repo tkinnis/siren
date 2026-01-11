@@ -80,7 +80,10 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
             content,
             language: 'markdown',
             theme: theme,
-            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 32.0,
+              vertical: 24.0,
+            ),
             textStyle: GoogleFonts.firaCode(fontSize: fontSize),
           ),
         ),

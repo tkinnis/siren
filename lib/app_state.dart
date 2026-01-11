@@ -19,7 +19,7 @@ class AppState extends ChangeNotifier {
   bool _isRenderedView = true;
   double _fontSize = 14.0;
   bool _isLoading = false;
-  
+
   // Focus & Navigation
   final FocusNode explorerFocusNode = FocusNode();
   Function(String path)? _onRevealInExplorer;
@@ -150,9 +150,12 @@ class AppState extends ChangeNotifier {
       _activeTabIndex = -1;
     } else if (_activeTabIndex >= index) {
       // If we closed the active tab or a tab before it, adjust index
-      _activeTabIndex = (_activeTabIndex - 1).clamp(0, _openFilePaths.length - 1);
+      _activeTabIndex = (_activeTabIndex - 1).clamp(
+        0,
+        _openFilePaths.length - 1,
+      );
     }
-    
+
     notifyListeners();
   }
 

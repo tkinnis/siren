@@ -29,8 +29,9 @@ class FileExplorer extends StatefulWidget {
 
 class _FileExplorerState extends State<FileExplorer> {
   final ItemScrollController _itemScrollController = ItemScrollController();
-  final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
-  
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
+
   List<ExplorerItem> _flatList = [];
   Set<String> _expandedPaths = {};
   int _selectedIndex = -1;
@@ -53,7 +54,7 @@ class _FileExplorerState extends State<FileExplorer> {
       _initialized = true;
       _updateTree(appState.explorerRootPath);
     } else {
-       // Watch for root changes
+      // Watch for root changes
       final appState = Provider.of<AppState>(context);
       if (appState.explorerRootPath != _currentRoot) {
         _updateTree(appState.explorerRootPath);
@@ -78,10 +79,10 @@ class _FileExplorerState extends State<FileExplorer> {
 
   Future<void> _rebuildFlatList() async {
     if (_currentRoot == null) return;
-    
+
     final List<ExplorerItem> newList = [];
     await _traverse(_currentRoot!, 0, newList);
-    
+
     if (mounted) {
       setState(() {
         _flatList = newList;
@@ -89,60 +90,64 @@ class _FileExplorerState extends State<FileExplorer> {
     }
   }
 
-  Future<void> _traverse(String dirPath, int depth, List<ExplorerItem> list) async {
+  Future<void> _traverse(
+    String dirPath,
+    int depth,
+    List<ExplorerItem> list,
+  ) async {
     // Determine if expanded. Root is always expanded effectively (we list its children at depth 0)
     // Actually, let's treat the root content as starting at depth 0 without showing the root folder itself?
     // Or show the root folder? The design shows a header for the root.
     // So we list the children of _currentRoot.
-    
+
     final dir = Directory(dirPath);
     if (!await dir.exists()) return;
 
     try {
       final List<FileSystemEntity> entities = await dir.list().toList();
-      
-       final filtered = entities.where((entity) {
-          final name = path.basename(entity.path);
-          if (name.startsWith('.')) return false;
-          if (entity is Directory) return true;
-          if (entity is File) {
-            return name.toLowerCase().endsWith('.md') ||
-                name.toLowerCase().endsWith('.markdown');
-          }
-          return false;
-        }).toList();
 
-        // Sort: Directories first, then files
-        filtered.sort((a, b) {
-          if (a is Directory && b is File) return -1;
-          if (a is File && b is Directory) return 1;
-          return path.basename(a.path).toLowerCase().compareTo(
-                path.basename(b.path).toLowerCase(),
-              );
-        });
-
-        for (final entity in filtered) {
-           final isDir = entity is Directory;
-           final itemPath = entity.path;
-           final item = ExplorerItem(
-             path: itemPath,
-             depth: depth,
-             isDirectory: isDir,
-             isExpanded: _expandedPaths.contains(itemPath),
-           );
-           
-           list.add(item);
-           
-           if (isDir && _expandedPaths.contains(itemPath)) {
-             await _traverse(itemPath, depth + 1, list);
-           }
+      final filtered = entities.where((entity) {
+        final name = path.basename(entity.path);
+        if (name.startsWith('.')) return false;
+        if (entity is Directory) return true;
+        if (entity is File) {
+          return name.toLowerCase().endsWith('.md') ||
+              name.toLowerCase().endsWith('.markdown');
         }
+        return false;
+      }).toList();
 
+      // Sort: Directories first, then files
+      filtered.sort((a, b) {
+        if (a is Directory && b is File) return -1;
+        if (a is File && b is Directory) return 1;
+        return path
+            .basename(a.path)
+            .toLowerCase()
+            .compareTo(path.basename(b.path).toLowerCase());
+      });
+
+      for (final entity in filtered) {
+        final isDir = entity is Directory;
+        final itemPath = entity.path;
+        final item = ExplorerItem(
+          path: itemPath,
+          depth: depth,
+          isDirectory: isDir,
+          isExpanded: _expandedPaths.contains(itemPath),
+        );
+
+        list.add(item);
+
+        if (isDir && _expandedPaths.contains(itemPath)) {
+          await _traverse(itemPath, depth + 1, list);
+        }
+      }
     } catch (e) {
       debugPrint("Error traversing $dirPath: $e");
     }
   }
-  
+
   Future<void> _toggleExpansion(int index) async {
     final item = _flatList[index];
     if (!item.isDirectory) return;
@@ -172,54 +177,54 @@ class _FileExplorerState extends State<FileExplorer> {
       }
       return KeyEventResult.handled;
     } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-       if (_selectedIndex >= 0 && _selectedIndex < _flatList.length) {
-         final item = _flatList[_selectedIndex];
-         if (item.isDirectory) {
-           if (!_expandedPaths.contains(item.path)) {
-             _toggleExpansion(_selectedIndex);
-           } else {
-             // Select first child
-             if (_selectedIndex + 1 < _flatList.length) {
-                final nextItem = _flatList[_selectedIndex + 1];
-                if (nextItem.depth > item.depth) {
-                   setState(() => _selectedIndex++);
-                   _scrollToSelected();
-                }
-             }
-           }
-         }
-       }
-       return KeyEventResult.handled;
+      if (_selectedIndex >= 0 && _selectedIndex < _flatList.length) {
+        final item = _flatList[_selectedIndex];
+        if (item.isDirectory) {
+          if (!_expandedPaths.contains(item.path)) {
+            _toggleExpansion(_selectedIndex);
+          } else {
+            // Select first child
+            if (_selectedIndex + 1 < _flatList.length) {
+              final nextItem = _flatList[_selectedIndex + 1];
+              if (nextItem.depth > item.depth) {
+                setState(() => _selectedIndex++);
+                _scrollToSelected();
+              }
+            }
+          }
+        }
+      }
+      return KeyEventResult.handled;
     } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
       if (_selectedIndex >= 0 && _selectedIndex < _flatList.length) {
-         final item = _flatList[_selectedIndex];
-         if (item.isDirectory && _expandedPaths.contains(item.path)) {
-           _toggleExpansion(_selectedIndex);
-         } else {
-           // Jump to parent
-           // Iterate backwards to find item with depth - 1
-           for (int i = _selectedIndex - 1; i >= 0; i--) {
-             if (_flatList[i].depth < item.depth) {
-               setState(() => _selectedIndex = i);
-               _scrollToSelected();
-               break;
-             }
-           }
-         }
-       }
-       return KeyEventResult.handled;
+        final item = _flatList[_selectedIndex];
+        if (item.isDirectory && _expandedPaths.contains(item.path)) {
+          _toggleExpansion(_selectedIndex);
+        } else {
+          // Jump to parent
+          // Iterate backwards to find item with depth - 1
+          for (int i = _selectedIndex - 1; i >= 0; i--) {
+            if (_flatList[i].depth < item.depth) {
+              setState(() => _selectedIndex = i);
+              _scrollToSelected();
+              break;
+            }
+          }
+        }
+      }
+      return KeyEventResult.handled;
     } else if (event.logicalKey == LogicalKeyboardKey.enter) {
-       if (_selectedIndex >= 0 && _selectedIndex < _flatList.length) {
-         final item = _flatList[_selectedIndex];
-         if (item.isDirectory) {
-           _toggleExpansion(_selectedIndex);
-         } else {
-           Provider.of<AppState>(context, listen: false).openFile(item.path);
-         }
-       }
-       return KeyEventResult.handled;
+      if (_selectedIndex >= 0 && _selectedIndex < _flatList.length) {
+        final item = _flatList[_selectedIndex];
+        if (item.isDirectory) {
+          _toggleExpansion(_selectedIndex);
+        } else {
+          Provider.of<AppState>(context, listen: false).openFile(item.path);
+        }
+      }
+      return KeyEventResult.handled;
     }
-    
+
     return KeyEventResult.ignored;
   }
 
@@ -227,17 +232,17 @@ class _FileExplorerState extends State<FileExplorer> {
     if (_selectedIndex < 0 || !_itemScrollController.isAttached) return;
 
     final positions = _itemPositionsListener.itemPositions.value;
-    
+
     // 1. Check if currently visible
     bool isVisible = false;
     if (positions.isNotEmpty) {
       for (final pos in positions) {
         if (pos.index == _selectedIndex) {
-           // Check edges. Leading must be >= 0 (or close enough) and trailing <= 1.
-           if (pos.itemLeadingEdge >= -0.05 && pos.itemTrailingEdge <= 1.05) {
-             isVisible = true;
-           }
-           break;
+          // Check edges. Leading must be >= 0 (or close enough) and trailing <= 1.
+          if (pos.itemLeadingEdge >= -0.05 && pos.itemTrailingEdge <= 1.05) {
+            isVisible = true;
+          }
+          break;
         }
       }
     }
@@ -247,18 +252,20 @@ class _FileExplorerState extends State<FileExplorer> {
     // 2. Not visible, determine alignment
     double alignment = 0.5;
     if (positions.isNotEmpty) {
-       final minIndex = positions.map((e) => e.index).reduce((a, b) => a < b ? a : b);
-       
-       if (_selectedIndex < minIndex) {
-         alignment = 0.0;
-       } else {
-         // Scrolling down, center it
-         alignment = 0.5; 
-       }
+      final minIndex = positions
+          .map((e) => e.index)
+          .reduce((a, b) => a < b ? a : b);
+
+      if (_selectedIndex < minIndex) {
+        alignment = 0.0;
+      } else {
+        // Scrolling down, center it
+        alignment = 0.5;
+      }
     } else {
-       alignment = 0.0;
+      alignment = 0.0;
     }
-    
+
     if (_selectedIndex == 0) alignment = 0.0;
 
     _itemScrollController.scrollTo(
@@ -271,29 +278,30 @@ class _FileExplorerState extends State<FileExplorer> {
 
   Future<void> _revealPath(String filePath) async {
     if (_currentRoot == null) return;
-    
+
     // Check if path is within root
     if (!path.isWithin(_currentRoot!, filePath)) return;
 
     // Expand all parents
     var parent = path.dirname(filePath);
     bool changed = false;
-    while (path.isWithin(_currentRoot!, parent) || path.equals(_currentRoot!, parent)) {
-       // Stop if we reach root or go above
-       if (parent.length < _currentRoot!.length) break;
-       
-       if (parent != _currentRoot && !_expandedPaths.contains(parent)) {
-         _expandedPaths.add(parent);
-         changed = true;
-       }
-       if (parent == _currentRoot) break;
-       parent = path.dirname(parent);
+    while (path.isWithin(_currentRoot!, parent) ||
+        path.equals(_currentRoot!, parent)) {
+      // Stop if we reach root or go above
+      if (parent.length < _currentRoot!.length) break;
+
+      if (parent != _currentRoot && !_expandedPaths.contains(parent)) {
+        _expandedPaths.add(parent);
+        changed = true;
+      }
+      if (parent == _currentRoot) break;
+      parent = path.dirname(parent);
     }
-    
+
     if (changed) {
       await _rebuildFlatList();
     }
-    
+
     // Find index
     final index = _flatList.indexWhere((item) => item.path == filePath);
     if (index != -1) {
@@ -305,19 +313,16 @@ class _FileExplorerState extends State<FileExplorer> {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    
+
     if (_currentRoot == null) {
-       // ... existing empty state code ...
-        return Center(
+      // ... existing empty state code ...
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.folder_open, size: 48, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text(
-              'No folder open',
-              style: TextStyle(color: Colors.grey),
-            ),
+            const Text('No folder open', style: TextStyle(color: Colors.grey)),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: appState.openDirectory,
@@ -331,7 +336,7 @@ class _FileExplorerState extends State<FileExplorer> {
     return Column(
       children: [
         // Header
-         Container(
+        Container(
           height: 40,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.centerLeft,
@@ -351,18 +356,15 @@ class _FileExplorerState extends State<FileExplorer> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-               IconButton(
+              IconButton(
                 icon: const Icon(Icons.close, size: 16),
                 onPressed: () {
-                   appState.openDirectory();
+                  appState.openDirectory();
                 },
                 tooltip: 'Change Folder',
                 splashRadius: 16,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 24,
-                  minHeight: 24,
-                ),
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
               ),
             ],
           ),
@@ -382,7 +384,7 @@ class _FileExplorerState extends State<FileExplorer> {
                 final isSelected = index == _selectedIndex;
                 final name = path.basename(item.path);
                 final paddingLeft = 8.0 + (item.depth * 16.0);
-                
+
                 return InkWell(
                   onTap: () {
                     // Request focus so keyboard navigation works immediately
@@ -395,13 +397,24 @@ class _FileExplorerState extends State<FileExplorer> {
                     }
                   },
                   child: Container(
-                    color: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.15) : null,
-                    padding: EdgeInsets.only(left: paddingLeft, top: 4, bottom: 4, right: 8),
+                    color: isSelected
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.15)
+                        : null,
+                    padding: EdgeInsets.only(
+                      left: paddingLeft,
+                      top: 4,
+                      bottom: 4,
+                      right: 8,
+                    ),
                     child: Row(
                       children: [
                         if (item.isDirectory)
                           Icon(
-                            _expandedPaths.contains(item.path) ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                            _expandedPaths.contains(item.path)
+                                ? Icons.keyboard_arrow_down
+                                : Icons.keyboard_arrow_right,
                             size: 16,
                             color: Colors.grey,
                           )
@@ -409,9 +422,15 @@ class _FileExplorerState extends State<FileExplorer> {
                           const SizedBox(width: 16),
                         const SizedBox(width: 4),
                         Icon(
-                          item.isDirectory ? (_expandedPaths.contains(item.path) ? Icons.folder_open : Icons.folder) : Icons.description,
+                          item.isDirectory
+                              ? (_expandedPaths.contains(item.path)
+                                    ? Icons.folder_open
+                                    : Icons.folder)
+                              : Icons.description,
                           size: 16,
-                          color: item.isDirectory ? Theme.of(context).colorScheme.primary : Colors.grey,
+                          color: item.isDirectory
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -419,8 +438,12 @@ class _FileExplorerState extends State<FileExplorer> {
                             name,
                             style: TextStyle(
                               fontSize: 13,
-                              color: isSelected ? Theme.of(context).colorScheme.primary : null,
-                              fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                              fontWeight: isSelected
+                                  ? FontWeight.w500
+                                  : FontWeight.normal,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

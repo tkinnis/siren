@@ -58,8 +58,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 members: [
                   PlatformMenuItem(
                     label: 'Quit Siren',
-                    shortcut:
-                        const SingleActivator(LogicalKeyboardKey.keyQ, meta: true),
+                    shortcut: const SingleActivator(
+                      LogicalKeyboardKey.keyQ,
+                      meta: true,
+                    ),
                     onSelected: () {
                       exit(0);
                     },
@@ -73,9 +75,12 @@ class _HomeScreenState extends State<HomeScreen> {
           menus: [
             PlatformMenuItem(
               label: 'Open...',
-              shortcut: const SingleActivator(LogicalKeyboardKey.keyO, meta: true),
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyO,
+                meta: true,
+              ),
               onSelected: () async {
-                 const XTypeGroup typeGroup = XTypeGroup(
+                const XTypeGroup typeGroup = XTypeGroup(
                   label: 'Markdown',
                   extensions: <String>['md', 'markdown'],
                 );
@@ -90,20 +95,27 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             PlatformMenuItem(
               label: 'Open Folder...',
-              shortcut: const SingleActivator(LogicalKeyboardKey.keyO, meta: true, shift: true),
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyO,
+                meta: true,
+                shift: true,
+              ),
               onSelected: () async {
-                 if (mounted) {
+                if (mounted) {
                   context.read<AppState>().openDirectory();
-                 }
+                }
               },
             ),
             PlatformMenuItem(
               label: 'Close Tab',
-              shortcut: const SingleActivator(LogicalKeyboardKey.keyW, meta: true),
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyW,
+                meta: true,
+              ),
               onSelected: () {
-                 if (mounted) {
+                if (mounted) {
                   context.read<AppState>().closeCurrentFile();
-                 }
+                }
               },
             ),
           ],
@@ -112,17 +124,64 @@ class _HomeScreenState extends State<HomeScreen> {
           label: 'View',
           menus: [
             PlatformMenuItem(
+              label: 'Previous Tab',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.bracketLeft,
+                meta: true,
+                shift: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  final appState = context.read<AppState>();
+                  if (appState.openFilePaths.length > 1) {
+                    final newIndex =
+                        (appState.activeTabIndex -
+                            1 +
+                            appState.openFilePaths.length) %
+                        appState.openFilePaths.length;
+                    appState.setActiveTab(newIndex);
+                  }
+                }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Next Tab',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.bracketRight,
+                meta: true,
+                shift: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  final appState = context.read<AppState>();
+                  if (appState.openFilePaths.length > 1) {
+                    final newIndex =
+                        (appState.activeTabIndex + 1) %
+                        appState.openFilePaths.length;
+                    appState.setActiveTab(newIndex);
+                  }
+                }
+              },
+            ),
+            PlatformMenuItem(
               label: 'Toggle Preview',
-              shortcut: const SingleActivator(LogicalKeyboardKey.keyP, meta: true, shift: true),
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyP,
+                meta: true,
+                shift: true,
+              ),
               onSelected: () {
                 if (mounted) {
                   context.read<AppState>().toggleViewMode();
                 }
               },
             ),
-             PlatformMenuItem(
+            PlatformMenuItem(
               label: 'Zoom In',
-              shortcut: const SingleActivator(LogicalKeyboardKey.equal, meta: true),
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.equal,
+                meta: true,
+              ),
               onSelected: () {
                 if (mounted) {
                   context.read<AppState>().increaseFontSize();
@@ -131,7 +190,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             PlatformMenuItem(
               label: 'Zoom Out',
-              shortcut: const SingleActivator(LogicalKeyboardKey.minus, meta: true),
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.minus,
+                meta: true,
+              ),
               onSelected: () {
                 if (mounted) {
                   context.read<AppState>().decreaseFontSize();
@@ -149,33 +211,50 @@ class _HomeScreenState extends State<HomeScreen> {
           const SingleActivator(LogicalKeyboardKey.minus, meta: true): () {
             appState.decreaseFontSize();
           },
-           const SingleActivator(LogicalKeyboardKey.keyW, meta: true): () {
+          const SingleActivator(LogicalKeyboardKey.keyW, meta: true): () {
             appState.closeCurrentFile();
           },
           const SingleActivator(LogicalKeyboardKey.keyO, meta: true): () async {
-             const XTypeGroup typeGroup = XTypeGroup(
-                label: 'Markdown',
-                extensions: <String>['md', 'markdown'],
-              );
-              final XFile? file = await openFile(
-                acceptedTypeGroups: <XTypeGroup>[typeGroup],
-              );
-              if (file != null && mounted) {
-                appState.openFileAndSetDirectory(file.path);
-              }
+            const XTypeGroup typeGroup = XTypeGroup(
+              label: 'Markdown',
+              extensions: <String>['md', 'markdown'],
+            );
+            final XFile? file = await openFile(
+              acceptedTypeGroups: <XTypeGroup>[typeGroup],
+            );
+            if (file != null && mounted) {
+              appState.openFileAndSetDirectory(file.path);
+            }
           },
-          const SingleActivator(LogicalKeyboardKey.keyO, meta: true, shift: true): () {
+          const SingleActivator(
+            LogicalKeyboardKey.keyO,
+            meta: true,
+            shift: true,
+          ): () {
             appState.openDirectory();
           },
-          const SingleActivator(LogicalKeyboardKey.bracketLeft, meta: true, shift: true): () {
+          const SingleActivator(
+            LogicalKeyboardKey.bracketLeft,
+            meta: true,
+            shift: true,
+          ): () {
             if (appState.openFilePaths.length > 1) {
-              final newIndex = (appState.activeTabIndex - 1 + appState.openFilePaths.length) % appState.openFilePaths.length;
+              final newIndex =
+                  (appState.activeTabIndex -
+                      1 +
+                      appState.openFilePaths.length) %
+                  appState.openFilePaths.length;
               appState.setActiveTab(newIndex);
             }
           },
-          const SingleActivator(LogicalKeyboardKey.bracketRight, meta: true, shift: true): () {
-             if (appState.openFilePaths.length > 1) {
-              final newIndex = (appState.activeTabIndex + 1) % appState.openFilePaths.length;
+          const SingleActivator(
+            LogicalKeyboardKey.bracketRight,
+            meta: true,
+            shift: true,
+          ): () {
+            if (appState.openFilePaths.length > 1) {
+              final newIndex =
+                  (appState.activeTabIndex + 1) % appState.openFilePaths.length;
               appState.setActiveTab(newIndex);
             }
           },
@@ -213,14 +292,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           cursor: SystemMouseCursors.resizeColumn,
                           child: GestureDetector(
                             onHorizontalDragUpdate: _handleResize,
-                            onHorizontalDragStart: (_) => setState(() => _isResizing = true),
-                            onHorizontalDragEnd: (_) => setState(() => _isResizing = false),
+                            onHorizontalDragStart: (_) =>
+                                setState(() => _isResizing = true),
+                            onHorizontalDragEnd: (_) =>
+                                setState(() => _isResizing = false),
                             child: Container(
                               width: 5,
-                              color: _isResizing 
-                                ? Theme.of(context).colorScheme.primary.withOpacity(0.5) 
-                                : Colors.transparent,
-                                child: const VerticalDivider(width: 1, thickness: 1),
+                              color: _isResizing
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.primary.withOpacity(0.5)
+                                  : Colors.transparent,
+                              child: const VerticalDivider(
+                                width: 1,
+                                thickness: 1,
+                              ),
                             ),
                           ),
                         ),
@@ -231,12 +317,18 @@ class _HomeScreenState extends State<HomeScreen> {
                               const EditorTabs(),
                               Expanded(
                                 child: appState.isLoading
-                                    ? const Center(child: CircularProgressIndicator())
+                                    ? const Center(
+                                        child: CircularProgressIndicator(),
+                                      )
                                     : appState.activeTabIndex == -1
-                                        ? _buildEmptyState(context)
-                                        : appState.isRenderedView
-                                            ? RenderedView(key: ValueKey(appState.currentFilePath))
-                                            : MarkdownRawView(key: ValueKey(appState.currentFilePath)),
+                                    ? _buildEmptyState(context)
+                                    : appState.isRenderedView
+                                    ? RenderedView(
+                                        key: ValueKey(appState.currentFilePath),
+                                      )
+                                    : MarkdownRawView(
+                                        key: ValueKey(appState.currentFilePath),
+                                      ),
                               ),
                             ],
                           ),
@@ -288,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                 _DesktopIconButton(
+                _DesktopIconButton(
                   icon: Icons.folder_open,
                   tooltip: 'Open File',
                   onPressed: () async {
@@ -365,8 +457,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 acceptedTypeGroups: <XTypeGroup>[typeGroup],
               );
               if (file != null) {
-                if(context.mounted) {
-                   Provider.of<AppState>(
+                if (context.mounted) {
+                  Provider.of<AppState>(
                     context,
                     listen: false,
                   ).openFileAndSetDirectory(file.path);
@@ -394,7 +486,9 @@ class _Breadcrumbs extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final parts = path.split(filePath!);
     // Show last 3 parts if too long, or all if short
-    final displayParts = parts.length > 4 ? ['...', ...parts.sublist(parts.length - 3)] : parts;
+    final displayParts = parts.length > 4
+        ? ['...', ...parts.sublist(parts.length - 3)]
+        : parts;
 
     return Center(
       child: SingleChildScrollView(
@@ -402,29 +496,29 @@ class _Breadcrumbs extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-             for (int i = 0; i < displayParts.length; i++) ...[
-               if (i > 0)
-                 Padding(
-                   padding: const EdgeInsets.symmetric(horizontal: 4),
-                   child: Icon(
-                     Icons.chevron_right,
-                     size: 14,
-                     color: isDark ? Colors.white30 : Colors.black26,
-                   ),
-                 ),
-               Text(
-                 displayParts[i],
-                 style: TextStyle(
-                   fontSize: 12,
-                   color: i == displayParts.length - 1
-                       ? (isDark ? Colors.white : Colors.black87)
-                       : (isDark ? Colors.white54 : Colors.black54),
-                   fontWeight: i == displayParts.length - 1
-                       ? FontWeight.w600
-                       : FontWeight.normal,
-                 ),
-               ),
-             ],
+            for (int i = 0; i < displayParts.length; i++) ...[
+              if (i > 0)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(
+                    Icons.chevron_right,
+                    size: 14,
+                    color: isDark ? Colors.white30 : Colors.black26,
+                  ),
+                ),
+              Text(
+                displayParts[i],
+                style: TextStyle(
+                  fontSize: 12,
+                  color: i == displayParts.length - 1
+                      ? (isDark ? Colors.white : Colors.black87)
+                      : (isDark ? Colors.white54 : Colors.black54),
+                  fontWeight: i == displayParts.length - 1
+                      ? FontWeight.w600
+                      : FontWeight.normal,
+                ),
+              ),
+            ],
           ],
         ),
       ),

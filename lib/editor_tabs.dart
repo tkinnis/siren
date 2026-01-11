@@ -68,16 +68,15 @@ class _EditorTabsState extends State<EditorTabs> {
             child: GestureDetector(
               onTap: () => appState.setActiveTab(index),
               child: Container(
-                constraints: const BoxConstraints(
-                  minWidth: 100,
-                  maxWidth: 200,
-                ),
+                constraints: const BoxConstraints(minWidth: 100, maxWidth: 200),
                 margin: const EdgeInsets.only(right: 1, top: 1),
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                   color: isActive
                       ? (isDark ? const Color(0xFF2D2D2D) : Colors.white)
-                      : (isDark ? const Color(0xFF252526) : const Color(0xFFECECEC)),
+                      : (isDark
+                            ? const Color(0xFF252526)
+                            : const Color(0xFFECECEC)),
                   border: isActive
                       ? Border(
                           top: BorderSide(
