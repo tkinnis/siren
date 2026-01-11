@@ -155,17 +155,47 @@ class CodeElementBuilder extends MarkdownElementBuilder {
       return MermaidDiagram(code: element.textContent, isDark: isDark);
     }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(4)),
-      clipBehavior: Clip.antiAlias,
-      child: HighlightView(
-        element.textContent,
-        language: language,
-        theme: isDark ? atomOneDarkTheme : atomOneLightTheme,
-        padding: const EdgeInsets.all(8),
-        textStyle: GoogleFonts.firaCode(fontSize: fontSize),
-      ),
-    );
+    // Detect if this is likely a code block or inline code.
+    // Blocks usually have a language set or contain newlines.
+    final bool isBlock = language.isNotEmpty || element.textContent.contains('\n');
+
+    if (isBlock) {
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: isDark ? const Color(0xFF282C34) : const Color(0xFFF0F0F0),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: HighlightView(
+          element.textContent,
+          language: language,
+          theme: isDark ? atomOneDarkTheme : atomOneLightTheme,
+          padding: const EdgeInsets.all(16),
+          textStyle: GoogleFonts.firaCode(fontSize: fontSize),
+        ),
+      );
+    } else {
+      // Inline code styling
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF383C4A) : const Color(0xFFE0E0E0),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: isDark ? const Color(0xFF4B5263) : const Color(0xFFBDBDBD),
+            width: 0.5,
+          ),
+        ),
+        child: Text(
+          element.textContent,
+          style: GoogleFonts.firaCode(
+            fontSize: fontSize * 0.85,
+            fontWeight: FontWeight.w500,
+            color: isDark ? const Color(0xFFE06C75) : const Color(0xFFC62828),
+          ),
+        ),
+      );
+    }
   }
 }
