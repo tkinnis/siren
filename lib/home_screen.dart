@@ -167,6 +167,18 @@ class _HomeScreenState extends State<HomeScreen> {
           const SingleActivator(LogicalKeyboardKey.keyO, meta: true, shift: true): () {
             appState.openDirectory();
           },
+          const SingleActivator(LogicalKeyboardKey.bracketLeft, meta: true, shift: true): () {
+            if (appState.openFilePaths.length > 1) {
+              final newIndex = (appState.activeTabIndex - 1 + appState.openFilePaths.length) % appState.openFilePaths.length;
+              appState.setActiveTab(newIndex);
+            }
+          },
+          const SingleActivator(LogicalKeyboardKey.bracketRight, meta: true, shift: true): () {
+             if (appState.openFilePaths.length > 1) {
+              final newIndex = (appState.activeTabIndex + 1) % appState.openFilePaths.length;
+              appState.setActiveTab(newIndex);
+            }
+          },
           const SingleActivator(LogicalKeyboardKey.keyL, meta: true): () {
             appState.explorerFocusNode.requestFocus();
           },
