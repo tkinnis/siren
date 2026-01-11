@@ -8,6 +8,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
+  // Create AppState with persistence before showing window
+  final appState = await AppState.create();
+
   WindowOptions windowOptions = const WindowOptions(
     size: Size(800, 600),
     minimumSize: Size(400, 300),
@@ -23,16 +26,18 @@ void main() async {
     await windowManager.focus();
   });
 
-  runApp(const MainApp());
+  runApp(MainApp(appState: appState));
 }
 
 class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+  final AppState appState;
+
+  const MainApp({super.key, required this.appState});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AppState(),
+    return ChangeNotifierProvider.value(
+      value: appState,
       child: MaterialApp(
         title: 'Siren',
         debugShowCheckedModeBanner: false,

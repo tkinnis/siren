@@ -4,20 +4,22 @@ import FlutterMacOS
 @main
 class AppDelegate: FlutterAppDelegate {
   var methodChannel: FlutterMethodChannel?
-  var pendingFile: String?
+  var pendingFiles: [String] = []
 
   override func applicationDidFinishLaunching(_ notification: Notification) {
     let controller: FlutterViewController = mainFlutterWindow?.contentViewController as! FlutterViewController
     methodChannel = FlutterMethodChannel(name: "com.example.siren/files", binaryMessenger: controller.engine.binaryMessenger)
-    
+
     super.applicationDidFinishLaunching(notification)
-    
-    if let file = pendingFile {
+
+    if !pendingFiles.isEmpty {
        // Slight delay to ensure Flutter is ready to receive
-       DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-           self.methodChannel?.invokeMethod("openFile", arguments: file)
+       DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+           for file in self.pendingFiles {
+               self.methodChannel?.invokeMethod("openFile", arguments: file)
+           }
+           self.pendingFiles.removeAll()
        }
-       pendingFile = nil
     }
   }
 
@@ -25,9 +27,22 @@ class AppDelegate: FlutterAppDelegate {
     if let channel = methodChannel {
         channel.invokeMethod("openFile", arguments: filename)
     } else {
-        pendingFile = filename
+        pendingFiles.append(filename)
     }
     return true
+  }
+
+  override func application(_ application: NSApplication, open urls: [URL]) {
+    for url in urls {
+        if url.isFileURL {
+            let path = url.path
+            if let channel = methodChannel {
+                channel.invokeMethod("openFile", arguments: path)
+            } else {
+                pendingFiles.append(path)
+            }
+        }
+    }
   }
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

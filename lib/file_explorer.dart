@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
-import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'app_state.dart';
 
 class ExplorerItem {
@@ -28,21 +27,27 @@ class FileExplorer extends StatefulWidget {
 }
 
 class _FileExplorerState extends State<FileExplorer> {
-  final ItemScrollController _itemScrollController = ItemScrollController();
-  final ItemPositionsListener _itemPositionsListener =
-      ItemPositionsListener.create();
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalScrollController = ScrollController();
 
   List<ExplorerItem> _flatList = [];
-  Set<String> _expandedPaths = {};
+  final Set<String> _expandedPaths = {};
   int _selectedIndex = -1;
   String? _currentRoot;
   bool _initialized = false;
+  double _maxContentWidth = 300;
+  static const double _itemHeight = 27.0;
 
   @override
   void initState() {
     super.initState();
-    // Defer initialization to allow context access via addPostFrameCallback if needed,
-    // but here we can just listen to changes in didChangeDependencies
+  }
+
+  @override
+  void dispose() {
+    _verticalScrollController.dispose();
+    _horizontalScrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -84,8 +89,22 @@ class _FileExplorerState extends State<FileExplorer> {
     await _traverse(_currentRoot!, 0, newList);
 
     if (mounted) {
+      // Calculate max content width based on deepest item and text length
+      double maxWidth = 300;
+      for (final item in newList) {
+        final name = path.basename(item.path);
+        // Estimate: padding + depth indent + icons + text
+        // paddingLeft = 8 + depth * 16, icons ~40px, text ~8px per char
+        final estimatedWidth =
+            8.0 + (item.depth * 16.0) + 40.0 + (name.length * 8.0) + 16.0;
+        if (estimatedWidth > maxWidth) {
+          maxWidth = estimatedWidth;
+        }
+      }
+
       setState(() {
         _flatList = newList;
+        _maxContentWidth = maxWidth;
       });
     }
   }
@@ -229,50 +248,33 @@ class _FileExplorerState extends State<FileExplorer> {
   }
 
   void _scrollToSelected() {
-    if (_selectedIndex < 0 || !_itemScrollController.isAttached) return;
+    if (_selectedIndex < 0 || !_verticalScrollController.hasClients) return;
 
-    final positions = _itemPositionsListener.itemPositions.value;
+    final targetOffset = _selectedIndex * _itemHeight;
+    final viewportHeight = _verticalScrollController.position.viewportDimension;
+    final currentOffset = _verticalScrollController.offset;
+    final maxOffset = _verticalScrollController.position.maxScrollExtent;
 
-    // 1. Check if currently visible
-    bool isVisible = false;
-    if (positions.isNotEmpty) {
-      for (final pos in positions) {
-        if (pos.index == _selectedIndex) {
-          // Check edges. Leading must be >= 0 (or close enough) and trailing <= 1.
-          if (pos.itemLeadingEdge >= -0.05 && pos.itemTrailingEdge <= 1.05) {
-            isVisible = true;
-          }
-          break;
-        }
-      }
+    // Check if already visible
+    if (targetOffset >= currentOffset &&
+        targetOffset + _itemHeight <= currentOffset + viewportHeight) {
+      return;
     }
 
-    if (isVisible) return;
-
-    // 2. Not visible, determine alignment
-    double alignment = 0.5;
-    if (positions.isNotEmpty) {
-      final minIndex = positions
-          .map((e) => e.index)
-          .reduce((a, b) => a < b ? a : b);
-
-      if (_selectedIndex < minIndex) {
-        alignment = 0.0;
-      } else {
-        // Scrolling down, center it
-        alignment = 0.5;
-      }
+    // Calculate new scroll position
+    double newOffset;
+    if (targetOffset < currentOffset) {
+      // Scrolling up - align to top
+      newOffset = targetOffset;
     } else {
-      alignment = 0.0;
+      // Scrolling down - align to bottom
+      newOffset = targetOffset - viewportHeight + _itemHeight;
     }
 
-    if (_selectedIndex == 0) alignment = 0.0;
-
-    _itemScrollController.scrollTo(
-      index: _selectedIndex,
+    _verticalScrollController.animateTo(
+      newOffset.clamp(0.0, maxOffset),
       duration: const Duration(milliseconds: 100),
       curve: Curves.easeOut,
-      alignment: alignment,
     );
   }
 
@@ -333,131 +335,154 @@ class _FileExplorerState extends State<FileExplorer> {
       );
     }
 
-    return Column(
-      children: [
-        // Header
-        Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.centerLeft,
-          color: Theme.of(context).colorScheme.surfaceVariant,
-          child: Row(
-            children: [
-              const Icon(Icons.folder, size: 16),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  path.basename(_currentRoot!).toUpperCase(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    letterSpacing: 0.5,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 16),
-                onPressed: () {
-                  appState.openDirectory();
-                },
-                tooltip: 'Change Folder',
-                splashRadius: 16,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Focus(
-            focusNode: appState.explorerFocusNode,
-            onKey: (node, event) {
-              return _onKeyEvent(event);
-            },
-            child: ScrollablePositionedList.builder(
-              itemCount: _flatList.length,
-              itemScrollController: _itemScrollController,
-              itemPositionsListener: _itemPositionsListener,
-              itemBuilder: (context, index) {
-                final item = _flatList[index];
-                final isSelected = index == _selectedIndex;
-                final name = path.basename(item.path);
-                final paddingLeft = 8.0 + (item.depth * 16.0);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Don't render content when width is too small (during animation)
+        // Header needs ~120px for icons, padding, and minimum text
+        if (constraints.maxWidth < 120) {
+          return const SizedBox.shrink();
+        }
 
-                return InkWell(
-                  onTap: () {
-                    // Request focus so keyboard navigation works immediately
-                    appState.explorerFocusNode.requestFocus();
-                    setState(() => _selectedIndex = index);
-                    if (item.isDirectory) {
-                      _toggleExpansion(index);
-                    } else {
-                      appState.openFile(item.path);
-                    }
-                  },
-                  child: Container(
-                    color: isSelected
-                        ? Theme.of(
-                            context,
-                          ).colorScheme.primary.withOpacity(0.15)
-                        : null,
-                    padding: EdgeInsets.only(
-                      left: paddingLeft,
-                      top: 4,
-                      bottom: 4,
-                      right: 8,
+        return Column(
+          children: [
+            // Header
+            Container(
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              alignment: Alignment.centerLeft,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Row(
+                children: [
+                  const Icon(Icons.folder, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      path.basename(_currentRoot!).toUpperCase(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        letterSpacing: 0.5,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    child: Row(
-                      children: [
-                        if (item.isDirectory)
-                          Icon(
-                            _expandedPaths.contains(item.path)
-                                ? Icons.keyboard_arrow_down
-                                : Icons.keyboard_arrow_right,
-                            size: 16,
-                            color: Colors.grey,
-                          )
-                        else
-                          const SizedBox(width: 16),
-                        const SizedBox(width: 4),
-                        Icon(
-                          item.isDirectory
-                              ? (_expandedPaths.contains(item.path)
-                                    ? Icons.folder_open
-                                    : Icons.folder)
-                              : Icons.description,
-                          size: 16,
-                          color: item.isDirectory
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.grey,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            name,
-                            style: TextStyle(
-                              fontSize: 13,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    onPressed: () {
+                      appState.openDirectory();
+                    },
+                    tooltip: 'Change Folder',
+                    splashRadius: 16,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 24,
+                      minHeight: 24,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Focus(
+                focusNode: appState.explorerFocusNode,
+                onKey: (node, event) {
+                  return _onKeyEvent(event);
+                },
+                child: Scrollbar(
+                  controller: _horizontalScrollController,
+                  notificationPredicate: (notification) =>
+                      notification.depth == 1,
+                  child: SingleChildScrollView(
+                    controller: _horizontalScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: _maxContentWidth,
+                      child: ListView.builder(
+                        controller: _verticalScrollController,
+                        itemCount: _flatList.length,
+                        itemExtent: _itemHeight,
+                        itemBuilder: (context, index) {
+                          final item = _flatList[index];
+                          final isSelected = index == _selectedIndex;
+                          final name = path.basename(item.path);
+                          final paddingLeft = 8.0 + (item.depth * 16.0);
+
+                          return InkWell(
+                            onTap: () {
+                              appState.explorerFocusNode.requestFocus();
+                              setState(() => _selectedIndex = index);
+                              if (item.isDirectory) {
+                                _toggleExpansion(index);
+                              } else {
+                                appState.openFile(item.path);
+                              }
+                            },
+                            child: Container(
                               color: isSelected
                                   ? Theme.of(context).colorScheme.primary
+                                        .withValues(alpha: 0.15)
                                   : null,
-                              fontWeight: isSelected
-                                  ? FontWeight.w500
-                                  : FontWeight.normal,
+                              padding: EdgeInsets.only(
+                                left: paddingLeft,
+                                top: 4,
+                                bottom: 4,
+                                right: 8,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (item.isDirectory)
+                                    Icon(
+                                      _expandedPaths.contains(item.path)
+                                          ? Icons.keyboard_arrow_down
+                                          : Icons.keyboard_arrow_right,
+                                      size: 16,
+                                      color: Colors.grey,
+                                    )
+                                  else
+                                    const SizedBox(width: 16),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    item.isDirectory
+                                        ? (_expandedPaths.contains(item.path)
+                                              ? Icons.folder_open
+                                              : Icons.folder)
+                                        : Icons.description,
+                                    size: 16,
+                                    color: item.isDirectory
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    name,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isSelected
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.primary
+                                          : null,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w500
+                                          : FontWeight.normal,
+                                    ),
+                                    maxLines: 1,
+                                  ),
+                                ],
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                          );
+                        },
+                      ),
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }

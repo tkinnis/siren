@@ -20,13 +20,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  double _sidebarWidth = 250.0;
   bool _isResizing = false;
 
-  void _handleResize(DragUpdateDetails details) {
-    setState(() {
-      _sidebarWidth = (_sidebarWidth + details.delta.dx).clamp(150.0, 500.0);
-    });
+  void _handleResize(DragUpdateDetails details, AppState appState) {
+    appState.setSidebarWidth(appState.sidebarWidth + details.delta.dx);
+  }
+
+  void _handleResizeEnd(AppState appState) {
+    setState(() => _isResizing = false);
+    appState.saveSidebarWidth();
   }
 
   @override
@@ -123,6 +125,20 @@ class _HomeScreenState extends State<HomeScreen> {
         PlatformMenu(
           label: 'View',
           menus: [
+            PlatformMenuItem(
+              label: appState.isExplorerVisible
+                  ? 'Hide Sidebar'
+                  : 'Show Sidebar',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyB,
+                meta: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().toggleExplorerVisibility();
+                }
+              },
+            ),
             PlatformMenuItem(
               label: 'Previous Tab',
               shortcut: const SingleActivator(
@@ -261,6 +277,9 @@ class _HomeScreenState extends State<HomeScreen> {
           const SingleActivator(LogicalKeyboardKey.keyL, meta: true): () {
             appState.explorerFocusNode.requestFocus();
           },
+          const SingleActivator(LogicalKeyboardKey.keyB, meta: true): () {
+            appState.toggleExplorerVisibility();
+          },
         },
         child: Focus(
           autofocus: true,
@@ -282,34 +301,43 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: Row(
                       children: [
-                        // File Explorer Sidebar
-                        SizedBox(
-                          width: _sidebarWidth,
-                          child: const FileExplorer(),
+                        // File Explorer Sidebar with animation
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                          width: appState.isExplorerVisible
+                              ? appState.sidebarWidth
+                              : 0,
+                          clipBehavior: Clip.hardEdge,
+                          decoration: const BoxDecoration(),
+                          child: appState.isExplorerVisible
+                              ? const FileExplorer()
+                              : const SizedBox.shrink(),
                         ),
-                        // Resizer
-                        MouseRegion(
-                          cursor: SystemMouseCursors.resizeColumn,
-                          child: GestureDetector(
-                            onHorizontalDragUpdate: _handleResize,
-                            onHorizontalDragStart: (_) =>
-                                setState(() => _isResizing = true),
-                            onHorizontalDragEnd: (_) =>
-                                setState(() => _isResizing = false),
-                            child: Container(
-                              width: 5,
-                              color: _isResizing
-                                  ? Theme.of(
-                                      context,
-                                    ).colorScheme.primary.withOpacity(0.5)
-                                  : Colors.transparent,
-                              child: const VerticalDivider(
-                                width: 1,
-                                thickness: 1,
+                        // Resizer (only visible when sidebar is visible)
+                        if (appState.isExplorerVisible)
+                          MouseRegion(
+                            cursor: SystemMouseCursors.resizeColumn,
+                            child: GestureDetector(
+                              onHorizontalDragUpdate: (details) =>
+                                  _handleResize(details, appState),
+                              onHorizontalDragStart: (_) =>
+                                  setState(() => _isResizing = true),
+                              onHorizontalDragEnd: (_) =>
+                                  _handleResizeEnd(appState),
+                              child: Container(
+                                width: 5,
+                                color: _isResizing
+                                    ? Theme.of(context).colorScheme.primary
+                                          .withValues(alpha: 0.5)
+                                    : Colors.transparent,
+                                child: const VerticalDivider(
+                                  width: 1,
+                                  thickness: 1,
+                                ),
                               ),
                             ),
                           ),
-                        ),
                         // Main Editor Area
                         Expanded(
                           child: Column(
