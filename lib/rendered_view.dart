@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_highlighter/flutter_highlighter.dart';
 import 'package:flutter_highlighter/themes/atom-one-light.dart';
 import 'package:flutter_highlighter/themes/atom-one-dark.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:url_launcher/url_launcher.dart';
 import 'app_state.dart';
 import 'mermaid_diagram.dart';
 
@@ -18,6 +21,7 @@ class RenderedView extends StatefulWidget {
 
 class _RenderedViewState extends State<RenderedView> {
   final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _anchorKeys = {};
 
   @override
   void initState() {
@@ -28,14 +32,6 @@ class _RenderedViewState extends State<RenderedView> {
   @override
   void didUpdateWidget(RenderedView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // When the widget is updated (rebuilt), check if we need to restore position
-    // BUT since we are using keys in HomeScreen (next step), this state might be disposed and recreated.
-    // If it is NOT disposed (same key), we need to update.
-    // However, we plan to Key the widget by file path, so `initState` is what matters most.
-    // If we DON'T key it, we need to detect file change here.
-    // Let's rely on `didChangeDependencies` or similar to detect if the file path changed in AppState?
-    // Actually, simply using Key(path) in parent is cleaner.
-    // Assuming Key(path) is used, `initState` handles the new file.
   }
 
   void _restoreScrollPosition() {
@@ -65,6 +61,20 @@ class _RenderedViewState extends State<RenderedView> {
     }
   }
 
+  void _scrollToAnchor(String fragment) {
+    final key = _anchorKeys[fragment];
+    if (key != null && key.currentContext != null) {
+      Scrollable.ensureVisible(
+        key.currentContext!,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        alignment: 0.0, // Top of the viewport
+      );
+    } else {
+      debugPrint('Anchor not found: $fragment');
+    }
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -77,6 +87,13 @@ class _RenderedViewState extends State<RenderedView> {
     final content = appState.currentContent;
     final fontSize = appState.fontSize;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentFilePath = appState.currentFilePath;
+    final basePath =
+        currentFilePath != null ? p.dirname(currentFilePath) : null;
+
+    // Clear keys on rebuild as content might have changed
+    _anchorKeys.clear();
+    final headerBuilder = HeaderBuilder(_anchorKeys);
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
@@ -91,6 +108,64 @@ class _RenderedViewState extends State<RenderedView> {
         child: MarkdownBody(
           data: content,
           selectable: true,
+          onTapLink: (text, href, title) async {
+            if (href == null) return;
+            final uri = Uri.tryParse(href);
+            if (uri == null) return;
+
+            if (uri.hasScheme &&
+                (uri.scheme == 'http' || uri.scheme == 'https')) {
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+            } else if (!uri.hasScheme || uri.scheme == 'file') {
+              // Check for internal anchor (fragment only)
+              if (uri.path.isEmpty && uri.fragment.isNotEmpty) {
+                _scrollToAnchor(uri.fragment);
+                return;
+              }
+
+              // Local file navigation
+              if (basePath != null) {
+                // If there's a fragment, strip it for file check
+                String filePath = uri.path;
+                if (filePath.isEmpty) {
+                   // Should have been handled above if fragment exists,
+                   // but if href is just '#' or empty, ignore.
+                   return;
+                }
+                
+                var fullPath = p.join(basePath, filePath);
+                fullPath = p.normalize(fullPath);
+                final file = File(fullPath);
+                if (await file.exists()) {
+                  if (await FileSystemEntity.isFile(fullPath)) {
+                    appState.openFile(fullPath);
+                    // Note: If we wanted to support anchors in OTHER files,
+                    // we would need to pass the fragment to openFile and handle it after load.
+                  }
+                }
+              }
+            }
+          },
+          imageBuilder: (uri, title, alt) {
+            if (uri.hasScheme &&
+                (uri.scheme == 'http' || uri.scheme == 'https')) {
+              return Image.network(uri.toString());
+            } else {
+              // Local image
+              if (basePath != null) {
+                String localPath = uri.path;
+                var fullPath = p.join(basePath, localPath);
+                fullPath = p.normalize(fullPath);
+                final file = File(fullPath);
+                if (file.existsSync()) {
+                  return Image.file(file);
+                }
+              }
+              return const Icon(Icons.broken_image, size: 24);
+            }
+          },
           styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
             p: GoogleFonts.roboto(fontSize: fontSize),
             h1: GoogleFonts.roboto(
@@ -126,10 +201,78 @@ class _RenderedViewState extends State<RenderedView> {
           ),
           builders: {
             'code': CodeElementBuilder(isDark: isDark, fontSize: fontSize),
+            'h1': headerBuilder,
+            'h2': headerBuilder,
+            'h3': headerBuilder,
+            'h4': headerBuilder,
+            'h5': headerBuilder,
+            'h6': headerBuilder,
           },
         ),
       ),
     );
+  }
+}
+
+class HeaderBuilder extends MarkdownElementBuilder {
+  final Map<String, GlobalKey> anchorKeys;
+
+  HeaderBuilder(this.anchorKeys);
+
+  @override
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final text = element.textContent;
+    final slug = _generateSlug(text);
+    final key = GlobalKey(debugLabel: slug);
+    anchorKeys[slug] = key;
+
+    return SelectableText.rich(
+      TextSpan(
+        children: _parseChildren(element.children),
+        style: preferredStyle,
+      ),
+      key: key,
+    );
+  }
+
+  String _generateSlug(String text) {
+    return text
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
+        .replaceAll(RegExp(r'\s+'), '-');
+  }
+
+  List<InlineSpan>? _parseChildren(List<md.Node>? nodes) {
+    if (nodes == null) return null;
+    final List<InlineSpan> spans = [];
+    for (final node in nodes) {
+      if (node is md.Text) {
+        spans.add(TextSpan(text: node.text));
+      } else if (node is md.Element) {
+        TextStyle? style;
+        switch (node.tag) {
+          case 'strong':
+            style = const TextStyle(fontWeight: FontWeight.bold);
+            break;
+          case 'em':
+            style = const TextStyle(fontStyle: FontStyle.italic);
+            break;
+          case 'code':
+            style = GoogleFonts.firaCode(
+               // Inherit color/size from parent preferredStyle if possible, 
+               // but we don't have it here easily without passing it down.
+               // Just adding a background hint or font family.
+            );
+            break;
+        }
+        spans.add(TextSpan(
+          children: _parseChildren(node.children),
+          style: style,
+        ));
+      }
+    }
+    return spans;
   }
 }
 
