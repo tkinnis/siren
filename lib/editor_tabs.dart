@@ -3,6 +3,8 @@ import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 import 'app_state.dart';
 
+import 'theme.dart';
+
 class EditorTabs extends StatefulWidget {
   const EditorTabs({super.key});
 
@@ -29,16 +31,16 @@ class _EditorTabsState extends State<EditorTabs> {
       return const SizedBox.shrink();
     }
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sirenColors = Theme.of(context).extension<SirenColors>()!;
 
     return Container(
       height: 36,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE0E0E0),
+        color: sirenColors.tabBg,
         border: Border(
           bottom: BorderSide(
-            color: isDark ? Colors.black : Colors.grey.shade300,
+            color: sirenColors.borderColor ?? Colors.transparent,
           ),
         ),
       ),
@@ -73,10 +75,8 @@ class _EditorTabsState extends State<EditorTabs> {
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                   color: isActive
-                      ? (isDark ? const Color(0xFF2D2D2D) : Colors.white)
-                      : (isDark
-                            ? const Color(0xFF252526)
-                            : const Color(0xFFECECEC)),
+                      ? sirenColors.activeTabBg
+                      : sirenColors.tabBg,
                   border: isActive
                       ? Border(
                           top: BorderSide(
@@ -94,7 +94,7 @@ class _EditorTabsState extends State<EditorTabs> {
                       size: 14,
                       color: isActive
                           ? Theme.of(context).colorScheme.primary
-                          : (isDark ? Colors.white54 : Colors.black54),
+                          : sirenColors.iconColor,
                     ),
                     const SizedBox(width: 8),
                     Flexible(
@@ -104,8 +104,8 @@ class _EditorTabsState extends State<EditorTabs> {
                         style: TextStyle(
                           fontSize: 12,
                           color: isActive
-                              ? (isDark ? Colors.white : Colors.black87)
-                              : (isDark ? Colors.white60 : Colors.black54),
+                              ? Theme.of(context).textTheme.bodyMedium?.color
+                              : sirenColors.iconColor,
                         ),
                       ),
                     ),
@@ -149,7 +149,7 @@ class _TabCloseButtonState extends State<_TabCloseButton> {
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             color: _isHovering
-                ? Theme.of(context).colorScheme.error.withOpacity(0.2)
+                ? Theme.of(context).colorScheme.error.withValues(alpha: 0.2)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
           ),

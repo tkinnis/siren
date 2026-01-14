@@ -1,16 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_highlighter/flutter_highlighter.dart';
-import 'package:flutter_highlighter/themes/atom-one-light.dart';
-import 'package:flutter_highlighter/themes/atom-one-dark.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
-import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 import 'app_state.dart';
 import 'mermaid_diagram.dart';
+import 'theme.dart';
 
 class RenderedView extends StatefulWidget {
   const RenderedView({super.key});
@@ -91,6 +90,8 @@ class _RenderedViewState extends State<RenderedView> {
     final basePath =
         currentFilePath != null ? p.dirname(currentFilePath) : null;
 
+    final codeBg = isDark ? const Color(0xFF2d2d4a) : const Color(0xFFe0e0ec);
+
     // Clear keys on rebuild as content might have changed
     _anchorKeys.clear();
     final headerBuilder = HeaderBuilder(_anchorKeys);
@@ -105,109 +106,110 @@ class _RenderedViewState extends State<RenderedView> {
       child: SingleChildScrollView(
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
-        child: MarkdownBody(
-          data: content,
-          selectable: true,
-          onTapLink: (text, href, title) async {
-            if (href == null) return;
-            final uri = Uri.tryParse(href);
-            if (uri == null) return;
-
-            if (uri.hasScheme &&
-                (uri.scheme == 'http' || uri.scheme == 'https')) {
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri);
-              }
-            } else if (!uri.hasScheme || uri.scheme == 'file') {
-              // Check for internal anchor (fragment only)
-              if (uri.path.isEmpty && uri.fragment.isNotEmpty) {
-                _scrollToAnchor(uri.fragment);
-                return;
-              }
-
-              // Local file navigation
-              if (basePath != null) {
-                // If there's a fragment, strip it for file check
-                String filePath = uri.path;
-                if (filePath.isEmpty) {
-                   // Should have been handled above if fragment exists,
-                   // but if href is just '#' or empty, ignore.
-                   return;
+        child: SelectionArea(
+          child: MarkdownBody(
+            data: content,
+            selectable: true,
+            onTapLink: (text, href, title) async {
+              if (href == null) return;
+              final uri = Uri.tryParse(href);
+              if (uri == null) return;
+  
+              if (uri.hasScheme &&
+                  (uri.scheme == 'http' || uri.scheme == 'https')) {
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
                 }
-                
-                var fullPath = p.join(basePath, filePath);
-                fullPath = p.normalize(fullPath);
-                final file = File(fullPath);
-                if (await file.exists()) {
-                  if (await FileSystemEntity.isFile(fullPath)) {
-                    appState.openFile(fullPath);
-                    // Note: If we wanted to support anchors in OTHER files,
-                    // we would need to pass the fragment to openFile and handle it after load.
+              } else if (!uri.hasScheme || uri.scheme == 'file') {
+                // Check for internal anchor (fragment only)
+                if (uri.path.isEmpty && uri.fragment.isNotEmpty) {
+                  _scrollToAnchor(uri.fragment);
+                  return;
+                }
+  
+                // Local file navigation
+                if (basePath != null) {
+                  // If there's a fragment, strip it for file check
+                  String filePath = uri.path;
+                  if (filePath.isEmpty) {
+                     // Should have been handled above if fragment exists,
+                     // but if href is just '#' or empty, ignore.
+                     return;
+                  }
+                  
+                  var fullPath = p.join(basePath, filePath);
+                  fullPath = p.normalize(fullPath);
+                  final file = File(fullPath);
+                  if (await file.exists()) {
+                    if (await FileSystemEntity.isFile(fullPath)) {
+                      appState.openFile(fullPath);
+                      // Note: If we wanted to support anchors in OTHER files,
+                      // we would need to pass the fragment to openFile and handle it after load.
+                    }
                   }
                 }
               }
-            }
-          },
-          imageBuilder: (uri, title, alt) {
-            if (uri.hasScheme &&
-                (uri.scheme == 'http' || uri.scheme == 'https')) {
-              return Image.network(uri.toString());
-            } else {
-              // Local image
-              if (basePath != null) {
-                String localPath = uri.path;
-                var fullPath = p.join(basePath, localPath);
-                fullPath = p.normalize(fullPath);
-                final file = File(fullPath);
-                if (file.existsSync()) {
-                  return Image.file(file);
+            },
+            // ignore: deprecated_member_use
+            imageBuilder: (uri, title, alt) {
+              if (uri.hasScheme &&
+                  (uri.scheme == 'http' || uri.scheme == 'https')) {
+                return Image.network(uri.toString());
+              } else {
+                // Local image
+                if (basePath != null) {
+                  String localPath = uri.path;
+                  var fullPath = p.join(basePath, localPath);
+                  fullPath = p.normalize(fullPath);
+                  final file = File(fullPath);
+                  if (file.existsSync()) {
+                    return Image.file(file);
+                  }
                 }
+                return const Icon(Icons.broken_image, size: 24);
               }
-              return const Icon(Icons.broken_image, size: 24);
-            }
-          },
-          styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-            p: GoogleFonts.roboto(fontSize: fontSize),
-            h1: GoogleFonts.roboto(
-              fontSize: fontSize * 2.0,
-              fontWeight: FontWeight.bold,
+            },
+            styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+              p: GoogleFonts.roboto(fontSize: fontSize),
+              h1: GoogleFonts.roboto(
+                fontSize: fontSize * 2.0,
+                fontWeight: FontWeight.bold,
+              ),
+              h2: GoogleFonts.roboto(
+                fontSize: fontSize * 1.75,
+                fontWeight: FontWeight.bold,
+              ),
+              h3: GoogleFonts.roboto(
+                fontSize: fontSize * 1.5,
+                fontWeight: FontWeight.bold,
+              ),
+              h4: GoogleFonts.roboto(
+                fontSize: fontSize * 1.25,
+                fontWeight: FontWeight.bold,
+              ),
+              h5: GoogleFonts.roboto(
+                fontSize: fontSize * 1.15,
+                fontWeight: FontWeight.bold,
+              ),
+              h6: GoogleFonts.roboto(
+                fontSize: fontSize * 1.0,
+                fontWeight: FontWeight.bold,
+              ),
+              code: GoogleFonts.firaCode(
+                backgroundColor: codeBg,
+                fontSize: fontSize * 0.9,
+              ),
             ),
-            h2: GoogleFonts.roboto(
-              fontSize: fontSize * 1.75,
-              fontWeight: FontWeight.bold,
-            ),
-            h3: GoogleFonts.roboto(
-              fontSize: fontSize * 1.5,
-              fontWeight: FontWeight.bold,
-            ),
-            h4: GoogleFonts.roboto(
-              fontSize: fontSize * 1.25,
-              fontWeight: FontWeight.bold,
-            ),
-            h5: GoogleFonts.roboto(
-              fontSize: fontSize * 1.15,
-              fontWeight: FontWeight.bold,
-            ),
-            h6: GoogleFonts.roboto(
-              fontSize: fontSize * 1.0,
-              fontWeight: FontWeight.bold,
-            ),
-            code: GoogleFonts.firaCode(
-              backgroundColor: isDark
-                  ? const Color(0xFF282C34)
-                  : const Color(0xFFF0F0F0),
-              fontSize: fontSize * 0.9,
-            ),
+            builders: {
+              'code': CodeElementBuilder(isDark: isDark, fontSize: fontSize),
+              'h1': headerBuilder,
+              'h2': headerBuilder,
+              'h3': headerBuilder,
+              'h4': headerBuilder,
+              'h5': headerBuilder,
+              'h6': headerBuilder,
+            },
           ),
-          builders: {
-            'code': CodeElementBuilder(isDark: isDark, fontSize: fontSize),
-            'h1': headerBuilder,
-            'h2': headerBuilder,
-            'h3': headerBuilder,
-            'h4': headerBuilder,
-            'h5': headerBuilder,
-            'h6': headerBuilder,
-          },
         ),
       ),
     );
@@ -303,30 +305,37 @@ class CodeElementBuilder extends MarkdownElementBuilder {
     final bool isBlock = language.isNotEmpty || element.textContent.contains('\n');
 
     if (isBlock) {
+      final theme = isDark ? SirenTheme.showcaseDarkTheme : SirenTheme.showcaseLightTheme;
+      final bgColor = isDark ? const Color(0xFF0f0f1a) : const Color(0xFFe8e8f0);
+
       return Container(
         margin: const EdgeInsets.symmetric(vertical: 8.0),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: isDark ? const Color(0xFF282C34) : const Color(0xFFF0F0F0),
+          color: bgColor,
         ),
         clipBehavior: Clip.antiAlias,
         child: HighlightView(
           element.textContent,
           language: language,
-          theme: isDark ? atomOneDarkTheme : atomOneLightTheme,
+          theme: theme,
           padding: const EdgeInsets.all(16),
           textStyle: GoogleFonts.firaCode(fontSize: fontSize),
         ),
       );
     } else {
       // Inline code styling
+      final bgColor = isDark ? const Color(0xFF2d2d4a) : const Color(0xFFe0e0ec);
+      final borderColor = isDark ? const Color(0xFF3d3d5c) : const Color(0xFFd0d0e0);
+      final textColor = isDark ? const Color(0xFFff6b8a) : const Color(0xFFd03050);
+
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF383C4A) : const Color(0xFFE0E0E0),
+          color: bgColor,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: isDark ? const Color(0xFF4B5263) : const Color(0xFFBDBDBD),
+            color: borderColor,
             width: 0.5,
           ),
         ),
@@ -335,7 +344,7 @@ class CodeElementBuilder extends MarkdownElementBuilder {
           style: GoogleFonts.firaCode(
             fontSize: fontSize * 0.85,
             fontWeight: FontWeight.w500,
-            color: isDark ? const Color(0xFFE06C75) : const Color(0xFFC62828),
+            color: textColor,
           ),
         ),
       );

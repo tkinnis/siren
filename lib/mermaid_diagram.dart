@@ -14,7 +14,6 @@ class MermaidDiagram extends StatefulWidget {
 
 class _MermaidDiagramState extends State<MermaidDiagram> {
   late final WebViewController _controller;
-  bool _isLoading = true;
   double _height = 100;
 
   @override
@@ -48,9 +47,6 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
         NavigationDelegate(
           onPageFinished: (String url) {
             if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
               _updateHeight();
             }
           },

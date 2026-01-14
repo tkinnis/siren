@@ -15,11 +15,21 @@ class _PersistenceKeys {
   static const isRenderedView = 'is_rendered_view';
   static const sidebarWidth = 'sidebar_width';
   static const isExplorerVisible = 'is_explorer_visible';
+  static const windowBounds = 'window_bounds';
+  static const themeMode = 'theme_mode';
 }
 
 class AppState extends ChangeNotifier {
   // Persistence
   final SharedPreferences _prefs;
+
+  // Window State
+  Rect? _windowBounds;
+  Rect? get windowBounds => _windowBounds;
+
+  // Theme State
+  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode get themeMode => _themeMode;
 
   // Tab Management
   final List<String> _openFilePaths = [];
@@ -108,6 +118,27 @@ class AppState extends ChangeNotifier {
     _isExplorerVisible =
         _prefs.getBool(_PersistenceKeys.isExplorerVisible) ?? true;
 
+    // Load theme mode
+    final themeIndex = _prefs.getInt(_PersistenceKeys.themeMode);
+    if (themeIndex != null && themeIndex >= 0 && themeIndex < ThemeMode.values.length) {
+      _themeMode = ThemeMode.values[themeIndex];
+    }
+
+    // Load window bounds
+    final boundsList = _prefs.getStringList(_PersistenceKeys.windowBounds);
+    if (boundsList != null && boundsList.length == 4) {
+      try {
+        _windowBounds = Rect.fromLTWH(
+          double.parse(boundsList[0]),
+          double.parse(boundsList[1]),
+          double.parse(boundsList[2]),
+          double.parse(boundsList[3]),
+        );
+      } catch (e) {
+        debugPrint('Error loading window bounds: $e');
+      }
+    }
+
     // Load open files (validate they still exist)
     final savedPaths =
         _prefs.getStringList(_PersistenceKeys.openFilePaths) ?? [];
@@ -149,6 +180,22 @@ class AppState extends ChangeNotifier {
       _PersistenceKeys.isExplorerVisible,
       _isExplorerVisible,
     );
+  }
+
+  void setWindowBounds(Rect bounds) {
+    _windowBounds = bounds;
+    _prefs.setStringList(_PersistenceKeys.windowBounds, [
+      bounds.left.toString(),
+      bounds.top.toString(),
+      bounds.width.toString(),
+      bounds.height.toString(),
+    ]);
+  }
+
+  void setThemeMode(ThemeMode mode) {
+    _themeMode = mode;
+    _prefs.setInt(_PersistenceKeys.themeMode, mode.index);
+    notifyListeners();
   }
 
   @override

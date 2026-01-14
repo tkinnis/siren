@@ -11,6 +11,7 @@ import 'editor_tabs.dart';
 import 'file_explorer.dart';
 import 'raw_view.dart';
 import 'rendered_view.dart';
+import 'theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -89,10 +90,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 final XFile? file = await openFile(
                   acceptedTypeGroups: <XTypeGroup>[typeGroup],
                 );
-                if (file != null && mounted) {
-                  // Open file AND set explorer root to parent
-                  context.read<AppState>().openFileAndSetDirectory(file.path);
-                }
+                if (file == null || !mounted) return;
+                
+                // Open file AND set explorer root to parent
+                // ignore: use_build_context_synchronously
+                context.read<AppState>().openFileAndSetDirectory(file.path);
               },
             ),
             PlatformMenuItem(
@@ -309,7 +311,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               ? appState.sidebarWidth
                               : 0,
                           clipBehavior: Clip.hardEdge,
-                          decoration: const BoxDecoration(),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).extension<SirenColors>()!.sidebarBg,
+                          ),
                           child: appState.isExplorerVisible
                               ? const FileExplorer()
                               : const SizedBox.shrink(),
@@ -374,15 +378,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildToolbar(BuildContext context, AppState appState) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sirenColors = Theme.of(context).extension<SirenColors>()!;
 
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF282828) : const Color(0xFFF5F5F5),
+        color: Theme.of(context).colorScheme.surfaceContainer,
         border: Border(
           bottom: BorderSide(
-            color: isDark ? Colors.black26 : Colors.grey.shade300,
+            color: sirenColors.borderColor ?? Colors.transparent,
             width: 1,
           ),
         ),
@@ -428,7 +432,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   width: 1,
                   height: 20,
-                  color: isDark ? Colors.white24 : Colors.black12,
+                  color: sirenColors.borderColor,
                 ),
                 const SizedBox(width: 8),
                 _DesktopIconButton(
@@ -449,12 +453,56 @@ class _HomeScreenState extends State<HomeScreen> {
                   tooltip: 'Increase Font Size',
                   onPressed: appState.increaseFontSize,
                 ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 1,
+                  height: 20,
+                  color: sirenColors.borderColor,
+                ),
+                const SizedBox(width: 8),
+                PopupMenuButton<ThemeMode>(
+                  tooltip: 'Switch Theme',
+                  initialValue: appState.themeMode,
+                  onSelected: appState.setThemeMode,
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: ThemeMode.light,
+                      child: Text('Light'),
+                    ),
+                    const PopupMenuItem(
+                      value: ThemeMode.dark,
+                      child: Text('Dark'),
+                    ),
+                    const PopupMenuItem(
+                      value: ThemeMode.system,
+                      child: Text('System'),
+                    ),
+                  ],
+                  child: IgnorePointer(
+                    child: _DesktopIconButton(
+                      icon: _getThemeIcon(appState.themeMode),
+                      tooltip: 'Switch Theme',
+                      onPressed: () {}, 
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  IconData _getThemeIcon(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return Icons.light_mode;
+      case ThemeMode.dark:
+        return Icons.dark_mode;
+      case ThemeMode.system:
+        return Icons.brightness_auto;
+    }
   }
 
   Widget _buildEmptyState(BuildContext context) {
@@ -511,7 +559,7 @@ class _Breadcrumbs extends StatelessWidget {
   Widget build(BuildContext context) {
     if (filePath == null) return const SizedBox.shrink();
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sirenColors = Theme.of(context).extension<SirenColors>()!;
     final parts = path.split(filePath!);
     // Show last 3 parts if too long, or all if short
     final displayParts = parts.length > 4
@@ -531,7 +579,7 @@ class _Breadcrumbs extends StatelessWidget {
                   child: Icon(
                     Icons.chevron_right,
                     size: 14,
-                    color: isDark ? Colors.white30 : Colors.black26,
+                    color: sirenColors.iconColor?.withValues(alpha: 0.5),
                   ),
                 ),
               Text(
@@ -539,8 +587,8 @@ class _Breadcrumbs extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   color: i == displayParts.length - 1
-                      ? (isDark ? Colors.white : Colors.black87)
-                      : (isDark ? Colors.white54 : Colors.black54),
+                      ? Theme.of(context).textTheme.bodyMedium?.color
+                      : sirenColors.iconColor,
                   fontWeight: i == displayParts.length - 1
                       ? FontWeight.w600
                       : FontWeight.normal,
@@ -575,12 +623,10 @@ class _DesktopIconButtonState extends State<_DesktopIconButton> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = isDark ? Colors.white : Colors.black87;
-    final hoverColor = isDark ? Colors.white10 : Colors.black.withOpacity(0.05);
-    final pressedColor = isDark
-        ? Colors.white24
-        : Colors.black.withOpacity(0.1);
+    final sirenColors = Theme.of(context).extension<SirenColors>()!;
+    final color = sirenColors.iconColor ?? Theme.of(context).iconTheme.color!;
+    final hoverColor = color.withValues(alpha: 0.05);
+    final pressedColor = color.withValues(alpha: 0.1);
 
     return Tooltip(
       message: widget.tooltip,
@@ -607,7 +653,7 @@ class _DesktopIconButtonState extends State<_DesktopIconButton> {
             child: Icon(
               widget.icon,
               size: 18,
-              color: _isPressed || _isHovering ? color : color.withOpacity(0.7),
+              color: _isPressed || _isHovering ? color : color.withValues(alpha: 0.7),
             ),
           ),
         ),

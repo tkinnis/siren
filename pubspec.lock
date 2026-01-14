@@ -214,14 +214,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
-  flutter_markdown_plus:
+  flutter_markdown:
     dependency: "direct main"
     description:
-      name: flutter_markdown_plus
-      sha256: "039177906850278e8fb1cd364115ee0a46281135932fa8ecea8455522166d2de"
+      name: flutter_markdown
+      sha256: "08fb8315236099ff8e90cb87bb2b935e0a724a3af1623000a9cec930468e0f27"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.7"
+    version: "0.7.7+1"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -241,7 +241,7 @@ packages:
     source: hosted
     version: "7.0.0"
   highlighter:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: highlighter
       sha256: "92180c72b9da8758e1acf39a45aa305a97dcfe2fdc8f3d1d2947c23f2772bfbc"

@@ -180,8 +180,8 @@ class _FileExplorerState extends State<FileExplorer> {
     await _rebuildFlatList();
   }
 
-  KeyEventResult _onKeyEvent(RawKeyEvent event) {
-    if (event is! RawKeyDownEvent) return KeyEventResult.ignored;
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
       if (_selectedIndex < _flatList.length - 1) {
@@ -322,9 +322,18 @@ class _FileExplorerState extends State<FileExplorer> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.folder_open, size: 48, color: Colors.grey),
+            Icon(
+              Icons.folder_open,
+              size: 48,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(height: 16),
-            const Text('No folder open', style: TextStyle(color: Colors.grey)),
+            Text(
+              'No folder open',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: appState.openDirectory,
@@ -353,7 +362,11 @@ class _FileExplorerState extends State<FileExplorer> {
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               child: Row(
                 children: [
-                  const Icon(Icons.folder, size: 16),
+                  Icon(
+                    Icons.folder,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -385,9 +398,7 @@ class _FileExplorerState extends State<FileExplorer> {
             Expanded(
               child: Focus(
                 focusNode: appState.explorerFocusNode,
-                onKey: (node, event) {
-                  return _onKeyEvent(event);
-                },
+                onKeyEvent: _onKeyEvent,
                 child: Scrollbar(
                   controller: _horizontalScrollController,
                   notificationPredicate: (notification) =>
@@ -437,7 +448,7 @@ class _FileExplorerState extends State<FileExplorer> {
                                           ? Icons.keyboard_arrow_down
                                           : Icons.keyboard_arrow_right,
                                       size: 16,
-                                      color: Colors.grey,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     )
                                   else
                                     const SizedBox(width: 16),
@@ -451,7 +462,7 @@ class _FileExplorerState extends State<FileExplorer> {
                                     size: 16,
                                     color: item.isDirectory
                                         ? Theme.of(context).colorScheme.primary
-                                        : Colors.grey,
+                                        : Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
