@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'app_state.dart';
 import 'editor_tabs.dart';
-import 'file_explorer.dart';
+import 'sidebar.dart';
 import 'raw_view.dart';
 import 'rendered_view.dart';
 import 'theme.dart';
@@ -91,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   acceptedTypeGroups: <XTypeGroup>[typeGroup],
                 );
                 if (file == null || !mounted) return;
-                
+
                 // Open file AND set explorer root to parent
                 // ignore: use_build_context_synchronously
                 context.read<AppState>().openFileAndSetDirectory(file.path);
@@ -312,10 +312,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               : 0,
                           clipBehavior: Clip.hardEdge,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).extension<SirenColors>()!.sidebarBg,
+                            color: Theme.of(
+                              context,
+                            ).extension<SirenColors>()!.sidebarBg,
                           ),
                           child: appState.isExplorerVisible
-                              ? const FileExplorer()
+                              ? const Sidebar()
                               : const SizedBox.shrink(),
                         ),
                         // Resizer (only visible when sidebar is visible)
@@ -429,11 +431,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  width: 1,
-                  height: 20,
-                  color: sirenColors.borderColor,
-                ),
+                Container(width: 1, height: 20, color: sirenColors.borderColor),
                 const SizedBox(width: 8),
                 _DesktopIconButton(
                   icon: appState.isRenderedView ? Icons.code : Icons.visibility,
@@ -454,11 +452,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: appState.increaseFontSize,
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  width: 1,
-                  height: 20,
-                  color: sirenColors.borderColor,
-                ),
+                Container(width: 1, height: 20, color: sirenColors.borderColor),
                 const SizedBox(width: 8),
                 PopupMenuButton<ThemeMode>(
                   tooltip: 'Switch Theme',
@@ -482,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _DesktopIconButton(
                       icon: _getThemeIcon(appState.themeMode),
                       tooltip: 'Switch Theme',
-                      onPressed: () {}, 
+                      onPressed: () {},
                     ),
                   ),
                 ),
@@ -653,7 +647,9 @@ class _DesktopIconButtonState extends State<_DesktopIconButton> {
             child: Icon(
               widget.icon,
               size: 18,
-              color: _isPressed || _isHovering ? color : color.withValues(alpha: 0.7),
+              color: _isPressed || _isHovering
+                  ? color
+                  : color.withValues(alpha: 0.7),
             ),
           ),
         ),

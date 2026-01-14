@@ -74,9 +74,7 @@ class _EditorTabsState extends State<EditorTabs> {
                 margin: const EdgeInsets.only(right: 1, top: 1),
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  color: isActive
-                      ? sirenColors.activeTabBg
-                      : sirenColors.tabBg,
+                  color: isActive ? sirenColors.activeTabBg : sirenColors.tabBg,
                   border: isActive
                       ? Border(
                           top: BorderSide(

@@ -96,7 +96,7 @@ class _FileExplorerState extends State<FileExplorer> {
         // Estimate: padding + depth indent + icons + text
         // paddingLeft = 8 + depth * 16, icons ~40px, text ~8px per char
         final estimatedWidth =
-            8.0 + (item.depth * 16.0) + 40.0 + (name.length * 8.0) + 16.0;
+            8.0 + (item.depth * 16.0) + 40.0 + (name.length * 12.0) + 40.0;
         if (estimatedWidth > maxWidth) {
           maxWidth = estimatedWidth;
         }
@@ -127,7 +127,6 @@ class _FileExplorerState extends State<FileExplorer> {
 
       final filtered = entities.where((entity) {
         final name = path.basename(entity.path);
-        if (name.startsWith('.')) return false;
         if (entity is Directory) return true;
         if (entity is File) {
           return name.toLowerCase().endsWith('.md') ||
@@ -448,7 +447,9 @@ class _FileExplorerState extends State<FileExplorer> {
                                           ? Icons.keyboard_arrow_down
                                           : Icons.keyboard_arrow_right,
                                       size: 16,
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                                     )
                                   else
                                     const SizedBox(width: 16),
@@ -462,23 +463,28 @@ class _FileExplorerState extends State<FileExplorer> {
                                     size: 16,
                                     color: item.isDirectory
                                         ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
                                   ),
                                   const SizedBox(width: 6),
-                                  Text(
-                                    name,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: isSelected
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.primary
-                                          : null,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w500
-                                          : FontWeight.normal,
+                                  Flexible(
+                                    child: Text(
+                                      name,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isSelected
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.primary
+                                            : null,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w500
+                                            : FontWeight.normal,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    maxLines: 1,
                                   ),
                                 ],
                               ),

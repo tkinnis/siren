@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_highlighter/flutter_highlighter.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -21,6 +23,7 @@ class RenderedView extends StatefulWidget {
 class _RenderedViewState extends State<RenderedView> {
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _anchorKeys = {};
+  StreamSubscription? _navSubscription;
 
   @override
   void initState() {
@@ -31,6 +34,27 @@ class _RenderedViewState extends State<RenderedView> {
   @override
   void didUpdateWidget(RenderedView oldWidget) {
     super.didUpdateWidget(oldWidget);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _navSubscription?.cancel();
+    final appState = context.read<AppState>();
+    _navSubscription = appState.navigationStream.listen((event) {
+      if (event.text.isNotEmpty) {
+        final slug = _generateSlug(event.text);
+        _scrollToAnchor(slug);
+      }
+    });
+  }
+
+  String _generateSlug(String text) {
+    return text
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
+        .replaceAll(RegExp(r'\s+'), '-');
   }
 
   void _restoreScrollPosition() {
@@ -74,8 +98,48 @@ class _RenderedViewState extends State<RenderedView> {
     }
   }
 
+  void _handleTapLink(String text, String? href, String title) async {
+    if (href == null) return;
+    final uri = Uri.tryParse(href);
+    if (uri == null) return;
+
+    final appState = context.read<AppState>();
+    final currentFilePath = appState.currentFilePath;
+    final basePath = currentFilePath != null
+        ? p.dirname(currentFilePath)
+        : null;
+
+    if (uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    } else if (!uri.hasScheme || uri.scheme == 'file') {
+      // Check for internal anchor (fragment only)
+      if (uri.path.isEmpty && uri.fragment.isNotEmpty) {
+        _scrollToAnchor(uri.fragment);
+        return;
+      }
+
+      // Local file navigation
+      if (basePath != null) {
+        String filePath = uri.path;
+        if (filePath.isEmpty) return;
+
+        var fullPath = p.join(basePath, filePath);
+        fullPath = p.normalize(fullPath);
+        final file = File(fullPath);
+        if (await file.exists()) {
+          if (await FileSystemEntity.isFile(fullPath)) {
+            appState.openFile(fullPath);
+          }
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _navSubscription?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -87,14 +151,19 @@ class _RenderedViewState extends State<RenderedView> {
     final fontSize = appState.fontSize;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final currentFilePath = appState.currentFilePath;
-    final basePath =
-        currentFilePath != null ? p.dirname(currentFilePath) : null;
+    final basePath = currentFilePath != null
+        ? p.dirname(currentFilePath)
+        : null;
 
     final codeBg = isDark ? const Color(0xFF2d2d4a) : const Color(0xFFe0e0ec);
 
     // Clear keys on rebuild as content might have changed
     _anchorKeys.clear();
-    final headerBuilder = HeaderBuilder(_anchorKeys);
+
+    final processedContent = _injectAnchors(content);
+
+    void onTapLink(String text, String? href, String title) =>
+        _handleTapLink(text, href, title);
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
@@ -108,48 +177,8 @@ class _RenderedViewState extends State<RenderedView> {
         padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
         child: SelectionArea(
           child: MarkdownBody(
-            data: content,
-            selectable: true,
-            onTapLink: (text, href, title) async {
-              if (href == null) return;
-              final uri = Uri.tryParse(href);
-              if (uri == null) return;
-  
-              if (uri.hasScheme &&
-                  (uri.scheme == 'http' || uri.scheme == 'https')) {
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri);
-                }
-              } else if (!uri.hasScheme || uri.scheme == 'file') {
-                // Check for internal anchor (fragment only)
-                if (uri.path.isEmpty && uri.fragment.isNotEmpty) {
-                  _scrollToAnchor(uri.fragment);
-                  return;
-                }
-  
-                // Local file navigation
-                if (basePath != null) {
-                  // If there's a fragment, strip it for file check
-                  String filePath = uri.path;
-                  if (filePath.isEmpty) {
-                     // Should have been handled above if fragment exists,
-                     // but if href is just '#' or empty, ignore.
-                     return;
-                  }
-                  
-                  var fullPath = p.join(basePath, filePath);
-                  fullPath = p.normalize(fullPath);
-                  final file = File(fullPath);
-                  if (await file.exists()) {
-                    if (await FileSystemEntity.isFile(fullPath)) {
-                      appState.openFile(fullPath);
-                      // Note: If we wanted to support anchors in OTHER files,
-                      // we would need to pass the fragment to openFile and handle it after load.
-                    }
-                  }
-                }
-              }
-            },
+            data: processedContent,
+            onTapLink: onTapLink,
             // ignore: deprecated_member_use
             imageBuilder: (uri, title, alt) {
               if (uri.hasScheme &&
@@ -169,113 +198,161 @@ class _RenderedViewState extends State<RenderedView> {
                 return const Icon(Icons.broken_image, size: 24);
               }
             },
-            styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-              p: GoogleFonts.roboto(fontSize: fontSize),
-              h1: GoogleFonts.roboto(
-                fontSize: fontSize * 2.0,
-                fontWeight: FontWeight.bold,
-              ),
-              h2: GoogleFonts.roboto(
-                fontSize: fontSize * 1.75,
-                fontWeight: FontWeight.bold,
-              ),
-              h3: GoogleFonts.roboto(
-                fontSize: fontSize * 1.5,
-                fontWeight: FontWeight.bold,
-              ),
-              h4: GoogleFonts.roboto(
-                fontSize: fontSize * 1.25,
-                fontWeight: FontWeight.bold,
-              ),
-              h5: GoogleFonts.roboto(
-                fontSize: fontSize * 1.15,
-                fontWeight: FontWeight.bold,
-              ),
-              h6: GoogleFonts.roboto(
-                fontSize: fontSize * 1.0,
-                fontWeight: FontWeight.bold,
-              ),
-              code: GoogleFonts.firaCode(
-                backgroundColor: codeBg,
-                fontSize: fontSize * 0.9,
-              ),
+            extensionSet: md.ExtensionSet(
+              md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+              [
+                ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
+                AnchorSyntax(),
+              ],
             ),
+            styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
+                .copyWith(
+                  blockSpacing: 8.0,
+                  h1Padding: const EdgeInsets.only(top: 32.0, bottom: 16.0),
+                  h2Padding: const EdgeInsets.only(top: 24.0, bottom: 16.0),
+                  h3Padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
+                  h4Padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+                  h5Padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+                  h6Padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+                  p: GoogleFonts.inter(fontSize: fontSize, height: 1.6),
+                  h1: GoogleFonts.inter(
+                    fontSize: fontSize * 2.2,
+                    fontWeight: FontWeight.w700,
+                    height: 1.3,
+                  ),
+                  h2: GoogleFonts.inter(
+                    fontSize: fontSize * 1.8,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                  h3: GoogleFonts.inter(
+                    fontSize: fontSize * 1.5,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                  h4: GoogleFonts.inter(
+                    fontSize: fontSize * 1.25,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  h5: GoogleFonts.inter(
+                    fontSize: fontSize * 1.15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  h6: GoogleFonts.inter(
+                    fontSize: fontSize * 1.0,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  code: GoogleFonts.firaCode(
+                    backgroundColor: codeBg,
+                    fontSize: fontSize * 0.9,
+                  ),
+                ),
             builders: {
               'code': CodeElementBuilder(isDark: isDark, fontSize: fontSize),
-              'h1': headerBuilder,
-              'h2': headerBuilder,
-              'h3': headerBuilder,
-              'h4': headerBuilder,
-              'h5': headerBuilder,
-              'h6': headerBuilder,
+              'anchor': AnchorBuilder(_anchorKeys),
             },
           ),
         ),
       ),
     );
   }
+
+  String _injectAnchors(String markdown) {
+    final buffer = StringBuffer();
+    final lines = markdown.split('\n');
+    bool inCodeBlock = false;
+
+    for (final line in lines) {
+      if (line.trim().startsWith('```')) {
+        inCodeBlock = !inCodeBlock;
+      }
+
+      if (!inCodeBlock && line.startsWith('#')) {
+        final text = line.replaceFirst(RegExp(r'^#+\s*'), '');
+        final slug = _generateSlug(text);
+        buffer.writeln('[[@anchor:$slug]]');
+      }
+      buffer.writeln(line);
+    }
+    return buffer.toString();
+  }
 }
 
-class HeaderBuilder extends MarkdownElementBuilder {
-  final Map<String, GlobalKey> anchorKeys;
+class AnchorSyntax extends md.InlineSyntax {
+  AnchorSyntax() : super(r'\[\[@anchor:([a-z0-9-]+)\]\]');
 
-  HeaderBuilder(this.anchorKeys);
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    final slug = match[1]!;
+    final el = md.Element('anchor', []);
+    el.attributes['id'] = slug;
+    parser.addNode(el);
+    return true;
+  }
+}
+
+class AnchorBuilder extends MarkdownElementBuilder {
+  final Map<String, GlobalKey> anchorKeys;
+  AnchorBuilder(this.anchorKeys);
 
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
-    final text = element.textContent;
-    final slug = _generateSlug(text);
-    final key = GlobalKey(debugLabel: slug);
-    anchorKeys[slug] = key;
-
-    return SelectableText.rich(
-      TextSpan(
-        children: _parseChildren(element.children),
-        style: preferredStyle,
-      ),
-      key: key,
-    );
-  }
-
-  String _generateSlug(String text) {
-    return text
-        .toLowerCase()
-        .trim()
-        .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
-        .replaceAll(RegExp(r'\s+'), '-');
-  }
-
-  List<InlineSpan>? _parseChildren(List<md.Node>? nodes) {
-    if (nodes == null) return null;
-    final List<InlineSpan> spans = [];
-    for (final node in nodes) {
-      if (node is md.Text) {
-        spans.add(TextSpan(text: node.text));
-      } else if (node is md.Element) {
-        TextStyle? style;
-        switch (node.tag) {
-          case 'strong':
-            style = const TextStyle(fontWeight: FontWeight.bold);
-            break;
-          case 'em':
-            style = const TextStyle(fontStyle: FontStyle.italic);
-            break;
-          case 'code':
-            style = GoogleFonts.firaCode(
-               // Inherit color/size from parent preferredStyle if possible, 
-               // but we don't have it here easily without passing it down.
-               // Just adding a background hint or font family.
-            );
-            break;
-        }
-        spans.add(TextSpan(
-          children: _parseChildren(node.children),
-          style: style,
-        ));
-      }
+    final slug = element.attributes['id'];
+    if (slug != null) {
+      final key = GlobalKey(debugLabel: slug);
+      anchorKeys[slug] = key;
+      return SizedBox(key: key, width: 0, height: 0);
     }
-    return spans;
+    return null;
   }
+}
+
+List<InlineSpan>? _parseInlineChildren(
+  List<md.Node>? nodes,
+  void Function(String, String?, String)? onTapLink,
+) {
+  if (nodes == null) return null;
+  final List<InlineSpan> spans = [];
+  for (final node in nodes) {
+    if (node is md.Text) {
+      spans.add(TextSpan(text: node.text));
+    } else if (node is md.Element) {
+      TextStyle? style;
+      TapGestureRecognizer? recognizer;
+
+      switch (node.tag) {
+        case 'strong':
+          style = const TextStyle(fontWeight: FontWeight.bold);
+          break;
+        case 'em':
+          style = const TextStyle(fontStyle: FontStyle.italic);
+          break;
+        case 'code':
+          style = GoogleFonts.firaCode();
+          break;
+        case 'a':
+          style = const TextStyle(
+            color: Colors.blue,
+            decoration: TextDecoration.underline,
+          );
+          final href = node.attributes['href'];
+          final title = node.attributes['title'] ?? '';
+          if (onTapLink != null) {
+            recognizer = TapGestureRecognizer()
+              ..onTap = () => onTapLink(node.textContent, href, title);
+          }
+          break;
+      }
+      spans.add(
+        TextSpan(
+          children: _parseInlineChildren(node.children, onTapLink),
+          style: style,
+          recognizer: recognizer,
+        ),
+      );
+    }
+  }
+  return spans;
 }
 
 class CodeElementBuilder extends MarkdownElementBuilder {
@@ -302,11 +379,16 @@ class CodeElementBuilder extends MarkdownElementBuilder {
 
     // Detect if this is likely a code block or inline code.
     // Blocks usually have a language set or contain newlines.
-    final bool isBlock = language.isNotEmpty || element.textContent.contains('\n');
+    final bool isBlock =
+        language.isNotEmpty || element.textContent.contains('\n');
 
     if (isBlock) {
-      final theme = isDark ? SirenTheme.showcaseDarkTheme : SirenTheme.showcaseLightTheme;
-      final bgColor = isDark ? const Color(0xFF0f0f1a) : const Color(0xFFe8e8f0);
+      final theme = isDark
+          ? SirenTheme.showcaseDarkTheme
+          : SirenTheme.showcaseLightTheme;
+      final bgColor = isDark
+          ? const Color(0xFF0f0f1a)
+          : const Color(0xFFe8e8f0);
 
       return Container(
         margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -325,19 +407,22 @@ class CodeElementBuilder extends MarkdownElementBuilder {
       );
     } else {
       // Inline code styling
-      final bgColor = isDark ? const Color(0xFF2d2d4a) : const Color(0xFFe0e0ec);
-      final borderColor = isDark ? const Color(0xFF3d3d5c) : const Color(0xFFd0d0e0);
-      final textColor = isDark ? const Color(0xFFff6b8a) : const Color(0xFFd03050);
+      final bgColor = isDark
+          ? const Color(0xFF2d2d4a)
+          : const Color(0xFFe0e0ec);
+      final borderColor = isDark
+          ? const Color(0xFF3d3d5c)
+          : const Color(0xFFd0d0e0);
+      final textColor = isDark
+          ? const Color(0xFFff6b8a)
+          : const Color(0xFFd03050);
 
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: borderColor,
-            width: 0.5,
-          ),
+          border: Border.all(color: borderColor, width: 0.5),
         ),
         child: Text(
           element.textContent,

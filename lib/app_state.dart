@@ -54,6 +54,12 @@ class AppState extends ChangeNotifier {
   final FocusNode explorerFocusNode = FocusNode();
   Function(String path)? _onRevealInExplorer;
 
+  // Navigation Events
+  final StreamController<({int lineNumber, String text})>
+  _navigationController = StreamController.broadcast();
+  Stream<({int lineNumber, String text})> get navigationStream =>
+      _navigationController.stream;
+
   // Getters
   List<String> get openFilePaths => List.unmodifiable(_openFilePaths);
   int get activeTabIndex => _activeTabIndex;
@@ -120,7 +126,9 @@ class AppState extends ChangeNotifier {
 
     // Load theme mode
     final themeIndex = _prefs.getInt(_PersistenceKeys.themeMode);
-    if (themeIndex != null && themeIndex >= 0 && themeIndex < ThemeMode.values.length) {
+    if (themeIndex != null &&
+        themeIndex >= 0 &&
+        themeIndex < ThemeMode.values.length) {
       _themeMode = ThemeMode.values[themeIndex];
     }
 
@@ -198,16 +206,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  @override
-  void dispose() {
-    for (final subscription in _fileWatchers.values) {
-      subscription.cancel();
-    }
-    _fileWatchers.clear();
-    explorerFocusNode.dispose();
-    super.dispose();
-  }
-
   void setExplorerRevealCallback(Function(String path) callback) {
     _onRevealInExplorer = callback;
   }
@@ -221,14 +219,16 @@ class AppState extends ChangeNotifier {
 
     try {
       final file = File(path);
-      _fileWatchers[path] = file.watch(events: FileSystemEvent.modify).listen(
-        (event) {
-          _onFileModified(path);
-        },
-        onError: (e) {
-          debugPrint('Error watching file $path: $e');
-        },
-      );
+      _fileWatchers[path] = file
+          .watch(events: FileSystemEvent.modify)
+          .listen(
+            (event) {
+              _onFileModified(path);
+            },
+            onError: (e) {
+              debugPrint('Error watching file $path: $e');
+            },
+          );
     } catch (e) {
       debugPrint('Failed to watch file $path: $e');
     }
@@ -424,5 +424,20 @@ class AppState extends ChangeNotifier {
 
   void setScrollOffset(String path, double offset) {
     _scrollOffsets[path] = offset;
+  }
+
+  void scrollTo(int lineNumber, String text) {
+    _navigationController.add((lineNumber: lineNumber, text: text));
+  }
+
+  @override
+  void dispose() {
+    _navigationController.close();
+    for (final subscription in _fileWatchers.values) {
+      subscription.cancel();
+    }
+    _fileWatchers.clear();
+    explorerFocusNode.dispose();
+    super.dispose();
   }
 }

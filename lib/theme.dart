@@ -5,21 +5,27 @@ class SirenTheme {
   // Light Theme Colors
   static const Color _lightBg = Color(0xFFf8f8fc); // ui.editor.background
   static const Color _lightSurface = Color(0xFFf0f0f6); // ui.sidebar.background
-  static const Color _lightSurfaceHighlight = Color(0xFFe8e8f0); // ui.activityBar.background
+  static const Color _lightSurfaceHighlight = Color(
+    0xFFe8e8f0,
+  ); // ui.activityBar.background
   static const Color _lightSurfaceVariant = Color(0xFFe0e0ec);
   static const Color _lightPrimary = Color(0xFF00a080);
   static const Color _lightOnSurface = Color(0xFF1a1a2e);
   static const Color _lightOnSurfaceVariant = Color(0xFF3a3a52);
   static const Color _lightBorder = Color(0xFFd0d0e0);
-  
+
   static const Color _lightTabActiveBg = Color(0xFFf8f8fc);
   static const Color _lightTabInactiveBg = Color(0xFFf0f0f6);
-  static const Color _lightIconColor = Color(0xFF1a1a2e); // ui.activityBar.foreground
+  static const Color _lightIconColor = Color(
+    0xFF1a1a2e,
+  ); // ui.activityBar.foreground
 
   // Showcase Theme - Dark
   static const Color _darkBg = Color(0xFF1a1a2e); // ui.editor.background
   static const Color _darkSurface = Color(0xFF141428); // ui.sidebar.background
-  static const Color _darkSurfaceHighlight = Color(0xFF0f0f1a); // ui.activityBar.background
+  static const Color _darkSurfaceHighlight = Color(
+    0xFF0f0f1a,
+  ); // ui.activityBar.background
   static const Color _darkSurfaceVariant = Color(0xFF2d2d4a);
   static const Color _darkPrimary = Color(0xFF00d4aa);
   static const Color _darkOnSurface = Color(0xFFe0e0f0);
@@ -28,8 +34,9 @@ class SirenTheme {
 
   static const Color _darkTabActiveBg = Color(0xFF1a1a2e);
   static const Color _darkTabInactiveBg = Color(0xFF141428);
-  static const Color _darkIconColor = Color(0xFFe0e0f0); // ui.activityBar.foreground
-
+  static const Color _darkIconColor = Color(
+    0xFFe0e0f0,
+  ); // ui.activityBar.foreground
 
   static ThemeData get light {
     final base = ThemeData.light(useMaterial3: true);
@@ -44,18 +51,11 @@ class SirenTheme {
         surfaceContainer: _lightSurfaceHighlight,
         surfaceContainerHighest: _lightSurfaceVariant,
       ),
-      dividerTheme: const DividerThemeData(
-        color: _lightBorder,
-        thickness: 1,
-      ),
-      textTheme: GoogleFonts.interTextTheme(base.textTheme).apply(
-        bodyColor: _lightOnSurface,
-        displayColor: _lightOnSurface,
-      ),
-      iconTheme: const IconThemeData(
-        color: _lightIconColor,
-        size: 20,
-      ),
+      dividerTheme: const DividerThemeData(color: _lightBorder, thickness: 1),
+      textTheme: GoogleFonts.interTextTheme(
+        base.textTheme,
+      ).apply(bodyColor: _lightOnSurface, displayColor: _lightOnSurface),
+      iconTheme: const IconThemeData(color: _lightIconColor, size: 20),
       extensions: [
         const SirenColors(
           sidebarBg: _lightSurface,
@@ -81,18 +81,11 @@ class SirenTheme {
         surfaceContainer: _darkSurfaceHighlight,
         surfaceContainerHighest: _darkSurfaceVariant,
       ),
-      dividerTheme: const DividerThemeData(
-        color: _darkBorder,
-        thickness: 1,
-      ),
-      textTheme: GoogleFonts.interTextTheme(base.textTheme).apply(
-        bodyColor: _darkOnSurface,
-        displayColor: _darkOnSurface,
-      ),
-      iconTheme: const IconThemeData(
-        color: _darkIconColor,
-        size: 20,
-      ),
+      dividerTheme: const DividerThemeData(color: _darkBorder, thickness: 1),
+      textTheme: GoogleFonts.interTextTheme(
+        base.textTheme,
+      ).apply(bodyColor: _darkOnSurface, displayColor: _darkOnSurface),
+      iconTheme: const IconThemeData(color: _darkIconColor, size: 20),
       extensions: [
         const SirenColors(
           sidebarBg: _darkSurface,
