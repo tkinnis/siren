@@ -149,13 +149,13 @@ class _RenderedViewState extends State<RenderedView> {
     final appState = context.watch<AppState>();
     final content = appState.currentContent;
     final fontSize = appState.fontSize;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final sirenColors = theme.extension<SirenColors>()!;
     final currentFilePath = appState.currentFilePath;
     final basePath = currentFilePath != null
         ? p.dirname(currentFilePath)
         : null;
-
-    final codeBg = isDark ? const Color(0xFF2d2d4a) : const Color(0xFFe0e0ec);
 
     // Clear keys on rebuild as content might have changed
     _anchorKeys.clear();
@@ -178,6 +178,7 @@ class _RenderedViewState extends State<RenderedView> {
         child: SelectionArea(
           child: MarkdownBody(
             data: processedContent,
+            softLineBreak: true,
             onTapLink: onTapLink,
             // ignore: deprecated_member_use
             imageBuilder: (uri, title, alt) {
@@ -205,51 +206,159 @@ class _RenderedViewState extends State<RenderedView> {
                 AnchorSyntax(),
               ],
             ),
-            styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
-                .copyWith(
-                  blockSpacing: 8.0,
-                  h1Padding: const EdgeInsets.only(top: 32.0, bottom: 16.0),
-                  h2Padding: const EdgeInsets.only(top: 24.0, bottom: 16.0),
-                  h3Padding: const EdgeInsets.only(top: 20.0, bottom: 12.0),
-                  h4Padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-                  h5Padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-                  h6Padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-                  p: GoogleFonts.inter(fontSize: fontSize, height: 1.6),
-                  h1: GoogleFonts.inter(
-                    fontSize: fontSize * 2.2,
-                    fontWeight: FontWeight.w700,
-                    height: 1.3,
-                  ),
-                  h2: GoogleFonts.inter(
-                    fontSize: fontSize * 1.8,
-                    fontWeight: FontWeight.w600,
-                    height: 1.3,
-                  ),
-                  h3: GoogleFonts.inter(
-                    fontSize: fontSize * 1.5,
-                    fontWeight: FontWeight.w600,
-                    height: 1.3,
-                  ),
-                  h4: GoogleFonts.inter(
-                    fontSize: fontSize * 1.25,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  h5: GoogleFonts.inter(
-                    fontSize: fontSize * 1.15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  h6: GoogleFonts.inter(
-                    fontSize: fontSize * 1.0,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  code: GoogleFonts.firaCode(
-                    backgroundColor: codeBg,
-                    fontSize: fontSize * 0.9,
+            styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+              blockSpacing: 12.0, // --spacing-md
+              textScaleFactor: 1.0,
+
+              // Typography
+              p: GoogleFonts.inter(
+                fontSize: fontSize,
+                height: 1.6,
+                color: theme.colorScheme.onSurface,
+              ),
+              code: GoogleFonts.firaCode(
+                backgroundColor: sirenColors.codeBg,
+                fontSize: fontSize * 0.9,
+                color: sirenColors
+                    .iconColor, // Using body text color for inline code if not colored by highlighter
+              ),
+              strong: GoogleFonts.inter(
+                fontSize: fontSize,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
+              ),
+              em: GoogleFonts.inter(
+                fontSize: fontSize,
+                fontStyle: FontStyle.italic,
+                color: theme.colorScheme.onSurface,
+              ),
+              del: GoogleFonts.inter(
+                fontSize: fontSize,
+                decoration: TextDecoration.lineThrough,
+                color: theme.colorScheme.onSurface,
+              ),
+              a: GoogleFonts.inter(
+                fontSize: fontSize,
+                color: sirenColors.headingColor ?? theme.colorScheme.primary,
+                decoration: TextDecoration.underline,
+              ),
+
+              // Headings
+              // Workaround: flutter_markdown leaks the H1/H2 style to subsequent elements
+              // when a custom builder is used. We set the stylesheet style to match
+              // the body text (p) so that the leak is invisible. The actual styling
+              // is applied by the HeadingElementBuilder.
+              h1: GoogleFonts.inter(
+                fontSize: fontSize, // Matching p style
+                height: 1.6,
+                color: theme.colorScheme.onSurface,
+              ),
+              h2: GoogleFonts.inter(
+                fontSize: fontSize, // Matching p style
+                height: 1.6,
+                color: theme.colorScheme.onSurface,
+              ),
+              h3: GoogleFonts.inter(
+                fontSize: fontSize * 1.5,
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+                color: sirenColors.headingColor,
+              ),
+              h4: GoogleFonts.inter(
+                fontSize: fontSize * 1.25,
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+                color: sirenColors.headingColor,
+              ),
+              h5: GoogleFonts.inter(
+                fontSize: fontSize * 1.0,
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+                letterSpacing: 0.05,
+                color: sirenColors.headingColor, // Or uppercase logic if needed
+              ),
+              h6: GoogleFonts.inter(
+                fontSize: fontSize * 0.875,
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+                color: theme.colorScheme.onSurfaceVariant, // Muted
+              ),
+
+              // Blockquotes
+              blockquote: GoogleFonts.inter(
+                fontSize: fontSize,
+                color: theme.colorScheme.onSurfaceVariant, // Muted
+              ),
+              blockquoteDecoration: BoxDecoration(
+                color: sirenColors.sidebarBg, // --bg-surface-container
+                border: Border(
+                  left: BorderSide(
+                    color:
+                        sirenColors.quoteBorder ??
+                        theme.colorScheme.primary, // --color-quote-border
+                    width: 4.0,
                   ),
                 ),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(4),
+                  bottomRight: Radius.circular(4),
+                ),
+              ),
+              blockquotePadding: const EdgeInsets.symmetric(
+                vertical: 8.0,
+                horizontal: 16.0,
+              ),
+
+              // Code block decoration (wrapper around HighlightView)
+              codeblockDecoration: BoxDecoration(
+                color: sirenColors.codeBg, // --bg-code
+                border: Border.all(
+                  color: sirenColors.divider!,
+                ), // --color-border
+                borderRadius: BorderRadius.circular(6),
+              ),
+
+              // Tables
+              tableBody: GoogleFonts.inter(fontSize: fontSize),
+              tableHead: GoogleFonts.inter(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w600,
+                color: sirenColors.headingColor,
+              ),
+              tableBorder: TableBorder.all(
+                color: sirenColors.divider!,
+                width: 1,
+              ),
+              tableHeadAlign: TextAlign.left,
+              tablePadding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
+              // Note: header background support in style sheet is limited, might need custom builder or just Accept basic style
+            ),
             builders: {
-              'code': CodeElementBuilder(isDark: isDark, fontSize: fontSize),
+              'code': CodeElementBuilder(
+                isDark: isDark,
+                fontSize: fontSize,
+                sirenColors: sirenColors,
+              ),
               'anchor': AnchorBuilder(_anchorKeys),
+              // Custom heading builders for the bottom border
+              'h1': HeadingElementBuilder(
+                fontSize: fontSize * 2.25,
+                color: sirenColors.headingColor!,
+                dividerColor: sirenColors.divider!,
+                topMargin: 0, // H1 has top margin 0 in CSS
+                onTapLink: onTapLink,
+              ),
+              'h2': HeadingElementBuilder(
+                fontSize: fontSize * 1.75,
+                color: sirenColors.headingColor!,
+                dividerColor: sirenColors.divider!,
+                topMargin:
+                    24, // H2 margin-top: 2em -> approx 32px, adjusted for flutter padding
+                onTapLink: onTapLink,
+              ),
             },
           ),
         ),
@@ -355,11 +464,66 @@ List<InlineSpan>? _parseInlineChildren(
   return spans;
 }
 
+class HeadingElementBuilder extends MarkdownElementBuilder {
+  final double fontSize;
+  final Color color;
+  final Color dividerColor;
+  final double topMargin;
+  final void Function(String, String?, String) onTapLink;
+
+  HeadingElementBuilder({
+    required this.fontSize,
+    required this.color,
+    required this.dividerColor,
+    required this.topMargin,
+    required this.onTapLink,
+  });
+
+  @override
+  Widget? visitText(md.Text text, TextStyle? preferredStyle) {
+    return null;
+  }
+
+  @override
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    if (element.children == null || element.children!.isEmpty) {
+      return SizedBox.shrink();
+    }
+
+    final children = _parseInlineChildren(element.children, onTapLink);
+
+    return Container(
+      margin: EdgeInsets.only(top: topMargin, bottom: 16.0),
+      padding: const EdgeInsets.only(bottom: 6.0),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: dividerColor, width: 1.0)),
+      ),
+      width: double.infinity,
+      child: Text.rich(
+        TextSpan(
+          children: children,
+          style: GoogleFonts.inter(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+            color: color,
+            height: 1.25,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class CodeElementBuilder extends MarkdownElementBuilder {
   final bool isDark;
   final double fontSize;
+  final SirenColors sirenColors;
 
-  CodeElementBuilder({required this.isDark, required this.fontSize});
+  CodeElementBuilder({
+    required this.isDark,
+    required this.fontSize,
+    required this.sirenColors,
+  });
 
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
@@ -386,15 +550,15 @@ class CodeElementBuilder extends MarkdownElementBuilder {
       final theme = isDark
           ? SirenTheme.showcaseDarkTheme
           : SirenTheme.showcaseLightTheme;
-      final bgColor = isDark
-          ? const Color(0xFF0f0f1a)
-          : const Color(0xFFe8e8f0);
 
       return Container(
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        margin: const EdgeInsets.symmetric(
+          vertical: 12.0,
+        ), // margin-bottom: 1.5em (approx)
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color: bgColor,
+          borderRadius: BorderRadius.circular(6),
+          color: sirenColors.codeBg,
+          border: Border.all(color: sirenColors.divider!),
         ),
         clipBehavior: Clip.antiAlias,
         child: HighlightView(
@@ -402,34 +566,28 @@ class CodeElementBuilder extends MarkdownElementBuilder {
           language: language,
           theme: theme,
           padding: const EdgeInsets.all(16),
-          textStyle: GoogleFonts.firaCode(fontSize: fontSize),
+          textStyle: GoogleFonts.firaCode(fontSize: fontSize * 0.9),
         ),
       );
     } else {
       // Inline code styling
-      final bgColor = isDark
-          ? const Color(0xFF2d2d4a)
-          : const Color(0xFFe0e0ec);
-      final borderColor = isDark
-          ? const Color(0xFF3d3d5c)
-          : const Color(0xFFd0d0e0);
-      final textColor = isDark
-          ? const Color(0xFFff6b8a)
-          : const Color(0xFFd03050);
-
+      // Using default p style but tailored
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 5.0,
+          vertical: 2.0,
+        ), // 0.2em 0.4em
         decoration: BoxDecoration(
-          color: bgColor,
+          color: sirenColors.sidebarBg, // --bg-surface-container
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: borderColor, width: 0.5),
         ),
         child: Text(
           element.textContent,
           style: GoogleFonts.firaCode(
-            fontSize: fontSize * 0.85,
-            fontWeight: FontWeight.w500,
-            color: textColor,
+            fontSize: fontSize * 0.9,
+            color:
+                preferredStyle?.color ??
+                sirenColors.iconColor, // Inherit or default
           ),
         ),
       );
