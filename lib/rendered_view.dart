@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'app_state.dart';
 import 'mermaid_diagram.dart';
+import 'markdown_extensions.dart';
 import 'theme.dart';
 
 class RenderedView extends StatefulWidget {
@@ -184,7 +185,12 @@ class _RenderedViewState extends State<RenderedView> {
             imageBuilder: (uri, title, alt) {
               if (uri.hasScheme &&
                   (uri.scheme == 'http' || uri.scheme == 'https')) {
-                return Image.network(uri.toString());
+                return Image.network(
+                  uri.toString(),
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(Icons.broken_image, size: 24);
+                  },
+                );
               } else {
                 // Local image
                 if (basePath != null) {
@@ -200,10 +206,17 @@ class _RenderedViewState extends State<RenderedView> {
               }
             },
             extensionSet: md.ExtensionSet(
-              md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+              [
+                const AlertBlockSyntax(),
+                ...md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+              ],
               [
                 ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
                 AnchorSyntax(),
+                LatexSyntax(),
+                HighlightSyntax(),
+                SubscriptSyntax(),
+                SuperscriptSyntax(),
               ],
             ),
             styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
@@ -239,7 +252,9 @@ class _RenderedViewState extends State<RenderedView> {
               ),
               a: GoogleFonts.inter(
                 fontSize: fontSize,
-                color: sirenColors.headingColor ?? theme.colorScheme.primary,
+                color: theme
+                    .colorScheme
+                    .primary, // CSS uses --color-primary (Green)
                 decoration: TextDecoration.underline,
               ),
 
@@ -324,6 +339,8 @@ class _RenderedViewState extends State<RenderedView> {
                 fontSize: fontSize,
                 fontWeight: FontWeight.w600,
                 color: sirenColors.headingColor,
+                backgroundColor: sirenColors
+                    .sidebarBg, // Align with CSS --bg-surface-container
               ),
               tableBorder: TableBorder.all(
                 color: sirenColors.divider!,
@@ -337,12 +354,21 @@ class _RenderedViewState extends State<RenderedView> {
               // Note: header background support in style sheet is limited, might need custom builder or just Accept basic style
             ),
             builders: {
+              'blockquote': AlertBuilder(context),
+              'latex': LatexBuilder(
+                textStyle: theme.textTheme.bodyMedium?.copyWith(
+                  fontSize: fontSize,
+                ),
+              ),
+              'highlight': HighlightBuilder(context),
+              'sub': SubSupBuilder(false),
+              'sup': SubSupBuilder(true),
+              'anchor': AnchorBuilder(_anchorKeys),
               'code': CodeElementBuilder(
                 isDark: isDark,
                 fontSize: fontSize,
                 sirenColors: sirenColors,
               ),
-              'anchor': AnchorBuilder(_anchorKeys),
               // Custom heading builders for the bottom border
               'h1': HeadingElementBuilder(
                 fontSize: fontSize * 2.25,
