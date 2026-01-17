@@ -9,6 +9,7 @@ import 'package:markdown/markdown.dart' as md;
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 import 'app_state.dart';
 import 'mermaid_diagram.dart';
 import 'markdown_extensions.dart';
@@ -325,12 +326,9 @@ class _RenderedViewState extends State<RenderedView> {
               ),
 
               // Code block decoration (wrapper around HighlightView)
-              codeblockDecoration: BoxDecoration(
-                color: sirenColors.codeBg, // --bg-code
-                border: Border.all(
-                  color: sirenColors.divider!,
-                ), // --color-border
-                borderRadius: BorderRadius.circular(6),
+              // Disable default decoration as it is handled by the custom builder
+              codeblockDecoration: const BoxDecoration(
+                color: Colors.transparent,
               ),
 
               // Tables
@@ -577,23 +575,12 @@ class CodeElementBuilder extends MarkdownElementBuilder {
           ? SirenTheme.showcaseDarkTheme
           : SirenTheme.showcaseLightTheme;
 
-      return Container(
-        margin: const EdgeInsets.symmetric(
-          vertical: 12.0,
-        ), // margin-bottom: 1.5em (approx)
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          color: sirenColors.codeBg,
-          border: Border.all(color: sirenColors.divider!),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: HighlightView(
-          element.textContent,
-          language: language,
-          theme: theme,
-          padding: const EdgeInsets.all(16),
-          textStyle: GoogleFonts.firaCode(fontSize: fontSize * 0.9),
-        ),
+      return _CodeBlockView(
+        code: element.textContent,
+        language: language,
+        theme: theme,
+        sirenColors: sirenColors,
+        fontSize: fontSize,
       );
     } else {
       // Inline code styling
@@ -618,5 +605,118 @@ class CodeElementBuilder extends MarkdownElementBuilder {
         ),
       );
     }
+  }
+}
+
+class _CodeBlockView extends StatelessWidget {
+  final String code;
+  final String language;
+  final Map<String, TextStyle> theme;
+  final SirenColors sirenColors;
+  final double fontSize;
+
+  const _CodeBlockView({
+    required this.code,
+    required this.language,
+    required this.theme,
+    required this.sirenColors,
+    required this.fontSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Remove trailing newline which often comes from markdown parsing
+    final cleanCode = code.endsWith('\n')
+        ? code.substring(0, code.length - 1)
+        : code;
+
+    // Use transparent background for the highlight view so selection is visible
+    final Map<String, TextStyle> transparentTheme = Map.from(theme);
+    if (transparentTheme.containsKey('root')) {
+      transparentTheme['root'] = transparentTheme['root']!.copyWith(
+        backgroundColor: Colors.transparent,
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 12.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        color: sirenColors.codeBg,
+        border: Border.all(color: sirenColors.divider!),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12.0,
+              vertical: 6.0,
+            ),
+            decoration: BoxDecoration(
+              color: sirenColors.sidebarBg,
+              border: Border(bottom: BorderSide(color: sirenColors.divider!)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (language.isNotEmpty)
+                  Text(
+                    language.toUpperCase(),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: sirenColors.iconColor,
+                    ),
+                  )
+                else
+                  const SizedBox(),
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: cleanCode));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Code copied to clipboard'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.copy_rounded,
+                          size: 14,
+                          color: sirenColors.iconColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Copy',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: sirenColors.iconColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          HighlightView(
+            cleanCode,
+            language: language,
+            theme: transparentTheme,
+            padding: const EdgeInsets.all(16),
+            textStyle: GoogleFonts.firaCode(fontSize: fontSize * 0.9),
+          ),
+        ],
+      ),
+    );
   }
 }

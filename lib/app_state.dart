@@ -220,10 +220,23 @@ class AppState extends ChangeNotifier {
     try {
       final file = File(path);
       _fileWatchers[path] = file
-          .watch(events: FileSystemEvent.modify)
+          .watch(events: FileSystemEvent.all)
           .listen(
             (event) {
-              _onFileModified(path);
+              if (event is FileSystemDeleteEvent) {
+                // Check if it was an atomic save (replace)
+                // We wait a brief moment to allow the new file to be in place
+                Future.delayed(const Duration(milliseconds: 200), () async {
+                  if (await File(path).exists()) {
+                    // It was replaced, restart watcher
+                    _stopWatching(path);
+                    _startWatching(path);
+                    _onFileModified(path);
+                  }
+                });
+              } else {
+                _onFileModified(path);
+              }
             },
             onError: (e) {
               debugPrint('Error watching file $path: $e');
