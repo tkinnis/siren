@@ -8,6 +8,8 @@ import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:watcher/watcher.dart';
 import 'package:window_manager/window_manager.dart';
+import 'watcher_service.dart';
+import 'markdown_processor.dart';
 
 class _PersistenceKeys {
   static const explorerRootPath = 'explorer_root_path';
@@ -37,8 +39,10 @@ class AppState extends ChangeNotifier {
   final List<String> _openFilePaths = [];
   int _activeTabIndex = -1;
   final Map<String, String> _fileContents = {};
+  final Map<String, String> _processedContents = {};
   final Map<String, double> _scrollOffsets = {};
-  final Map<String, StreamSubscription<WatchEvent>> _fileWatchers = {};
+  
+  late final WatcherService _watcherService;
 
   // File Explorer
   String? _explorerRootPath;
@@ -61,6 +65,17 @@ class AppState extends ChangeNotifier {
   _navigationController = StreamController.broadcast();
   Stream<({int lineNumber, String text})> get navigationStream =>
       _navigationController.stream;
+
+  final StreamController<String> _directoryChangeController = StreamController.broadcast();
+  Stream<String> get directoryChangeStream => _directoryChangeController.stream;
+
+  // History
+  final List<String> _navigationHistory = [];
+  int _historyIndex = -1;
+  bool _isNavigatingHistory = false;
+  
+  bool get canGoBack => _historyIndex > 0;
+  bool get canGoForward => _historyIndex < _navigationHistory.length - 1;
 
   // Getters
   List<String> get openFilePaths => List.unmodifiable(_openFilePaths);
@@ -87,6 +102,73 @@ class AppState extends ChangeNotifier {
     return '';
   }
 
+  String get currentProcessedContent {
+    final path = currentFilePath;
+    if (path != null) {
+      return _processedContents[path] ?? '';
+    }
+    return '';
+  }
+
+  String getFileContent(String path) {
+    return _fileContents[path] ?? '';
+  }
+
+  String getProcessedContent(String path) {
+    return _processedContents[path] ?? '';
+  }
+
+  void _recordHistory(String path) {
+    if (_isNavigatingHistory) return;
+
+    // If we are not at the end of history, truncate forward history
+    if (_historyIndex < _navigationHistory.length - 1) {
+      _navigationHistory.removeRange(
+        _historyIndex + 1,
+        _navigationHistory.length,
+      );
+    }
+
+    // Don't record duplicates if we are already at this path
+    if (_navigationHistory.isNotEmpty &&
+        _navigationHistory.last == path) {
+      return;
+    }
+
+    _navigationHistory.add(path);
+    _historyIndex = _navigationHistory.length - 1;
+    notifyListeners();
+  }
+
+  void goBack() {
+    if (!canGoBack) return;
+    _historyIndex--;
+    _navigateToHistoryItem();
+  }
+
+  void goForward() {
+    if (!canGoForward) return;
+    _historyIndex++;
+    _navigateToHistoryItem();
+  }
+
+  void _navigateToHistoryItem() {
+    final path = _navigationHistory[_historyIndex];
+    _isNavigatingHistory = true;
+    
+    // Check if file is already open
+    final index = _openFilePaths.indexOf(path);
+    if (index != -1) {
+      setActiveTab(index);
+    } else {
+      // If file was closed, re-open it
+      openFile(path);
+    }
+    
+    _isNavigatingHistory = false;
+    notifyListeners();
+  }
+
   static const MethodChannel _channel = MethodChannel(
     'com.example.siren/files',
   );
@@ -103,6 +185,31 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _initialize() async {
+    _watcherService = WatcherService(
+      onFileEvent: (path, type) {
+        if (type == ChangeType.REMOVE) {
+           // Atomic save handling: wait and see
+           Future.delayed(const Duration(milliseconds: 200), () async {
+             if (await File(path).exists()) {
+               _stopWatching(path);
+               _startWatching(path);
+               _onFileModified(path);
+             }
+           });
+        } else if (type == ChangeType.MODIFY) {
+          _onFileModified(path);
+        }
+      },
+      onDirectoryEvent: (path) {
+        // AppState doesn't handle directory events directly currently,
+        // but if we move directory watching here later, we can.
+        // FileExplorer manages its own for now? No, we want centralized.
+        // But FileExplorer is a widget. We can expose a Stream from AppState for directory changes.
+        _directoryChangeController.add(path);
+      },
+    );
+    await _watcherService.init();
+
     // 1. Load Critical UI State (Fast, sync/prefs)
     _loadCriticalState();
 
@@ -177,7 +284,9 @@ class AppState extends ChangeNotifier {
       // Apply results to state on main thread
       for (final filePath in savedPaths) {
         if (loadedFiles.containsKey(filePath)) {
-          _fileContents[filePath] = loadedFiles[filePath]!;
+          final data = loadedFiles[filePath]!;
+          _fileContents[filePath] = data.raw;
+          _processedContents[filePath] = data.processed;
           _openFilePaths.add(filePath);
         }
       }
@@ -185,10 +294,13 @@ class AppState extends ChangeNotifier {
       // Update UI immediately so user sees content
       notifyListeners();
 
-      // Only watch the currently active file to avoid startup bottlenecks
-      if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
-        final activePath = _openFilePaths[_activeTabIndex];
-        _startWatching(activePath);
+      // Setup watchers in the background, staggering them to avoid UI jank
+      for (final filePath in savedPaths) {
+        if (loadedFiles.containsKey(filePath)) {
+          // Yield to the event loop before each watcher setup
+          await Future.delayed(Duration.zero);
+          _startWatching(filePath);
+        }
       }
     } catch (e) {
       debugPrint('Error loading files in background: $e');
@@ -210,24 +322,59 @@ class AppState extends ChangeNotifier {
   }
 
   /// Static method to run in the isolate. Reads multiple files in parallel.
-  static Future<Map<String, String>> _readFilesFromDisk(
+  static Future<Map<String, ({String raw, String processed})>> _readFilesFromDisk(
     List<String> paths,
   ) async {
-    final Map<String, String> results = {};
+    final Map<String, ({String raw, String processed})> results = {};
     await Future.wait(
       paths.map((path) async {
         try {
           final file = File(path);
           if (await file.exists()) {
-            results[path] = await file.readAsString();
+            final raw = await file.readAsString();
+            final processed = MarkdownProcessor.injectAnchors(raw);
+            results[path] = (raw: raw, processed: processed);
           }
         } catch (e) {
           // Ignore individual file errors in the isolate
-          // The main thread just won't receive content for this file
         }
       }),
     );
     return results;
+  }
+
+  Future<List<String>> findAllFiles() async {
+    final root = _explorerRootPath;
+    if (root == null) return [];
+
+    try {
+      return await Isolate.run(() => _scanDirectory(root));
+    } catch (e) {
+      debugPrint('Error scanning files: $e');
+      return [];
+    }
+  }
+
+  static List<String> _scanDirectory(String rootPath) {
+    final dir = Directory(rootPath);
+    final List<String> files = [];
+    if (!dir.existsSync()) return [];
+
+    try {
+      final entities = dir.listSync(recursive: true, followLinks: false);
+      for (final entity in entities) {
+        if (entity is File) {
+          final name = path.basename(entity.path);
+          if (name.startsWith('.')) continue; // Skip hidden files
+          if (name.endsWith('.md') || name.endsWith('.markdown')) {
+            files.add(entity.path);
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore access errors
+    }
+    return files;
   }
 
   Future<void> _persistState() async {
@@ -271,38 +418,19 @@ class AppState extends ChangeNotifier {
   }
 
   void _startWatching(String path) {
-    if (_fileWatchers.containsKey(path)) return;
-
-    try {
-      final watcher = FileWatcher(path);
-      _fileWatchers[path] = watcher.events.listen(
-        (event) {
-          if (event.type == ChangeType.REMOVE) {
-            // File was deleted or atomic save started
-            // We'll try to re-establish watch after a short delay
-            Future.delayed(const Duration(milliseconds: 200), () async {
-              if (await File(path).exists()) {
-                _stopWatching(path);
-                _startWatching(path);
-                _onFileModified(path);
-              }
-            });
-          } else if (event.type == ChangeType.MODIFY) {
-            _onFileModified(path);
-          }
-        },
-        onError: (e) {
-          debugPrint('Error watching file $path: $e');
-        },
-      );
-    } catch (e) {
-      debugPrint('Failed to watch file $path: $e');
-    }
+    _watcherService.watchFile(path);
   }
 
   void _stopWatching(String path) {
-    _fileWatchers[path]?.cancel();
-    _fileWatchers.remove(path);
+    _watcherService.unwatchFile(path);
+  }
+
+  void watchDirectory(String path) {
+    _watcherService.watchDirectory(path);
+  }
+
+  void unwatchDirectory(String path) {
+    _watcherService.unwatchDirectory(path);
   }
 
   Future<void> _onFileModified(String path) async {
@@ -311,10 +439,18 @@ class AppState extends ChangeNotifier {
     try {
       final file = File(path);
       if (await file.exists()) {
+        // Read raw content
         final content = await file.readAsString();
+        
+        // Process in background to avoid jank
+        final processed = await Isolate.run(
+          () => MarkdownProcessor.injectAnchors(content),
+        );
+
         // Only notify if content actually changed to avoid spurious rebuilds
         if (_fileContents[path] != content) {
           _fileContents[path] = content;
+          _processedContents[path] = processed;
           notifyListeners();
         }
       }
@@ -372,7 +508,13 @@ class AppState extends ChangeNotifier {
       final file = File(filePath);
       if (await file.exists()) {
         final content = await file.readAsString();
+        
+        final processed = await Isolate.run(
+          () => MarkdownProcessor.injectAnchors(content),
+        );
+
         _fileContents[filePath] = content;
+        _processedContents[filePath] = processed;
 
         // Stop watching previous active file
         if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
@@ -386,6 +528,7 @@ class AppState extends ChangeNotifier {
         // Start watching the new file
         _startWatching(filePath);
 
+        _recordHistory(filePath);
         _persistState();
       }
     } catch (e) {
@@ -441,15 +584,21 @@ class AppState extends ChangeNotifier {
       _activeTabIndex = index;
       final newPath = _openFilePaths[index];
 
-      // Start watching new tab
-      _startWatching(newPath);
-
-      // Refresh content immediately in case it changed while backgrounded
-      _onFileModified(newPath);
+      _recordHistory(newPath);
 
       notifyListeners();
       _revealInExplorer(newPath);
       _persistState();
+
+      // Defer watcher setup and content refresh to ensure instant UI response
+      Future.microtask(() {
+        if (_activeTabIndex == index) {
+          // Start watching new tab
+          _startWatching(newPath);
+          // Refresh content in case it changed while backgrounded
+          _onFileModified(newPath);
+        }
+      });
     }
   }
 
@@ -526,10 +675,8 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _navigationController.close();
-    for (final subscription in _fileWatchers.values) {
-      subscription.cancel();
-    }
-    _fileWatchers.clear();
+    _directoryChangeController.close();
+    _watcherService.dispose();
     explorerFocusNode.dispose();
     super.dispose();
   }

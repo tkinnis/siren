@@ -13,10 +13,12 @@ import 'package:flutter/services.dart';
 import 'app_state.dart';
 import 'mermaid_diagram.dart';
 import 'markdown_extensions.dart';
+import 'markdown_processor.dart';
 import 'theme.dart';
 
 class RenderedView extends StatefulWidget {
-  const RenderedView({super.key});
+  final String filePath;
+  const RenderedView({super.key, required this.filePath});
 
   @override
   State<RenderedView> createState() => _RenderedViewState();
@@ -36,6 +38,9 @@ class _RenderedViewState extends State<RenderedView> {
   @override
   void didUpdateWidget(RenderedView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.filePath != widget.filePath) {
+      _restoreScrollPosition();
+    }
   }
 
   @override
@@ -44,46 +49,37 @@ class _RenderedViewState extends State<RenderedView> {
     _navSubscription?.cancel();
     final appState = context.read<AppState>();
     _navSubscription = appState.navigationStream.listen((event) {
+      // Only scroll if we are the visible tab? 
+      // Actually, navigation events are usually for the active tab.
+      // But checking if we are visible is hard here without passing 'isVisible'.
+      // However, scrolling an invisible controller is harmless usually.
       if (event.text.isNotEmpty) {
-        final slug = _generateSlug(event.text);
+        final slug = MarkdownProcessor.generateSlug(event.text);
         _scrollToAnchor(slug);
       }
     });
   }
 
-  String _generateSlug(String text) {
-    return text
-        .toLowerCase()
-        .trim()
-        .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
-        .replaceAll(RegExp(r'\s+'), '-');
-  }
-
   void _restoreScrollPosition() {
     final appState = context.read<AppState>();
-    final path = appState.currentFilePath;
-    if (path != null) {
-      final offset = appState.getScrollOffset(path);
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(offset);
-      } else {
-        // Wait for attach
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
-            _scrollController.jumpTo(offset);
-          }
-        });
-      }
+    final path = widget.filePath;
+    final offset = appState.getScrollOffset(path);
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(offset);
+    } else {
+      // Wait for attach
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(offset);
+        }
+      });
     }
   }
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final appState = context.read<AppState>();
-    final path = appState.currentFilePath;
-    if (path != null) {
-      appState.setScrollOffset(path, _scrollController.offset);
-    }
+    appState.setScrollOffset(widget.filePath, _scrollController.offset);
   }
 
   void _scrollToAnchor(String fragment) {
@@ -95,8 +91,6 @@ class _RenderedViewState extends State<RenderedView> {
         curve: Curves.easeInOut,
         alignment: 0.0, // Top of the viewport
       );
-    } else {
-      debugPrint('Anchor not found: $fragment');
     }
   }
 
@@ -106,10 +100,7 @@ class _RenderedViewState extends State<RenderedView> {
     if (uri == null) return;
 
     final appState = context.read<AppState>();
-    final currentFilePath = appState.currentFilePath;
-    final basePath = currentFilePath != null
-        ? p.dirname(currentFilePath)
-        : null;
+    final basePath = p.dirname(widget.filePath);
 
     if (uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https')) {
       if (await canLaunchUrl(uri)) {
@@ -123,17 +114,15 @@ class _RenderedViewState extends State<RenderedView> {
       }
 
       // Local file navigation
-      if (basePath != null) {
-        String filePath = uri.path;
-        if (filePath.isEmpty) return;
+      String filePath = uri.path;
+      if (filePath.isEmpty) return;
 
-        var fullPath = p.join(basePath, filePath);
-        fullPath = p.normalize(fullPath);
-        final file = File(fullPath);
-        if (await file.exists()) {
-          if (await FileSystemEntity.isFile(fullPath)) {
-            appState.openFile(fullPath);
-          }
+      var fullPath = p.join(basePath, filePath);
+      fullPath = p.normalize(fullPath);
+      final file = File(fullPath);
+      if (await file.exists()) {
+        if (await FileSystemEntity.isFile(fullPath)) {
+          appState.openFile(fullPath);
         }
       }
     }
@@ -148,21 +137,22 @@ class _RenderedViewState extends State<RenderedView> {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
-    final content = appState.currentContent;
-    final fontSize = appState.fontSize;
+    // Select ONLY the content for this specific file.
+    // This prevents rebuilds when other tabs change or active tab changes.
+    final content = context.select<AppState, String>(
+      (state) => state.getProcessedContent(widget.filePath),
+    );
+    
+    // Select font size (global preference)
+    final fontSize = context.select<AppState, double>((state) => state.fontSize);
+    
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final sirenColors = theme.extension<SirenColors>()!;
-    final currentFilePath = appState.currentFilePath;
-    final basePath = currentFilePath != null
-        ? p.dirname(currentFilePath)
-        : null;
+    final basePath = p.dirname(widget.filePath);
 
     // Clear keys on rebuild as content might have changed
     _anchorKeys.clear();
-
-    final processedContent = _injectAnchors(content);
 
     void onTapLink(String text, String? href, String title) =>
         _handleTapLink(text, href, title);
@@ -179,7 +169,7 @@ class _RenderedViewState extends State<RenderedView> {
         padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
         child: SelectionArea(
           child: MarkdownBody(
-            data: processedContent,
+            data: content,
             softLineBreak: true,
             onTapLink: onTapLink,
             // ignore: deprecated_member_use
@@ -388,26 +378,6 @@ class _RenderedViewState extends State<RenderedView> {
         ),
       ),
     );
-  }
-
-  String _injectAnchors(String markdown) {
-    final buffer = StringBuffer();
-    final lines = markdown.split('\n');
-    bool inCodeBlock = false;
-
-    for (final line in lines) {
-      if (line.trim().startsWith('```')) {
-        inCodeBlock = !inCodeBlock;
-      }
-
-      if (!inCodeBlock && line.startsWith('#')) {
-        final text = line.replaceFirst(RegExp(r'^#+\s*'), '');
-        final slug = _generateSlug(text);
-        buffer.writeln('[[@anchor:$slug]]');
-      }
-      buffer.writeln(line);
-    }
-    return buffer.toString();
   }
 }
 

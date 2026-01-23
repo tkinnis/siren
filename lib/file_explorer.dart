@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
-import 'package:watcher/watcher.dart';
 import 'app_state.dart';
 
 class ExplorerItem {
@@ -41,10 +39,8 @@ class _FileExplorerState extends State<FileExplorer> {
   double _maxContentWidth = 300;
   static const double _itemHeight = 27.0;
 
-  StreamSubscription<WatchEvent>? _watchSubscription;
+  StreamSubscription<String>? _dirChangeSubscription;
   Timer? _debounceTimer;
-  Isolate? _watcherIsolate;
-  ReceivePort? _watcherReceivePort;
 
   @override
   void initState() {
@@ -53,10 +49,8 @@ class _FileExplorerState extends State<FileExplorer> {
 
   @override
   void dispose() {
-    _watchSubscription?.cancel();
+    _dirChangeSubscription?.cancel();
     _debounceTimer?.cancel();
-    _watcherIsolate?.kill(priority: Isolate.immediate);
-    _watcherReceivePort?.close();
     _verticalScrollController.dispose();
     _horizontalScrollController.dispose();
     super.dispose();
@@ -65,55 +59,14 @@ class _FileExplorerState extends State<FileExplorer> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_initialized) {
-      final appState = Provider.of<AppState>(context, listen: false);
-      appState.setExplorerRevealCallback(_revealPath);
-      _initialized = true;
-      _updateTree(appState.explorerRootPath);
-    } else {
-      // Watch for root changes
-      final appState = Provider.of<AppState>(context);
-      if (appState.explorerRootPath != _currentRoot) {
-        _updateTree(appState.explorerRootPath);
-      }
-    }
-  }
-
-  Future<void> _updateTree(String? newRoot) async {
-    if (newRoot == _currentRoot) return;
-    _currentRoot = newRoot;
-    _expandedPaths.clear();
-    _flatList.clear();
-    _selectedIndex = -1;
-
-    // Cancel existing watcher
-    await _watchSubscription?.cancel();
-    _watchSubscription = null;
-
-    if (newRoot != null) {
-      _expandedPaths.add(newRoot); // Always expand root
-      await _rebuildFlatList();
-      _setupWatcher(newRoot);
-    } else {
-      setState(() {});
-    }
-  }
-
-  void _setupWatcher(String path) async {
-    _debounceTimer?.cancel();
-    _watcherIsolate?.kill(priority: Isolate.immediate);
-    _watcherReceivePort?.close();
-
-    _watcherReceivePort = ReceivePort();
+    final appState = Provider.of<AppState>(context);
     
-    try {
-      _watcherIsolate = await Isolate.spawn(
-        _watcherEntryPoint,
-        _WatcherArgs(path, _watcherReceivePort!.sendPort),
-      );
-
-      _watcherReceivePort!.listen((message) {
-        // Debounce updates to avoid flickering on mass operations
+    if (!_initialized) {
+      appState.setExplorerRevealCallback(_revealPath);
+      
+      // Listen for directory changes from the unified watcher service
+      _dirChangeSubscription = appState.directoryChangeStream.listen((path) {
+        // Debounce updates
         _debounceTimer?.cancel();
         _debounceTimer = Timer(const Duration(milliseconds: 200), () {
           if (mounted) {
@@ -121,21 +74,38 @@ class _FileExplorerState extends State<FileExplorer> {
           }
         });
       });
-    } catch (e) {
-      debugPrint("Failed to set up directory watcher isolate: $e");
+
+      _initialized = true;
+      _updateTree(appState.explorerRootPath);
+    } else {
+      if (appState.explorerRootPath != _currentRoot) {
+        _updateTree(appState.explorerRootPath);
+      }
     }
   }
 
-  static void _watcherEntryPoint(_WatcherArgs args) {
-    try {
-      final watcher = DirectoryWatcher(args.path);
-      watcher.events.listen((event) {
-        args.sendPort.send(event.type);
-      }, onError: (e) {
-        debugPrint("Watcher isolate error: $e");
-      });
-    } catch (e) {
-      debugPrint("Watcher isolate setup error: $e");
+  Future<void> _updateTree(String? newRoot) async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    
+    if (newRoot == _currentRoot) return;
+    
+    // Unwatch old root
+    if (_currentRoot != null) {
+      appState.unwatchDirectory(_currentRoot!);
+    }
+
+    _currentRoot = newRoot;
+    _expandedPaths.clear();
+    _flatList.clear();
+    _selectedIndex = -1;
+
+    if (newRoot != null) {
+      _expandedPaths.add(newRoot); // Always expand root
+      await _rebuildFlatList();
+      // Watch new root
+      appState.watchDirectory(newRoot);
+    } else {
+      setState(() {});
     }
   }
 
@@ -567,11 +537,4 @@ class _FileExplorerState extends State<FileExplorer> {
       },
     );
   }
-}
-
-class _WatcherArgs {
-  final String path;
-  final SendPort sendPort;
-
-  _WatcherArgs(this.path, this.sendPort);
 }

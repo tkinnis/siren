@@ -12,6 +12,7 @@ import 'sidebar.dart';
 import 'raw_view.dart';
 import 'rendered_view.dart';
 import 'theme.dart';
+import 'file_search_modal.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -282,6 +283,18 @@ class _HomeScreenState extends State<HomeScreen> {
           const SingleActivator(LogicalKeyboardKey.keyB, meta: true): () {
             appState.toggleExplorerVisibility();
           },
+          const SingleActivator(LogicalKeyboardKey.keyP, meta: true): () {
+            showDialog(
+              context: context,
+              builder: (context) => const FileSearchModal(),
+            );
+          },
+          const SingleActivator(LogicalKeyboardKey.bracketLeft, meta: true): () {
+            appState.goBack();
+          },
+          const SingleActivator(LogicalKeyboardKey.bracketRight, meta: true): () {
+            appState.goForward();
+          },
         },
         child: Focus(
           autofocus: true,
@@ -354,14 +367,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ? const Center(
                                         child: CircularProgressIndicator(),
                                       )
-                                    : appState.activeTabIndex == -1
+                                    : appState.openFilePaths.isEmpty
                                     ? _buildEmptyState(context)
-                                    : appState.isRenderedView
-                                    ? RenderedView(
-                                        key: ValueKey(appState.currentFilePath),
-                                      )
-                                    : MarkdownRawView(
-                                        key: ValueKey(appState.currentFilePath),
+                                    : IndexedStack(
+                                        index: appState.activeTabIndex,
+                                        children: List.generate(
+                                          appState.openFilePaths.length,
+                                          (index) => _LazyTab(
+                                            isVisible:
+                                                appState.activeTabIndex ==
+                                                index,
+                                            child: _TabContent(
+                                              filePath:
+                                                  appState.openFilePaths[index],
+                                            ),
+                                          ),
+                                        ),
                                       ),
                               ),
                             ],
@@ -404,7 +425,24 @@ class _HomeScreenState extends State<HomeScreen> {
           Positioned(
             left: 80, // Space for traffic lights
             right: 180, // Space for action buttons
-            child: _Breadcrumbs(filePath: appState.currentFilePath),
+            child: Row(
+              children: [
+                _DesktopIconButton(
+                  icon: Icons.arrow_back,
+                  tooltip: 'Go Back (Cmd+[)',
+                  onPressed: appState.goBack,
+                ),
+                _DesktopIconButton(
+                  icon: Icons.arrow_forward,
+                  tooltip: 'Go Forward (Cmd+])',
+                  onPressed: appState.goForward,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _Breadcrumbs(filePath: appState.currentFilePath),
+                ),
+              ],
+            ),
           ),
           // Action Buttons on the Right
           Positioned(
@@ -541,6 +579,67 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+}
+
+class _LazyTab extends StatefulWidget {
+  final bool isVisible;
+  final Widget child;
+
+  const _LazyTab({required this.isVisible, required this.child});
+
+  @override
+  State<_LazyTab> createState() => _LazyTabState();
+}
+
+class _LazyTabState extends State<_LazyTab> {
+  bool _hasBeenVisible = false;
+
+  @override
+  void didUpdateWidget(_LazyTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isVisible && !_hasBeenVisible) {
+      _hasBeenVisible = true;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isVisible) {
+      _hasBeenVisible = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_hasBeenVisible) {
+      return const SizedBox.shrink();
+    }
+    return widget.child;
+  }
+}
+
+class _TabContent extends StatelessWidget {
+  final String filePath;
+
+  const _TabContent({required this.filePath});
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    
+    // Actually, IndexedStack children order matters.
+    
+    return appState.isRenderedView
+        ? RenderedView(
+            key: ValueKey('rendered_$filePath'),
+            filePath: filePath,
+          )
+        : MarkdownRawView(
+            key: ValueKey('raw_$filePath'),
+            filePath: filePath,
+          );
   }
 }
 

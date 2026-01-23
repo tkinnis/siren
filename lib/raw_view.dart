@@ -8,7 +8,8 @@ import 'package:provider/provider.dart';
 import 'app_state.dart';
 
 class MarkdownRawView extends StatefulWidget {
-  const MarkdownRawView({super.key});
+  final String filePath;
+  const MarkdownRawView({super.key, required this.filePath});
 
   @override
   State<MarkdownRawView> createState() => _MarkdownRawViewState();
@@ -22,6 +23,14 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
   void initState() {
     super.initState();
     _restoreScrollPosition();
+  }
+
+  @override
+  void didUpdateWidget(MarkdownRawView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filePath != widget.filePath) {
+      _restoreScrollPosition();
+    }
   }
 
   @override
@@ -48,25 +57,20 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
 
   void _restoreScrollPosition() {
     final appState = context.read<AppState>();
-    final path = appState.currentFilePath;
-    if (path != null) {
-      final offset = appState.getScrollOffset(path);
-      // Wait for build to attach client
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.jumpTo(offset);
-        }
-      });
-    }
+    final path = widget.filePath;
+    final offset = appState.getScrollOffset(path);
+    // Wait for build to attach client
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(offset);
+      }
+    });
   }
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final appState = context.read<AppState>();
-    final path = appState.currentFilePath;
-    if (path != null) {
-      appState.setScrollOffset(path, _scrollController.offset);
-    }
+    appState.setScrollOffset(widget.filePath, _scrollController.offset);
   }
 
   // Helper to convert highlighter nodes to TextSpan
@@ -107,9 +111,10 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
-    final content = appState.currentContent;
-    final fontSize = appState.fontSize;
+    final content = context.select<AppState, String>(
+      (state) => state.getFileContent(widget.filePath),
+    );
+    final fontSize = context.select<AppState, double>((state) => state.fontSize);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Use standard themes directly instead of SirenTheme.showcase...
