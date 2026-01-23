@@ -27,16 +27,14 @@ class _FileSearchModalState extends State<FileSearchModal> {
     _controller.addListener(_filterFiles);
   }
 
-  Future<void> _loadFiles() async {
+  void _loadFiles() {
     final appState = Provider.of<AppState>(context, listen: false);
-    final files = await appState.findAllFiles();
-    if (mounted) {
-      setState(() {
-        _allFiles = files;
-        _filteredFiles = files;
-        _isLoading = false;
-      });
-    }
+    final files = appState.knownFiles;
+    setState(() {
+      _allFiles = files;
+      _filteredFiles = files;
+      _isLoading = false;
+    });
   }
 
   void _filterFiles() {

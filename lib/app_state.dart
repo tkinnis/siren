@@ -10,6 +10,7 @@ import 'package:watcher/watcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'watcher_service.dart';
 import 'markdown_processor.dart';
+import 'file_indexer.dart';
 
 class _PersistenceKeys {
   static const explorerRootPath = 'explorer_root_path';
@@ -46,6 +47,7 @@ class AppState extends ChangeNotifier {
 
   // File Explorer
   String? _explorerRootPath;
+  List<String> _knownFiles = []; // Persistent index for Cmd+P
 
   // View Settings
   bool _isRenderedView = true;
@@ -75,6 +77,8 @@ class AppState extends ChangeNotifier {
   int _historyIndex = -1;
   bool _isNavigatingHistory = false;
   
+  Timer? _indexDebounceTimer;
+
   bool get canGoBack => _historyIndex > 0;
   bool get canGoForward => _historyIndex < _navigationHistory.length - 1;
 
@@ -82,6 +86,7 @@ class AppState extends ChangeNotifier {
   List<String> get openFilePaths => List.unmodifiable(_openFilePaths);
   int get activeTabIndex => _activeTabIndex;
   String? get explorerRootPath => _explorerRootPath;
+  List<String> get knownFiles => List.unmodifiable(_knownFiles);
   bool get isRenderedView => _isRenderedView;
   double get fontSize => _fontSize;
   bool get isLoading => _isLoading;
@@ -117,6 +122,15 @@ class AppState extends ChangeNotifier {
 
   String getProcessedContent(String path) {
     return _processedContents[path] ?? '';
+  }
+
+  void _debounceIndexing() {
+    _indexDebounceTimer?.cancel();
+    _indexDebounceTimer = Timer(const Duration(seconds: 2), () {
+      if (_explorerRootPath != null) {
+        _startIndexing(_explorerRootPath!);
+      }
+    });
   }
 
   void _recordHistory(String path) {
@@ -207,6 +221,11 @@ class AppState extends ChangeNotifier {
         // FileExplorer manages its own for now? No, we want centralized.
         // But FileExplorer is a widget. We can expose a Stream from AppState for directory changes.
         _directoryChangeController.add(path);
+        
+        // Re-index on directory changes (add/remove file/folder)
+        // Debounce handled by caller? No, this is raw.
+        // We should debounce re-indexing.
+        _debounceIndexing();
       },
     );
     await _watcherService.init();
@@ -235,6 +254,10 @@ class AppState extends ChangeNotifier {
       }
     }
 
+    if (_explorerRootPath != null) {
+      _startIndexing(_explorerRootPath!);
+    }
+
     _fontSize = _prefs.getDouble(_PersistenceKeys.fontSize) ?? 14.0;
     _isRenderedView = _prefs.getBool(_PersistenceKeys.isRenderedView) ?? true;
     _sidebarWidth = _prefs.getDouble(_PersistenceKeys.sidebarWidth) ?? 250.0;
@@ -260,6 +283,18 @@ class AppState extends ChangeNotifier {
       } catch (e) {
         debugPrint('Error loading window bounds: $e');
       }
+    }
+  }
+
+  Future<void> _startIndexing(String rootPath) async {
+    try {
+      final files = await Isolate.run(() => FileIndexer.scan(rootPath));
+      _knownFiles = files;
+      // Sort for consistent display
+      _knownFiles.sort((a, b) => path.basename(a).toLowerCase().compareTo(path.basename(b).toLowerCase()));
+      notifyListeners(); // Notify search modal if open
+    } catch (e) {
+      debugPrint('Error indexing files: $e');
     }
   }
 
@@ -342,40 +377,6 @@ class AppState extends ChangeNotifier {
       }),
     );
     return results;
-  }
-
-  Future<List<String>> findAllFiles() async {
-    final root = _explorerRootPath;
-    if (root == null) return [];
-
-    try {
-      return await Isolate.run(() => _scanDirectory(root));
-    } catch (e) {
-      debugPrint('Error scanning files: $e');
-      return [];
-    }
-  }
-
-  static List<String> _scanDirectory(String rootPath) {
-    final dir = Directory(rootPath);
-    final List<String> files = [];
-    if (!dir.existsSync()) return [];
-
-    try {
-      final entities = dir.listSync(recursive: true, followLinks: false);
-      for (final entity in entities) {
-        if (entity is File) {
-          final name = path.basename(entity.path);
-          if (name.startsWith('.')) continue; // Skip hidden files
-          if (name.endsWith('.md') || name.endsWith('.markdown')) {
-            files.add(entity.path);
-          }
-        }
-      }
-    } catch (e) {
-      // Ignore access errors
-    }
-    return files;
   }
 
   Future<void> _persistState() async {
@@ -476,6 +477,7 @@ class AppState extends ChangeNotifier {
       final String? directoryPath = await getDirectoryPath();
       if (directoryPath != null) {
         _explorerRootPath = directoryPath;
+        _startIndexing(directoryPath);
         notifyListeners();
         _persistState();
       }
@@ -487,6 +489,7 @@ class AppState extends ChangeNotifier {
   Future<void> openFileAndSetDirectory(String filePath) async {
     await openFile(filePath);
     _explorerRootPath = path.dirname(filePath);
+    _startIndexing(_explorerRootPath!);
     notifyListeners();
     _persistState();
   }
