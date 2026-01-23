@@ -112,6 +112,19 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             PlatformMenuItem(
+              label: 'Go to File...',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyP,
+                meta: true,
+              ),
+              onSelected: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => const FileSearchModal(),
+                );
+              },
+            ),
+            PlatformMenuItem(
               label: 'Close Tab',
               shortcut: const SingleActivator(
                 LogicalKeyboardKey.keyW,
@@ -123,11 +136,61 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               },
             ),
+            PlatformMenuItem(
+              label: 'Close All Tabs',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyW,
+                meta: true,
+                shift: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().closeAllFiles();
+                }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Reopen Closed Tab',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyT,
+                meta: true,
+                shift: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().reopenClosedTab();
+                }
+              },
+            ),
           ],
         ),
         PlatformMenu(
           label: 'View',
           menus: [
+            PlatformMenuItem(
+              label: 'Back',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.bracketLeft,
+                meta: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().goBack();
+                }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Forward',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.bracketRight,
+                meta: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().goForward();
+                }
+              },
+            ),
             PlatformMenuItem(
               label: appState.isExplorerVisible
                   ? 'Hide Sidebar'
@@ -233,6 +296,12 @@ class _HomeScreenState extends State<HomeScreen> {
           const SingleActivator(LogicalKeyboardKey.keyW, meta: true): () {
             appState.closeCurrentFile();
           },
+          const SingleActivator(LogicalKeyboardKey.keyW, meta: true, shift: true): () {
+            appState.closeAllFiles();
+          },
+          const SingleActivator(LogicalKeyboardKey.keyT, meta: true, shift: true): () {
+            appState.reopenClosedTab();
+          },
           const SingleActivator(LogicalKeyboardKey.keyO, meta: true): () async {
             const XTypeGroup typeGroup = XTypeGroup(
               label: 'Markdown',
@@ -295,6 +364,16 @@ class _HomeScreenState extends State<HomeScreen> {
           const SingleActivator(LogicalKeyboardKey.bracketRight, meta: true): () {
             appState.goForward();
           },
+          // Jump to tab 1-9
+          const SingleActivator(LogicalKeyboardKey.digit1, meta: true): () => appState.setActiveTab(0),
+          const SingleActivator(LogicalKeyboardKey.digit2, meta: true): () => appState.setActiveTab(1),
+          const SingleActivator(LogicalKeyboardKey.digit3, meta: true): () => appState.setActiveTab(2),
+          const SingleActivator(LogicalKeyboardKey.digit4, meta: true): () => appState.setActiveTab(3),
+          const SingleActivator(LogicalKeyboardKey.digit5, meta: true): () => appState.setActiveTab(4),
+          const SingleActivator(LogicalKeyboardKey.digit6, meta: true): () => appState.setActiveTab(5),
+          const SingleActivator(LogicalKeyboardKey.digit7, meta: true): () => appState.setActiveTab(6),
+          const SingleActivator(LogicalKeyboardKey.digit8, meta: true): () => appState.setActiveTab(7),
+          const SingleActivator(LogicalKeyboardKey.digit9, meta: true): () => appState.setActiveTab(8),
         },
         child: Focus(
           autofocus: true,

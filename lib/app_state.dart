@@ -71,6 +71,7 @@ class AppState extends ChangeNotifier {
 
   // History
   final List<String> _navigationHistory = [];
+  final List<String> _closedTabs = [];
   int _historyIndex = -1;
   bool _isNavigatingHistory = false;
   
@@ -543,6 +544,11 @@ class AppState extends ChangeNotifier {
     final index = _openFilePaths.indexOf(filePath);
     if (index == -1) return;
 
+    _closedTabs.add(filePath);
+    if (_closedTabs.length > 20) {
+      _closedTabs.removeAt(0);
+    }
+
     _openFilePaths.removeAt(index);
     _fileContents.remove(filePath);
     _scrollOffsets.remove(filePath);
@@ -565,6 +571,48 @@ class AppState extends ChangeNotifier {
 
     notifyListeners();
     _persistState();
+  }
+
+  void closeAllFiles() {
+    if (_openFilePaths.isEmpty) return;
+    
+    // Add all to closed history
+    for (final path in _openFilePaths) {
+      _closedTabs.add(path);
+    }
+    // Trim history
+    if (_closedTabs.length > 20) {
+      _closedTabs.removeRange(0, _closedTabs.length - 20);
+    }
+
+    // Cleanup watchers
+    for (final path in _openFilePaths) {
+      _stopWatching(path);
+      _fileContents.remove(path);
+      _processedContents.remove(path);
+      _scrollOffsets.remove(path);
+    }
+
+    _openFilePaths.clear();
+    _activeTabIndex = -1;
+    notifyListeners();
+    _persistState();
+  }
+
+  void closeOtherFiles() {
+    final activePath = currentFilePath;
+    if (activePath == null) return;
+
+    final toClose = _openFilePaths.where((p) => p != activePath).toList();
+    for (final path in toClose) {
+      closeFile(path); // This handles history and cleanup
+    }
+  }
+
+  void reopenClosedTab() {
+    if (_closedTabs.isEmpty) return;
+    final path = _closedTabs.removeLast();
+    openFile(path);
   }
 
   void closeCurrentFile() {
