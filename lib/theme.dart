@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class SirenTheme {
   // Light Theme Tokens
@@ -38,7 +37,10 @@ class SirenTheme {
     0xFF00d4aa,
   ); // --color-quote-border
 
-  static ThemeData get light {
+  static final ThemeData light = _buildLightTheme();
+  static final ThemeData dark = _buildDarkTheme();
+
+  static ThemeData _buildLightTheme() {
     final base = ThemeData.light(useMaterial3: true);
     return base.copyWith(
       scaffoldBackgroundColor: _lightBg,
@@ -51,9 +53,11 @@ class SirenTheme {
         surfaceContainer: _lightSurfaceContainer,
       ),
       dividerTheme: const DividerThemeData(color: _lightDivider, thickness: 1),
-      textTheme: GoogleFonts.interTextTheme(
-        base.textTheme,
-      ).apply(bodyColor: _lightTextBody, displayColor: _lightTextBody),
+      textTheme: base.textTheme.apply(
+        bodyColor: _lightTextBody,
+        displayColor: _lightTextBody,
+        fontFamily: '.AppleSystemUIFont', // Explicitly prefer system font on macOS
+      ),
       iconTheme: const IconThemeData(color: _lightTextBody, size: 20),
       extensions: [
         const SirenColors(
@@ -73,7 +77,7 @@ class SirenTheme {
     );
   }
 
-  static ThemeData get dark {
+  static ThemeData _buildDarkTheme() {
     final base = ThemeData.dark(useMaterial3: true);
     return base.copyWith(
       scaffoldBackgroundColor: _darkBg,
@@ -86,9 +90,11 @@ class SirenTheme {
         surfaceContainer: _darkSurfaceContainer,
       ),
       dividerTheme: const DividerThemeData(color: _darkDivider, thickness: 1),
-      textTheme: GoogleFonts.interTextTheme(
-        base.textTheme,
-      ).apply(bodyColor: _darkTextBody, displayColor: _darkTextBody),
+      textTheme: base.textTheme.apply(
+        bodyColor: _darkTextBody,
+        displayColor: _darkTextBody,
+        fontFamily: '.AppleSystemUIFont',
+      ),
       iconTheme: const IconThemeData(color: _darkTextBody, size: 20),
       extensions: [
         const SirenColors(

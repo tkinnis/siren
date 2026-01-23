@@ -9,8 +9,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
-  // Create AppState with persistence before showing window
+  // Start loading state but don't block the first frame if we can help it
+  // However, since AppState.create is currently async and needed for MainApp,
+  // we'll keep it here but we've optimized its internal file loading.
   final appState = await AppState.create();
+
+  runApp(MainApp(appState: appState));
 
   WindowOptions windowOptions = const WindowOptions(
     size: Size(800, 600),
@@ -33,7 +37,6 @@ void main() async {
     );
   }
 
-  // Wait for the window manager to be ready before showing the window
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     if (appState.windowBounds != null) {
       await windowManager.setBounds(appState.windowBounds!);
@@ -41,8 +44,6 @@ void main() async {
     await windowManager.show();
     await windowManager.focus();
   });
-
-  runApp(MainApp(appState: appState));
 }
 
 class MainApp extends StatefulWidget {

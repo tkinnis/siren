@@ -21,6 +21,7 @@ dependencies:
   provider: ^6.1.5+1
   shared_preferences: ^2.5.4
   url_launcher: ^6.3.2
+  watcher: ^1.2.1
   webview_flutter: ^4.13.1
   webview_flutter_wkwebview: ^3.23.5
   window_manager: ^0.5.1

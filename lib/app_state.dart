@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:watcher/watcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 class _PersistenceKeys {
@@ -36,7 +38,7 @@ class AppState extends ChangeNotifier {
   int _activeTabIndex = -1;
   final Map<String, String> _fileContents = {};
   final Map<String, double> _scrollOffsets = {};
-  final Map<String, StreamSubscription<FileSystemEvent>> _fileWatchers = {};
+  final Map<String, StreamSubscription<WatchEvent>> _fileWatchers = {};
 
   // File Explorer
   String? _explorerRootPath;
@@ -92,7 +94,7 @@ class AppState extends ChangeNotifier {
   static Future<AppState> create() async {
     final prefs = await SharedPreferences.getInstance();
     final appState = AppState._internal(prefs);
-    await appState._loadPersistedState();
+    await appState._initialize();
     return appState;
   }
 
@@ -100,7 +102,16 @@ class AppState extends ChangeNotifier {
     _initChannel();
   }
 
-  Future<void> _loadPersistedState() async {
+  Future<void> _initialize() async {
+    // 1. Load Critical UI State (Fast, sync/prefs)
+    _loadCriticalState();
+
+    // 2. Load Non-Critical State (Background)
+    // We don't await this to let the UI show up immediately
+    _loadNonCriticalState();
+  }
+
+  void _loadCriticalState() {
     // Load explorer root (validate it still exists)
     final savedRoot = _prefs.getString(_PersistenceKeys.explorerRootPath);
     if (savedRoot != null &&
@@ -108,7 +119,6 @@ class AppState extends ChangeNotifier {
         Directory(savedRoot).existsSync()) {
       _explorerRootPath = savedRoot;
     } else {
-      // Fallback to current directory or home
       try {
         _explorerRootPath = Directory.current.path;
       } catch (e) {
@@ -117,14 +127,12 @@ class AppState extends ChangeNotifier {
       }
     }
 
-    // Load view preferences
     _fontSize = _prefs.getDouble(_PersistenceKeys.fontSize) ?? 14.0;
     _isRenderedView = _prefs.getBool(_PersistenceKeys.isRenderedView) ?? true;
     _sidebarWidth = _prefs.getDouble(_PersistenceKeys.sidebarWidth) ?? 250.0;
     _isExplorerVisible =
         _prefs.getBool(_PersistenceKeys.isExplorerVisible) ?? true;
 
-    // Load theme mode
     final themeIndex = _prefs.getInt(_PersistenceKeys.themeMode);
     if (themeIndex != null &&
         themeIndex >= 0 &&
@@ -132,7 +140,6 @@ class AppState extends ChangeNotifier {
       _themeMode = ThemeMode.values[themeIndex];
     }
 
-    // Load window bounds
     final boundsList = _prefs.getStringList(_PersistenceKeys.windowBounds);
     if (boundsList != null && boundsList.length == 4) {
       try {
@@ -146,32 +153,81 @@ class AppState extends ChangeNotifier {
         debugPrint('Error loading window bounds: $e');
       }
     }
+  }
 
-    // Load open files (validate they still exist)
+  Future<void> _loadNonCriticalState() async {
     final savedPaths =
         _prefs.getStringList(_PersistenceKeys.openFilePaths) ?? [];
-    for (final filePath in savedPaths) {
-      if (File(filePath).existsSync()) {
-        try {
-          final content = await File(filePath).readAsString();
-          _fileContents[filePath] = content;
+    final savedActiveIndex =
+        _prefs.getInt(_PersistenceKeys.activeTabIndex) ?? -1;
+
+    if (savedPaths.isEmpty) {
+      notifyListeners();
+      return;
+    }
+
+    try {
+      // Run file loading and decoding in a separate isolate.
+      // Isolate.run uses Isolate.exit() internally to transfer the result
+      // to the main thread without copying (zero-copy), eliminating UI jank.
+      final loadedFiles = await Isolate.run(
+        () => _readFilesFromDisk(savedPaths),
+      );
+
+      // Apply results to state on main thread
+      for (final filePath in savedPaths) {
+        if (loadedFiles.containsKey(filePath)) {
+          _fileContents[filePath] = loadedFiles[filePath]!;
           _openFilePaths.add(filePath);
-          _startWatching(filePath);
-        } catch (e) {
-          debugPrint('Error loading persisted file: $e');
         }
       }
+
+      // Update UI immediately so user sees content
+      notifyListeners();
+
+      // Only watch the currently active file to avoid startup bottlenecks
+      if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
+        final activePath = _openFilePaths[_activeTabIndex];
+        _startWatching(activePath);
+      }
+    } catch (e) {
+      debugPrint('Error loading files in background: $e');
     }
 
     // Restore active tab
-    final savedIndex = _prefs.getInt(_PersistenceKeys.activeTabIndex) ?? -1;
-    if (savedIndex >= 0 && savedIndex < _openFilePaths.length) {
-      _activeTabIndex = savedIndex;
+    if (savedActiveIndex >= 0 && savedActiveIndex < _openFilePaths.length) {
+      _activeTabIndex = savedActiveIndex;
     } else if (_openFilePaths.isNotEmpty) {
       _activeTabIndex = 0;
     }
 
+    // Ensure active tab is watched if not already
+    if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
+      _startWatching(_openFilePaths[_activeTabIndex]);
+    }
+
     notifyListeners();
+  }
+
+  /// Static method to run in the isolate. Reads multiple files in parallel.
+  static Future<Map<String, String>> _readFilesFromDisk(
+    List<String> paths,
+  ) async {
+    final Map<String, String> results = {};
+    await Future.wait(
+      paths.map((path) async {
+        try {
+          final file = File(path);
+          if (await file.exists()) {
+            results[path] = await file.readAsString();
+          }
+        } catch (e) {
+          // Ignore individual file errors in the isolate
+          // The main thread just won't receive content for this file
+        }
+      }),
+    );
+    return results;
   }
 
   Future<void> _persistState() async {
@@ -218,30 +274,27 @@ class AppState extends ChangeNotifier {
     if (_fileWatchers.containsKey(path)) return;
 
     try {
-      final file = File(path);
-      _fileWatchers[path] = file
-          .watch(events: FileSystemEvent.all)
-          .listen(
-            (event) {
-              if (event is FileSystemDeleteEvent) {
-                // Check if it was an atomic save (replace)
-                // We wait a brief moment to allow the new file to be in place
-                Future.delayed(const Duration(milliseconds: 200), () async {
-                  if (await File(path).exists()) {
-                    // It was replaced, restart watcher
-                    _stopWatching(path);
-                    _startWatching(path);
-                    _onFileModified(path);
-                  }
-                });
-              } else {
+      final watcher = FileWatcher(path);
+      _fileWatchers[path] = watcher.events.listen(
+        (event) {
+          if (event.type == ChangeType.REMOVE) {
+            // File was deleted or atomic save started
+            // We'll try to re-establish watch after a short delay
+            Future.delayed(const Duration(milliseconds: 200), () async {
+              if (await File(path).exists()) {
+                _stopWatching(path);
+                _startWatching(path);
                 _onFileModified(path);
               }
-            },
-            onError: (e) {
-              debugPrint('Error watching file $path: $e');
-            },
-          );
+            });
+          } else if (event.type == ChangeType.MODIFY) {
+            _onFileModified(path);
+          }
+        },
+        onError: (e) {
+          debugPrint('Error watching file $path: $e');
+        },
+      );
     } catch (e) {
       debugPrint('Failed to watch file $path: $e');
     }
@@ -320,10 +373,19 @@ class AppState extends ChangeNotifier {
       if (await file.exists()) {
         final content = await file.readAsString();
         _fileContents[filePath] = content;
+
+        // Stop watching previous active file
+        if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
+          _stopWatching(_openFilePaths[_activeTabIndex]);
+        }
+
         _openFilePaths.add(filePath);
         _activeTabIndex = _openFilePaths.length - 1;
         _revealInExplorer(filePath);
+
+        // Start watching the new file
         _startWatching(filePath);
+
         _persistState();
       }
     } catch (e) {
@@ -345,12 +407,17 @@ class AppState extends ChangeNotifier {
 
     if (_openFilePaths.isEmpty) {
       _activeTabIndex = -1;
-    } else if (_activeTabIndex >= index) {
-      // If we closed the active tab or a tab before it, adjust index
-      _activeTabIndex = (_activeTabIndex - 1).clamp(
-        0,
-        _openFilePaths.length - 1,
-      );
+    } else {
+      // If we closed the active tab, or a tab before it, adjust index
+      if (_activeTabIndex >= index) {
+        _activeTabIndex = (_activeTabIndex - 1).clamp(0, _openFilePaths.length - 1);
+      }
+      // Start watching the new active tab
+      if (_activeTabIndex >= 0) {
+        final newActivePath = _openFilePaths[_activeTabIndex];
+        _startWatching(newActivePath);
+        _onFileModified(newActivePath); // Refresh content
+      }
     }
 
     notifyListeners();
@@ -366,9 +433,22 @@ class AppState extends ChangeNotifier {
 
   void setActiveTab(int index) {
     if (index >= 0 && index < _openFilePaths.length) {
+      // Stop watching old tab (if any)
+      if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
+        _stopWatching(_openFilePaths[_activeTabIndex]);
+      }
+
       _activeTabIndex = index;
+      final newPath = _openFilePaths[index];
+
+      // Start watching new tab
+      _startWatching(newPath);
+
+      // Refresh content immediately in case it changed while backgrounded
+      _onFileModified(newPath);
+
       notifyListeners();
-      _revealInExplorer(_openFilePaths[index]);
+      _revealInExplorer(newPath);
       _persistState();
     }
   }

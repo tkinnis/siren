@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
+import 'package:watcher/watcher.dart';
 import 'app_state.dart';
 
 class ExplorerItem {
@@ -38,6 +41,11 @@ class _FileExplorerState extends State<FileExplorer> {
   double _maxContentWidth = 300;
   static const double _itemHeight = 27.0;
 
+  StreamSubscription<WatchEvent>? _watchSubscription;
+  Timer? _debounceTimer;
+  Isolate? _watcherIsolate;
+  ReceivePort? _watcherReceivePort;
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +53,10 @@ class _FileExplorerState extends State<FileExplorer> {
 
   @override
   void dispose() {
+    _watchSubscription?.cancel();
+    _debounceTimer?.cancel();
+    _watcherIsolate?.kill(priority: Isolate.immediate);
+    _watcherReceivePort?.close();
     _verticalScrollController.dispose();
     _horizontalScrollController.dispose();
     super.dispose();
@@ -74,11 +86,56 @@ class _FileExplorerState extends State<FileExplorer> {
     _flatList.clear();
     _selectedIndex = -1;
 
+    // Cancel existing watcher
+    await _watchSubscription?.cancel();
+    _watchSubscription = null;
+
     if (newRoot != null) {
       _expandedPaths.add(newRoot); // Always expand root
       await _rebuildFlatList();
+      _setupWatcher(newRoot);
     } else {
       setState(() {});
+    }
+  }
+
+  void _setupWatcher(String path) async {
+    _debounceTimer?.cancel();
+    _watcherIsolate?.kill(priority: Isolate.immediate);
+    _watcherReceivePort?.close();
+
+    _watcherReceivePort = ReceivePort();
+    
+    try {
+      _watcherIsolate = await Isolate.spawn(
+        _watcherEntryPoint,
+        _WatcherArgs(path, _watcherReceivePort!.sendPort),
+      );
+
+      _watcherReceivePort!.listen((message) {
+        // Debounce updates to avoid flickering on mass operations
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(milliseconds: 200), () {
+          if (mounted) {
+            _rebuildFlatList();
+          }
+        });
+      });
+    } catch (e) {
+      debugPrint("Failed to set up directory watcher isolate: $e");
+    }
+  }
+
+  static void _watcherEntryPoint(_WatcherArgs args) {
+    try {
+      final watcher = DirectoryWatcher(args.path);
+      watcher.events.listen((event) {
+        args.sendPort.send(event.type);
+      }, onError: (e) {
+        debugPrint("Watcher isolate error: $e");
+      });
+    } catch (e) {
+      debugPrint("Watcher isolate setup error: $e");
     }
   }
 
@@ -155,9 +212,17 @@ class _FileExplorerState extends State<FileExplorer> {
           isExpanded: _expandedPaths.contains(itemPath),
         );
 
+        // Add to synchronized list (or simple list since we await all at end of this level? No, order matters)
+        // We must maintain order. 
+        // Actually, for flattened tree view, we need: Item, then its children, then Next Item.
+        // Parallelizing this strictly with Future.wait breaks the DFS order needed for the visual tree.
+        // However, we can fetch children in parallel and then insert them.
+        
         list.add(item);
 
         if (isDir && _expandedPaths.contains(itemPath)) {
+          // We must await here to maintain DFS visual order (Folder -> Children -> Next Sibling)
+          // To optimize, we could pre-fetch, but 'list' must be populated in order.
           await _traverse(itemPath, depth + 1, list);
         }
       }
@@ -502,4 +567,11 @@ class _FileExplorerState extends State<FileExplorer> {
       },
     );
   }
+}
+
+class _WatcherArgs {
+  final String path;
+  final SendPort sendPort;
+
+  _WatcherArgs(this.path, this.sendPort);
 }

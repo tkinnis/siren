@@ -225,7 +225,7 @@ class _RenderedViewState extends State<RenderedView> {
               textScaleFactor: 1.0,
 
               // Typography
-              p: GoogleFonts.inter(
+              p: TextStyle(
                 fontSize: fontSize,
                 height: 1.6,
                 color: theme.colorScheme.onSurface,
@@ -236,22 +236,22 @@ class _RenderedViewState extends State<RenderedView> {
                 color: sirenColors
                     .iconColor, // Using body text color for inline code if not colored by highlighter
               ),
-              strong: GoogleFonts.inter(
+              strong: TextStyle(
                 fontSize: fontSize,
                 fontWeight: FontWeight.bold,
                 color: theme.colorScheme.onSurface,
               ),
-              em: GoogleFonts.inter(
+              em: TextStyle(
                 fontSize: fontSize,
                 fontStyle: FontStyle.italic,
                 color: theme.colorScheme.onSurface,
               ),
-              del: GoogleFonts.inter(
+              del: TextStyle(
                 fontSize: fontSize,
                 decoration: TextDecoration.lineThrough,
                 color: theme.colorScheme.onSurface,
               ),
-              a: GoogleFonts.inter(
+              a: TextStyle(
                 fontSize: fontSize,
                 color: theme
                     .colorScheme
@@ -264,36 +264,36 @@ class _RenderedViewState extends State<RenderedView> {
               // when a custom builder is used. We set the stylesheet style to match
               // the body text (p) so that the leak is invisible. The actual styling
               // is applied by the HeadingElementBuilder.
-              h1: GoogleFonts.inter(
+              h1: TextStyle(
                 fontSize: fontSize, // Matching p style
                 height: 1.6,
                 color: theme.colorScheme.onSurface,
               ),
-              h2: GoogleFonts.inter(
+              h2: TextStyle(
                 fontSize: fontSize, // Matching p style
                 height: 1.6,
                 color: theme.colorScheme.onSurface,
               ),
-              h3: GoogleFonts.inter(
+              h3: TextStyle(
                 fontSize: fontSize * 1.5,
                 fontWeight: FontWeight.w600,
                 height: 1.25,
                 color: sirenColors.headingColor,
               ),
-              h4: GoogleFonts.inter(
+              h4: TextStyle(
                 fontSize: fontSize * 1.25,
                 fontWeight: FontWeight.w600,
                 height: 1.25,
                 color: sirenColors.headingColor,
               ),
-              h5: GoogleFonts.inter(
+              h5: TextStyle(
                 fontSize: fontSize * 1.0,
                 fontWeight: FontWeight.w600,
                 height: 1.25,
                 letterSpacing: 0.05,
                 color: sirenColors.headingColor, // Or uppercase logic if needed
               ),
-              h6: GoogleFonts.inter(
+              h6: TextStyle(
                 fontSize: fontSize * 0.875,
                 fontWeight: FontWeight.w600,
                 height: 1.25,
@@ -301,7 +301,7 @@ class _RenderedViewState extends State<RenderedView> {
               ),
 
               // Blockquotes
-              blockquote: GoogleFonts.inter(
+              blockquote: TextStyle(
                 fontSize: fontSize,
                 color: theme.colorScheme.onSurfaceVariant, // Muted
               ),
@@ -332,8 +332,8 @@ class _RenderedViewState extends State<RenderedView> {
               ),
 
               // Tables
-              tableBody: GoogleFonts.inter(fontSize: fontSize),
-              tableHead: GoogleFonts.inter(
+              tableBody: TextStyle(fontSize: fontSize),
+              tableHead: TextStyle(
                 fontSize: fontSize,
                 fontWeight: FontWeight.w600,
                 color: sirenColors.headingColor,
@@ -526,7 +526,7 @@ class HeadingElementBuilder extends MarkdownElementBuilder {
       child: Text.rich(
         TextSpan(
           children: children,
-          style: GoogleFonts.inter(
+          style: TextStyle(
             fontSize: fontSize,
             fontWeight: FontWeight.w600,
             color: color,
@@ -664,7 +664,7 @@ class _CodeBlockView extends StatelessWidget {
                 if (language.isNotEmpty)
                   Text(
                     language.toUpperCase(),
-                    style: GoogleFonts.inter(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: sirenColors.iconColor,
@@ -696,7 +696,7 @@ class _CodeBlockView extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           'Copy',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(
                             fontSize: 12,
                             color: sirenColors.iconColor,
                           ),
