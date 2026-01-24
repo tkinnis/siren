@@ -13,6 +13,7 @@ import 'raw_view.dart';
 import 'rendered_view.dart';
 import 'theme.dart';
 import 'file_search_modal.dart';
+import 'settings_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -52,6 +53,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         context: context,
                         applicationName: 'Siren',
                         applicationVersion: '0.1.0',
+                      );
+                    },
+                  ),
+                  PlatformMenuItem(
+                    label: 'Settings...',
+                    shortcut: const SingleActivator(
+                      LogicalKeyboardKey.comma,
+                      meta: true,
+                    ),
+                    onSelected: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => const SettingsDialog(),
                       );
                     },
                   ),

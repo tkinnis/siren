@@ -22,6 +22,8 @@ class _PersistenceKeys {
   static const isExplorerVisible = 'is_explorer_visible';
   static const windowBounds = 'window_bounds';
   static const themeMode = 'theme_mode';
+  static const includePatterns = 'include_patterns';
+  static const excludePatterns = 'exclude_patterns';
 }
 
 class _Constants {
@@ -54,6 +56,8 @@ class AppState extends ChangeNotifier {
   // File Explorer
   String? _explorerRootPath;
   List<String> _knownFiles = []; // Persistent index for Cmd+P
+  List<String> _includePatterns = [];
+  List<String> _excludePatterns = [];
 
   // View Settings
   bool _isRenderedView = true;
@@ -93,6 +97,8 @@ class AppState extends ChangeNotifier {
   int get activeTabIndex => _activeTabIndex;
   String? get explorerRootPath => _explorerRootPath;
   List<String> get knownFiles => List.unmodifiable(_knownFiles);
+  List<String> get includePatterns => List.unmodifiable(_includePatterns);
+  List<String> get excludePatterns => List.unmodifiable(_excludePatterns);
   bool get isRenderedView => _isRenderedView;
   double get fontSize => _fontSize;
   bool get isLoading => _isLoading;
@@ -128,6 +134,21 @@ class AppState extends ChangeNotifier {
 
   String getProcessedContent(String path) {
     return _processedContents[path] ?? '';
+  }
+
+  void setIncludePatterns(List<String> patterns) {
+    _includePatterns = List.from(patterns);
+    notifyListeners();
+    _persistState();
+    // Re-index with new patterns
+    _debounceIndexing();
+  }
+
+  void setExcludePatterns(List<String> patterns) {
+    _excludePatterns = List.from(patterns);
+    notifyListeners();
+    _persistState();
+    _debounceIndexing();
   }
 
   void _debounceIndexing() {
@@ -269,6 +290,9 @@ class AppState extends ChangeNotifier {
     _sidebarWidth = _prefs.getDouble(_PersistenceKeys.sidebarWidth) ?? 250.0;
     _isExplorerVisible =
         _prefs.getBool(_PersistenceKeys.isExplorerVisible) ?? true;
+        
+    _includePatterns = _prefs.getStringList(_PersistenceKeys.includePatterns) ?? [];
+    _excludePatterns = _prefs.getStringList(_PersistenceKeys.excludePatterns) ?? [];
 
     final themeIndex = _prefs.getInt(_PersistenceKeys.themeMode);
     if (themeIndex != null &&
@@ -294,7 +318,15 @@ class AppState extends ChangeNotifier {
 
   Future<void> _startIndexing(String rootPath) async {
     try {
-      final files = await Isolate.run(() => FileIndexer.scan(rootPath));
+      // Must pass copies of lists because isolate can't access closure variables directly
+      final includes = List<String>.from(_includePatterns);
+      final excludes = List<String>.from(_excludePatterns);
+      
+      final files = await Isolate.run(() => FileIndexer.scan(
+        rootPath,
+        includePatterns: includes,
+        excludePatterns: excludes,
+      ));
       _knownFiles = files;
       // Sort for consistent display
       _knownFiles.sort((a, b) => path.basename(a).toLowerCase().compareTo(path.basename(b).toLowerCase()));
@@ -399,6 +431,8 @@ class AppState extends ChangeNotifier {
       _PersistenceKeys.isExplorerVisible,
       _isExplorerVisible,
     );
+    await _prefs.setStringList(_PersistenceKeys.includePatterns, _includePatterns);
+    await _prefs.setStringList(_PersistenceKeys.excludePatterns, _excludePatterns);
   }
 
   void setWindowBounds(Rect bounds) {
