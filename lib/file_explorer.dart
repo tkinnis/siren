@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 import 'app_state.dart';
+import 'file_indexer.dart'; // For FilterRule
 
 /// Represents a single item (file or directory) in the file explorer tree.
 class ExplorerItem {
@@ -51,6 +52,10 @@ class _FileExplorerState extends State<FileExplorer> {
   String? _currentRoot;
   bool _initialized = false;
   double _maxContentWidth = 300;
+  
+  // Pattern tracking for refresh logic
+  List<String> _lastIncludePatterns = [];
+  List<String> _lastExcludePatterns = [];
 
   StreamSubscription<String>? _dirChangeSubscription;
   Timer? _debounceTimer;
@@ -75,6 +80,9 @@ class _FileExplorerState extends State<FileExplorer> {
     final appState = Provider.of<AppState>(context);
     
     if (!_initialized) {
+      _lastIncludePatterns = List.from(appState.includePatterns);
+      _lastExcludePatterns = List.from(appState.excludePatterns);
+      
       appState.setExplorerRevealCallback(_revealPath);
       
       // Listen for directory changes from the unified watcher service
@@ -91,6 +99,35 @@ class _FileExplorerState extends State<FileExplorer> {
       _initialized = true;
       _updateTree(appState.explorerRootPath);
     } else {
+      // Check if filtering patterns changed
+      bool patternsChanged = false;
+      if (appState.includePatterns.length != _lastIncludePatterns.length ||
+          appState.excludePatterns.length != _lastExcludePatterns.length) {
+        patternsChanged = true;
+      } else {
+        // Deep compare
+        for (int i = 0; i < appState.includePatterns.length; i++) {
+          if (appState.includePatterns[i] != _lastIncludePatterns[i]) {
+            patternsChanged = true;
+            break;
+          }
+        }
+        if (!patternsChanged) {
+          for (int i = 0; i < appState.excludePatterns.length; i++) {
+            if (appState.excludePatterns[i] != _lastExcludePatterns[i]) {
+              patternsChanged = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (patternsChanged) {
+        _lastIncludePatterns = List.from(appState.includePatterns);
+        _lastExcludePatterns = List.from(appState.excludePatterns);
+        _rebuildFlatList();
+      }
+
       if (appState.explorerRootPath != _currentRoot) {
         _updateTree(appState.explorerRootPath);
       }
@@ -125,15 +162,33 @@ class _FileExplorerState extends State<FileExplorer> {
   Future<void> _rebuildFlatList() async {
     if (_currentRoot == null) return;
 
+    final appState = Provider.of<AppState>(context, listen: false);
+    
+    // Parse patterns into FilterRules
+    List<FilterRule> parse(List<String> patterns) {
+      return patterns.map((p) {
+        try {
+          final matchPath = p.startsWith('p:');
+          final pattern = (p.startsWith('p:') || p.startsWith('n:')) ? p.substring(2) : p;
+          return FilterRule(RegExp(pattern), matchPath);
+        } catch (e) {
+          return null;
+        }
+      }).whereType<FilterRule>().toList();
+    }
+
+    final includes = parse(appState.includePatterns);
+    final excludes = parse(appState.excludePatterns);
+
     final List<ExplorerItem> newList = [];
-    await _traverse(_currentRoot!, 0, newList);
+    await _traverse(_currentRoot!, 0, newList, includes, excludes);
 
     if (mounted) {
       // Calculate max content width based on deepest item and text length
       double maxWidth = 300;
       for (final item in newList) {
         final name = path.basename(item.path);
-        // Estimate width
+        // Estimate width: padding + depth indent + icons + text length
         final estimatedWidth =
             _basePadding + (item.depth * _indentPerLevel) + _iconSize * 2 + (name.length * 8.0) + 20.0;
         if (estimatedWidth > maxWidth) {
@@ -152,6 +207,8 @@ class _FileExplorerState extends State<FileExplorer> {
     String dirPath,
     int depth,
     List<ExplorerItem> list,
+    List<FilterRule> includes,
+    List<FilterRule> excludes,
   ) async {
     final dir = Directory(dirPath);
     if (!await dir.exists()) return;
@@ -161,8 +218,48 @@ class _FileExplorerState extends State<FileExplorer> {
 
       final filtered = entities.where((entity) {
         final name = path.basename(entity.path);
-        if (entity is Directory) return true;
+        
+        // Only calculate relative path if needed by a rule (optimization)
+        String? _relativePath; 
+        String getRelativePath() => _relativePath ??= path.relative(entity.path, from: _currentRoot!);
+
+        bool matchesRule(FilterRule rule) {
+          if (rule.matchPath) {
+            return rule.regex.hasMatch(getRelativePath());
+          } else {
+            return rule.regex.hasMatch(name);
+          }
+        }
+        
+        // 1. Check User Excludes (Absolute Priority)
+        bool isExcluded = false;
+        for (final rule in excludes) {
+          if (matchesRule(rule)) {
+            isExcluded = true;
+            break;
+          }
+        }
+        if (isExcluded) return false;
+
+        // 2. Check User Includes (Overrides defaults)
+        bool isExplicitlyIncluded = false;
+        for (final rule in includes) {
+          if (matchesRule(rule)) {
+            isExplicitlyIncluded = true;
+            break;
+          }
+        }
+
+        if (entity is Directory) {
+          if (isExplicitlyIncluded) return true;
+          
+          // Default: hide all dotfolders
+          if (name.startsWith('.')) return false;
+          return true;
+        }
         if (entity is File) {
+          if (isExplicitlyIncluded) return true;
+          
           return name.toLowerCase().endsWith('.md') ||
               name.toLowerCase().endsWith('.markdown');
         }
@@ -192,7 +289,7 @@ class _FileExplorerState extends State<FileExplorer> {
         list.add(item);
 
         if (isDir && _expandedPaths.contains(itemPath)) {
-          await _traverse(itemPath, depth + 1, list);
+          await _traverse(itemPath, depth + 1, list, includes, excludes);
         }
       }
     } catch (e) {
