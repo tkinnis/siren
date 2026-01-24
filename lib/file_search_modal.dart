@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as path;
 import 'app_state.dart';
+import 'fuzzy_matcher.dart';
 
 class FileSearchModal extends StatefulWidget {
   const FileSearchModal({super.key});
@@ -16,6 +17,7 @@ class _FileSearchModalState extends State<FileSearchModal> {
   final FocusNode _focusNode = FocusNode();
   
   List<String> _allFiles = [];
+  List<String> _relativePaths = [];
   List<String> _filteredFiles = [];
   int _selectedIndex = 0;
   bool _isLoading = true;
@@ -30,25 +32,34 @@ class _FileSearchModalState extends State<FileSearchModal> {
   void _loadFiles() {
     final appState = Provider.of<AppState>(context, listen: false);
     final files = appState.knownFiles;
+    final root = appState.explorerRootPath;
+
     setState(() {
       _allFiles = files;
-      _filteredFiles = files;
+      _relativePaths = root != null
+          ? files.map((f) => path.relative(f, from: root)).toList()
+          : files;
+      _filteredFiles = _allFiles;
       _isLoading = false;
     });
   }
 
   void _filterFiles() {
-    final query = _controller.text.toLowerCase();
+    final query = _controller.text;
+    final appState = Provider.of<AppState>(context, listen: false);
+    final root = appState.explorerRootPath;
+
     setState(() {
       _selectedIndex = 0;
       if (query.isEmpty) {
         _filteredFiles = _allFiles;
       } else {
-        _filteredFiles = _allFiles.where((filePath) {
-          final name = path.basename(filePath).toLowerCase();
-          final relativePath = filePath.toLowerCase(); 
-          // Simple fuzzy: contains
-          return name.contains(query) || relativePath.contains(query);
+        final results = FuzzyMatcher.search(_relativePaths, query);
+        _filteredFiles = results.map((r) {
+          if (root != null) {
+            return path.join(root, r.item);
+          }
+          return r.item;
         }).toList();
       }
     });

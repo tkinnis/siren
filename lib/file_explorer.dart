@@ -6,6 +6,7 @@ import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 import 'app_state.dart';
 
+/// Represents a single item (file or directory) in the file explorer tree.
 class ExplorerItem {
   final String path;
   final int depth;
@@ -20,6 +21,10 @@ class ExplorerItem {
   });
 }
 
+/// A widget that displays a file system tree explorer.
+///
+/// It uses a virtualized [ListView] to render a flattened tree structure for performance.
+/// Directory changes are watched and updated automatically.
 class FileExplorer extends StatefulWidget {
   const FileExplorer({super.key});
 
@@ -28,6 +33,15 @@ class FileExplorer extends StatefulWidget {
 }
 
 class _FileExplorerState extends State<FileExplorer> {
+  // Layout Constants
+  static const double _itemHeight = 27.0;
+  static const double _basePadding = 8.0;
+  static const double _indentPerLevel = 16.0;
+  static const double _iconSize = 16.0;
+  static const double _iconSpacing = 4.0;
+  static const double _headerHeight = 40.0;
+  static const double _minContentWidth = 120.0;
+  
   final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalScrollController = ScrollController();
 
@@ -37,7 +51,6 @@ class _FileExplorerState extends State<FileExplorer> {
   String? _currentRoot;
   bool _initialized = false;
   double _maxContentWidth = 300;
-  static const double _itemHeight = 27.0;
 
   StreamSubscription<String>? _dirChangeSubscription;
   Timer? _debounceTimer;
@@ -120,10 +133,9 @@ class _FileExplorerState extends State<FileExplorer> {
       double maxWidth = 300;
       for (final item in newList) {
         final name = path.basename(item.path);
-        // Estimate: padding + depth indent + icons + text
-        // paddingLeft = 8 + depth * 16, icons ~40px, text ~8px per char
+        // Estimate width
         final estimatedWidth =
-            8.0 + (item.depth * 16.0) + 40.0 + (name.length * 12.0) + 40.0;
+            _basePadding + (item.depth * _indentPerLevel) + _iconSize * 2 + (name.length * 8.0) + 20.0;
         if (estimatedWidth > maxWidth) {
           maxWidth = estimatedWidth;
         }
@@ -141,11 +153,6 @@ class _FileExplorerState extends State<FileExplorer> {
     int depth,
     List<ExplorerItem> list,
   ) async {
-    // Determine if expanded. Root is always expanded effectively (we list its children at depth 0)
-    // Actually, let's treat the root content as starting at depth 0 without showing the root folder itself?
-    // Or show the root folder? The design shows a header for the root.
-    // So we list the children of _currentRoot.
-
     final dir = Directory(dirPath);
     if (!await dir.exists()) return;
 
@@ -182,17 +189,9 @@ class _FileExplorerState extends State<FileExplorer> {
           isExpanded: _expandedPaths.contains(itemPath),
         );
 
-        // Add to synchronized list (or simple list since we await all at end of this level? No, order matters)
-        // We must maintain order. 
-        // Actually, for flattened tree view, we need: Item, then its children, then Next Item.
-        // Parallelizing this strictly with Future.wait breaks the DFS order needed for the visual tree.
-        // However, we can fetch children in parallel and then insert them.
-        
         list.add(item);
 
         if (isDir && _expandedPaths.contains(itemPath)) {
-          // We must await here to maintain DFS visual order (Folder -> Children -> Next Sibling)
-          // To optimize, we could pre-fetch, but 'list' must be populated in order.
           await _traverse(itemPath, depth + 1, list);
         }
       }
@@ -351,7 +350,6 @@ class _FileExplorerState extends State<FileExplorer> {
     final appState = context.watch<AppState>();
 
     if (_currentRoot == null) {
-      // ... existing empty state code ...
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -381,8 +379,7 @@ class _FileExplorerState extends State<FileExplorer> {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Don't render content when width is too small (during animation)
-        // Header needs ~120px for icons, padding, and minimum text
-        if (constraints.maxWidth < 120) {
+        if (constraints.maxWidth < _minContentWidth) {
           return const SizedBox.shrink();
         }
 
@@ -390,7 +387,7 @@ class _FileExplorerState extends State<FileExplorer> {
           children: [
             // Header
             Container(
-              height: 40,
+              height: _headerHeight,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               alignment: Alignment.centerLeft,
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -398,7 +395,7 @@ class _FileExplorerState extends State<FileExplorer> {
                 children: [
                   Icon(
                     Icons.folder,
-                    size: 16,
+                    size: _iconSize,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 8),
@@ -414,7 +411,7 @@ class _FileExplorerState extends State<FileExplorer> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, size: 16),
+                    icon: const Icon(Icons.close, size: _iconSize),
                     onPressed: () {
                       appState.openDirectory();
                     },
@@ -450,7 +447,7 @@ class _FileExplorerState extends State<FileExplorer> {
                           final item = _flatList[index];
                           final isSelected = index == _selectedIndex;
                           final name = path.basename(item.path);
-                          final paddingLeft = 8.0 + (item.depth * 16.0);
+                          final paddingLeft = _basePadding + (item.depth * _indentPerLevel);
 
                           return InkWell(
                             onTap: () {
@@ -481,21 +478,21 @@ class _FileExplorerState extends State<FileExplorer> {
                                       _expandedPaths.contains(item.path)
                                           ? Icons.keyboard_arrow_down
                                           : Icons.keyboard_arrow_right,
-                                      size: 16,
+                                      size: _iconSize,
                                       color: Theme.of(
                                         context,
                                       ).colorScheme.onSurfaceVariant,
                                     )
                                   else
                                     const SizedBox(width: 16),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: _iconSpacing),
                                   Icon(
                                     item.isDirectory
                                         ? (_expandedPaths.contains(item.path)
                                               ? Icons.folder_open
                                               : Icons.folder)
                                         : Icons.description,
-                                    size: 16,
+                                    size: _iconSize,
                                     color: item.isDirectory
                                         ? Theme.of(context).colorScheme.primary
                                         : Theme.of(

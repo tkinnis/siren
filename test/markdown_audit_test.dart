@@ -136,7 +136,7 @@ void main() {
         theme: SirenTheme.light,
         home: ChangeNotifierProvider<AppState>.value(
           value: appState,
-          child: const Scaffold(body: RenderedView()),
+          child: const Scaffold(body: RenderedView(filePath: 'test.md')),
         ),
       ),
     );
@@ -216,6 +216,15 @@ class TestAppState extends ChangeNotifier implements AppState {
 
   @override
   void setScrollOffset(String path, double offset) {}
+
+  @override
+  String getFileContent(String path) => currentContent;
+
+  @override
+  String getProcessedContent(String path) => currentContent;
+
+  @override
+  String currentProcessedContent = '';
 
   @override
   void setContent(String content) {

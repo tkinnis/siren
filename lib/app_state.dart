@@ -24,6 +24,12 @@ class _PersistenceKeys {
   static const themeMode = 'theme_mode';
 }
 
+class _Constants {
+  static const Duration atomicSaveDelay = Duration(milliseconds: 200);
+  static const Duration indexingDebounce = Duration(seconds: 2);
+  static const int closedTabHistoryLimit = 20;
+}
+
 class AppState extends ChangeNotifier {
   // Persistence
   final SharedPreferences _prefs;
@@ -126,7 +132,7 @@ class AppState extends ChangeNotifier {
 
   void _debounceIndexing() {
     _indexDebounceTimer?.cancel();
-    _indexDebounceTimer = Timer(const Duration(seconds: 2), () {
+    _indexDebounceTimer = Timer(_Constants.indexingDebounce, () {
       if (_explorerRootPath != null) {
         _startIndexing(_explorerRootPath!);
       }
@@ -204,7 +210,7 @@ class AppState extends ChangeNotifier {
       onFileEvent: (path, type) {
         if (type == ChangeType.REMOVE) {
            // Atomic save handling: wait and see
-           Future.delayed(const Duration(milliseconds: 200), () async {
+           Future.delayed(_Constants.atomicSaveDelay, () async {
              if (await File(path).exists()) {
                _stopWatching(path);
                _startWatching(path);
@@ -548,7 +554,7 @@ class AppState extends ChangeNotifier {
     if (index == -1) return;
 
     _closedTabs.add(filePath);
-    if (_closedTabs.length > 20) {
+    if (_closedTabs.length > _Constants.closedTabHistoryLimit) {
       _closedTabs.removeAt(0);
     }
 
@@ -584,8 +590,8 @@ class AppState extends ChangeNotifier {
       _closedTabs.add(path);
     }
     // Trim history
-    if (_closedTabs.length > 20) {
-      _closedTabs.removeRange(0, _closedTabs.length - 20);
+    if (_closedTabs.length > _Constants.closedTabHistoryLimit) {
+      _closedTabs.removeRange(0, _closedTabs.length - _Constants.closedTabHistoryLimit);
     }
 
     // Cleanup watchers
