@@ -552,29 +552,9 @@ class CodeElementBuilder extends MarkdownElementBuilder {
         sirenColors: sirenColors,
         fontSize: fontSize,
       );
-    } else {
-      // Inline code styling
-      // Using default p style but tailored
-      return Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 5.0,
-          vertical: 2.0,
-        ), // 0.2em 0.4em
-        decoration: BoxDecoration(
-          color: sirenColors.sidebarBg, // --bg-surface-container
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          element.textContent,
-          style: GoogleFonts.firaCode(
-            fontSize: fontSize * 0.9,
-            color:
-                preferredStyle?.color ??
-                sirenColors.iconColor, // Inherit or default
-          ),
-        ),
-      );
     }
+
+    return null;
   }
 }
 
