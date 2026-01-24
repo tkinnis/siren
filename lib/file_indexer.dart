@@ -22,6 +22,15 @@ class FileIndexer {
     'web/build',
   };
 
+  /// Files/Folders that are almost never desired even in broad path-based included trees.
+  static const Set<String> _systemJunk = {
+    '.DS_Store',
+    'Thumbs.db',
+    '.git',
+    '.hg',
+    '.svn',
+  };
+
   static List<String> scan(
     String rootPath, {
     List<String> includePatterns = const [],
@@ -62,7 +71,7 @@ class FileIndexer {
       
       for (final entity in entities) {
         final name = path.basename(entity.path);
-        // Only calculate relative path if needed by a rule (optimization)
+        
         String? _relativePath; 
         String getRelativePath() => _relativePath ??= path.relative(entity.path, from: rootPath);
 
@@ -84,30 +93,48 @@ class FileIndexer {
         }
         if (isExcluded) continue;
 
-        // 2. Check User Includes (Overrides defaults)
-        bool isExplicitlyIncluded = false;
+        // 2. Check User Includes
+        bool isIncludedByName = false;
+        bool isIncludedByPath = false;
         for (final rule in includes) {
           if (matchesRule(rule)) {
-            isExplicitlyIncluded = true;
+            if (rule.matchPath) {
+              isIncludedByPath = true;
+            } else {
+              isIncludedByName = true;
+            }
             break;
           }
         }
 
-        if (entity is Directory) {
-          if (isExplicitlyIncluded) {
-            _scanRecursive(entity, files, includes, excludes, rootPath);
+        // 3. Smart Filtering
+        bool shouldShow = false;
+        if (isIncludedByName) {
+          // Specifically named -> overrides everything
+          shouldShow = true;
+        } else if (isIncludedByPath) {
+          // Broad path match -> Show unless it's system junk or common heavy dir
+          if (_systemJunk.contains(name) || _ignoredDirectories.contains(name)) {
+            shouldShow = false;
           } else {
-            if (!_ignoredDirectories.contains(name) && !name.startsWith('.')) {
-              _scanRecursive(entity, files, includes, excludes, rootPath);
-            }
+            shouldShow = true;
           }
+        } else {
+          // Default logic: hide dots and heavy dirs
+          if (!_ignoredDirectories.contains(name) && !name.startsWith('.')) {
+            shouldShow = true;
+          }
+        }
+
+        if (!shouldShow) continue;
+
+        if (entity is Directory) {
+          _scanRecursive(entity, files, includes, excludes, rootPath);
         } else if (entity is File) {
-          if (isExplicitlyIncluded) {
+          // Default file check: include if user rules matched OR if it's markdown
+          if (isIncludedByName || isIncludedByPath || 
+              (name.toLowerCase().endsWith('.md') || name.toLowerCase().endsWith('.markdown'))) {
              files.add(entity.path);
-          } else {
-             if ((name.endsWith('.md') || name.endsWith('.markdown')) && !name.startsWith('.')) {
-               files.add(entity.path);
-             }
           }
         }
       }

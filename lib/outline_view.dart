@@ -70,29 +70,57 @@ class OutlineView extends StatelessWidget {
       itemCount: outlineItems.length,
       itemBuilder: (context, index) {
         final item = outlineItems[index];
-        return InkWell(
-          onTap: () {
-            appState.scrollTo(item.lineNumber, item.text);
-          },
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 12.0 + (item.level - 1) * 16.0,
-              top: 8,
-              bottom: 8,
-              right: 12,
-            ),
-            child: Text(
-              item.text,
-              style: TextStyle(
-                fontSize: 13,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+        return _HoverableOutlineItem(
+          item: item,
+          onTap: () => appState.scrollTo(item.lineNumber, item.text),
         );
       },
+    );
+  }
+}
+
+class _HoverableOutlineItem extends StatefulWidget {
+  final OutlineItem item;
+  final VoidCallback onTap;
+
+  const _HoverableOutlineItem({required this.item, required this.onTap});
+
+  @override
+  State<_HoverableOutlineItem> createState() => _HoverableOutlineItemState();
+}
+
+class _HoverableOutlineItemState extends State<_HoverableOutlineItem> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          color: _isHovering
+              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05)
+              : null,
+          padding: EdgeInsets.only(
+            left: 12.0 + (widget.item.level - 1) * 16.0,
+            top: 8,
+            bottom: 8,
+            right: 12,
+          ),
+          child: Text(
+            widget.item.text,
+            style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
     );
   }
 }
