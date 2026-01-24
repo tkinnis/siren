@@ -62,7 +62,7 @@ class _FileExplorerState extends State<FileExplorer> {
     'build',
     'node_modules',
   };
-  
+
   final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalScrollController = ScrollController();
 
@@ -72,7 +72,7 @@ class _FileExplorerState extends State<FileExplorer> {
   String? _currentRoot;
   bool _initialized = false;
   double _maxContentWidth = 300;
-  
+
   // Pattern tracking for refresh logic
   List<String> _lastIncludePatterns = [];
   List<String> _lastExcludePatterns = [];
@@ -98,13 +98,13 @@ class _FileExplorerState extends State<FileExplorer> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final appState = Provider.of<AppState>(context);
-    
+
     if (!_initialized) {
       _lastIncludePatterns = List.from(appState.includePatterns);
       _lastExcludePatterns = List.from(appState.excludePatterns);
-      
+
       appState.setExplorerRevealCallback(_revealPath);
-      
+
       // Listen for directory changes from the unified watcher service
       _dirChangeSubscription = appState.directoryChangeStream.listen((path) {
         // Debounce updates
@@ -156,9 +156,9 @@ class _FileExplorerState extends State<FileExplorer> {
 
   Future<void> _updateTree(String? newRoot) async {
     final appState = Provider.of<AppState>(context, listen: false);
-    
+
     if (newRoot == _currentRoot) return;
-    
+
     // Unwatch old root
     if (_currentRoot != null) {
       appState.unwatchDirectory(_currentRoot!);
@@ -183,18 +183,23 @@ class _FileExplorerState extends State<FileExplorer> {
     if (_currentRoot == null) return;
 
     final appState = Provider.of<AppState>(context, listen: false);
-    
+
     // Parse patterns into FilterRules
     List<FilterRule> parse(List<String> patterns) {
-      return patterns.map((p) {
-        try {
-          final matchPath = p.startsWith('p:');
-          final pattern = (p.startsWith('p:') || p.startsWith('n:')) ? p.substring(2) : p;
-          return FilterRule(RegExp(pattern), matchPath);
-        } catch (e) {
-          return null;
-        }
-      }).whereType<FilterRule>().toList();
+      return patterns
+          .map((p) {
+            try {
+              final matchPath = p.startsWith('p:');
+              final pattern = (p.startsWith('p:') || p.startsWith('n:'))
+                  ? p.substring(2)
+                  : p;
+              return FilterRule(RegExp(pattern), matchPath);
+            } catch (e) {
+              return null;
+            }
+          })
+          .whereType<FilterRule>()
+          .toList();
     }
 
     final includes = parse(appState.includePatterns);
@@ -210,7 +215,11 @@ class _FileExplorerState extends State<FileExplorer> {
         final name = path.basename(item.path);
         // Estimate width
         final estimatedWidth =
-            _basePadding + (item.depth * _indentPerLevel) + _iconSize * 2 + (name.length * 8.0) + 20.0;
+            _basePadding +
+            (item.depth * _indentPerLevel) +
+            _iconSize * 2 +
+            (name.length * 8.0) +
+            20.0;
         if (estimatedWidth > maxWidth) {
           maxWidth = estimatedWidth;
         }
@@ -238,10 +247,11 @@ class _FileExplorerState extends State<FileExplorer> {
 
       final filtered = entities.where((entity) {
         final name = path.basename(entity.path);
-        
+
         // Only calculate relative path if needed by a rule (optimization)
-        String? relativePathStr; 
-        String getRelativePath() => relativePathStr ??= path.relative(entity.path, from: _currentRoot!);
+        String? relativePathStr;
+        String getRelativePath() =>
+            relativePathStr ??= path.relative(entity.path, from: _currentRoot!);
 
         bool matchesRule(FilterRule rule) {
           if (rule.matchPath) {
@@ -250,7 +260,7 @@ class _FileExplorerState extends State<FileExplorer> {
             return rule.regex.hasMatch(name);
           }
         }
-        
+
         // 1. Check User Excludes (Absolute Priority)
         for (final rule in excludes) {
           if (matchesRule(rule)) return false;
@@ -274,10 +284,11 @@ class _FileExplorerState extends State<FileExplorer> {
         if (isIncludedByName) {
           return true; // Specifically named
         }
-        
+
         if (isIncludedByPath) {
           // Broad path match -> Hide if it's generic junk
-          if (_systemJunk.contains(name) || _ignoredDirectories.contains(name)) {
+          if (_systemJunk.contains(name) ||
+              _ignoredDirectories.contains(name)) {
             return false;
           }
           return true;
@@ -289,7 +300,7 @@ class _FileExplorerState extends State<FileExplorer> {
           if (_ignoredDirectories.contains(name)) return false;
           return true;
         }
-        
+
         if (entity is File) {
           return name.toLowerCase().endsWith('.md') ||
               name.toLowerCase().endsWith('.markdown');
@@ -473,12 +484,16 @@ class _FileExplorerState extends State<FileExplorer> {
     }
   }
 
-  void _showContextMenu(BuildContext context, Offset position, ExplorerItem item) {
+  void _showContextMenu(
+    BuildContext context,
+    Offset position,
+    ExplorerItem item,
+  ) {
     final overlay = Overlay.of(context);
     final screenSize = MediaQuery.of(context).size;
     late OverlayEntry overlayEntry;
 
-    // Estimate menu size or measure it? 
+    // Estimate menu size or measure it?
     // Hardcoding width is safe as Container has width 200.
     // Height is variable but we can estimate: ~120px.
     const double menuWidth = 200.0;
@@ -505,7 +520,8 @@ class _FileExplorerState extends State<FileExplorer> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => overlayEntry.remove(),
-              onSecondaryTapDown: (_) => overlayEntry.remove(), // Dismiss on right-click elsewhere
+              onSecondaryTapDown: (_) =>
+                  overlayEntry.remove(), // Dismiss on right-click elsewhere
             ),
           ),
           // Menu
@@ -520,7 +536,9 @@ class _FileExplorerState extends State<FileExplorer> {
                   color: Theme.of(context).colorScheme.surfaceContainer,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withValues(alpha: 0.2),
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -536,7 +554,11 @@ class _FileExplorerState extends State<FileExplorer> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _MenuItem(
-                      label: Platform.isMacOS ? 'Show in Finder' : (Platform.isWindows ? 'Show in Explorer' : 'Show in File Manager'),
+                      label: Platform.isMacOS
+                          ? 'Show in Finder'
+                          : (Platform.isWindows
+                                ? 'Show in Explorer'
+                                : 'Show in File Manager'),
                       onTap: () {
                         overlayEntry.remove();
                         _revealInSystem(item.path);
@@ -555,7 +577,14 @@ class _FileExplorerState extends State<FileExplorer> {
                       onTap: () {
                         overlayEntry.remove();
                         if (_currentRoot != null) {
-                          Clipboard.setData(ClipboardData(text: path.relative(item.path, from: _currentRoot!)));
+                          Clipboard.setData(
+                            ClipboardData(
+                              text: path.relative(
+                                item.path,
+                                from: _currentRoot!,
+                              ),
+                            ),
+                          );
                         }
                       },
                     ),
@@ -579,7 +608,9 @@ class _FileExplorerState extends State<FileExplorer> {
         await Process.run('explorer', ['/select,', filePath]);
       } else if (Platform.isLinux) {
         // Fallback to opening directory
-        final dir = Directory(filePath).existsSync() ? filePath : path.dirname(filePath);
+        final dir = Directory(filePath).existsSync()
+            ? filePath
+            : path.dirname(filePath);
         await Process.run('xdg-open', [dir]);
       }
     } catch (e) {
@@ -676,38 +707,45 @@ class _FileExplorerState extends State<FileExplorer> {
                   controller: _horizontalScrollController,
                   notificationPredicate: (notification) =>
                       notification.depth == 1,
-                  child: SingleChildScrollView(
-                    controller: _horizontalScrollController,
-                    scrollDirection: Axis.horizontal,
-                    child: SizedBox(
-                      width: _maxContentWidth,
-                      child: ListView.builder(
-                        controller: _verticalScrollController,
-                        itemCount: _flatList.length,
-                        itemExtent: _itemHeight,
-                        itemBuilder: (context, index) {
-                          final item = _flatList[index];
-                          final isSelected = index == _selectedIndex;
+                  child: ClipRect(
+                    child: SingleChildScrollView(
+                      clipBehavior: Clip.hardEdge,
+                      controller: _horizontalScrollController,
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: _maxContentWidth,
+                        child: ListView.builder(
+                          controller: _verticalScrollController,
+                          itemCount: _flatList.length,
+                          itemExtent: _itemHeight,
+                          itemBuilder: (context, index) {
+                            final item = _flatList[index];
+                            final isSelected = index == _selectedIndex;
 
-                          return _FileExplorerItemView(
-                            item: item,
-                            isSelected: isSelected,
-                            onTap: () {
-                              appState.explorerFocusNode.requestFocus();
-                              setState(() => _selectedIndex = index);
-                              if (item.isDirectory) {
-                                _toggleExpansion(index);
-                              } else {
-                                appState.openFile(item.path);
-                              }
-                            },
-                            onSecondaryTapUp: (details) {
-                              appState.explorerFocusNode.requestFocus();
-                              setState(() => _selectedIndex = index);
-                              _showContextMenu(context, details.globalPosition, item);
-                            },
-                          );
-                        },
+                            return _FileExplorerItemView(
+                              item: item,
+                              isSelected: isSelected,
+                              onTap: () {
+                                appState.explorerFocusNode.requestFocus();
+                                setState(() => _selectedIndex = index);
+                                if (item.isDirectory) {
+                                  _toggleExpansion(index);
+                                } else {
+                                  appState.openFile(item.path);
+                                }
+                              },
+                              onSecondaryTapUp: (details) {
+                                appState.explorerFocusNode.requestFocus();
+                                setState(() => _selectedIndex = index);
+                                _showContextMenu(
+                                  context,
+                                  details.globalPosition,
+                                  item,
+                                );
+                              },
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -755,8 +793,8 @@ class _FileExplorerItemViewState extends State<_FileExplorerItemView> {
     final color = widget.isSelected
         ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
         : _isHovering
-            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05)
-            : null;
+        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05)
+        : null;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovering = true),
@@ -791,8 +829,8 @@ class _FileExplorerItemViewState extends State<_FileExplorerItemView> {
               Icon(
                 widget.item.isDirectory
                     ? (widget.item.isExpanded
-                        ? Icons.folder_open
-                        : Icons.folder)
+                          ? Icons.folder_open
+                          : Icons.folder)
                     : Icons.description,
                 size: iconSize,
                 color: widget.item.isDirectory
@@ -808,8 +846,9 @@ class _FileExplorerItemViewState extends State<_FileExplorerItemView> {
                     color: widget.isSelected
                         ? Theme.of(context).colorScheme.primary
                         : null,
-                    fontWeight:
-                        widget.isSelected ? FontWeight.w500 : FontWeight.normal,
+                    fontWeight: widget.isSelected
+                        ? FontWeight.w500
+                        : FontWeight.normal,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -845,12 +884,11 @@ class _MenuItemState extends State<_MenuItem> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: Container(
-          color: _isHovering ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) : Colors.transparent,
+          color: _isHovering
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+              : Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text(
-            widget.label,
-            style: const TextStyle(fontSize: 13),
-          ),
+          child: Text(widget.label, style: const TextStyle(fontSize: 13)),
         ),
       ),
     );
