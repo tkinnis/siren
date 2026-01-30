@@ -151,9 +151,6 @@ class _RenderedViewState extends State<RenderedView> {
     final sirenColors = theme.extension<SirenColors>()!;
     final basePath = p.dirname(widget.filePath);
 
-    // Clear keys on rebuild as content might have changed
-    _anchorKeys.clear();
-
     void onTapLink(String text, String? href, String title) =>
         _handleTapLink(text, href, title);
 

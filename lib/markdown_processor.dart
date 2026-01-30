@@ -16,7 +16,7 @@ class MarkdownProcessor {
         // Strip leading hashes and whitespace
         final text = line.replaceFirst(RegExp(r'^#+\s*'), '');
         final slug = generateSlug(text);
-        buffer.writeln('[[@anchor:$slug]]');
+        buffer.writeln('[[@anchor:$slug]]\n');
       }
       buffer.writeln(line);
     }

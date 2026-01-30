@@ -1,4 +1,4 @@
-package com.example.siren
+package com.tkinnis.siren
 
 import io.flutter.embedding.android.FlutterActivity
 

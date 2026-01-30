@@ -8,7 +8,7 @@ class AppDelegate: FlutterAppDelegate {
 
   override func applicationDidFinishLaunching(_ notification: Notification) {
     let controller: FlutterViewController = mainFlutterWindow?.contentViewController as! FlutterViewController
-    methodChannel = FlutterMethodChannel(name: "com.example.siren/files", binaryMessenger: controller.engine.binaryMessenger)
+    methodChannel = FlutterMethodChannel(name: "com.tkinnis.siren/files", binaryMessenger: controller.engine.binaryMessenger)
 
     super.applicationDidFinishLaunching(notification)
 

@@ -212,7 +212,7 @@ class AppState extends ChangeNotifier {
   }
 
   static const MethodChannel _channel = MethodChannel(
-    'com.example.siren/files',
+    'com.tkinnis.siren/files',
   );
 
   static Future<AppState> create() async {
