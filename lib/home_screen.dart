@@ -14,6 +14,7 @@ import 'rendered_view.dart';
 import 'theme.dart';
 import 'file_search_modal.dart';
 import 'settings_dialog.dart';
+import 'find_in_file_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -173,6 +174,65 @@ class _HomeScreenState extends State<HomeScreen> {
               onSelected: () {
                 if (mounted) {
                   context.read<AppState>().reopenClosedTab();
+                }
+              },
+            ),
+          ],
+        ),
+        PlatformMenu(
+          label: 'Edit',
+          menus: [
+            PlatformMenuItem(
+              label: 'Find...',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyF,
+                meta: true,
+              ),
+              onSelected: () {
+                if (mounted && context.read<AppState>().currentFilePath != null) {
+                  context.read<AppState>().showFindInFile();
+                }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Find Next',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyG,
+                meta: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().nextFindMatch();
+                }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Find Previous',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyG,
+                meta: true,
+                shift: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().prevFindMatch();
+                }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Find in Folder...',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyF,
+                meta: true,
+                shift: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  final appState = context.read<AppState>();
+                  appState.setSidebarTabIndex(2);
+                  if (!appState.isExplorerVisible) {
+                    appState.toggleExplorerVisibility();
+                  }
                 }
               },
             ),
@@ -363,6 +423,23 @@ class _HomeScreenState extends State<HomeScreen> {
           const SingleActivator(LogicalKeyboardKey.keyL, meta: true): () {
             appState.explorerFocusNode.requestFocus();
           },
+          const SingleActivator(LogicalKeyboardKey.keyF, meta: true): () {
+            if (appState.currentFilePath != null) {
+              appState.showFindInFile();
+            }
+          },
+          const SingleActivator(LogicalKeyboardKey.keyG, meta: true): () {
+            appState.nextFindMatch();
+          },
+          const SingleActivator(LogicalKeyboardKey.keyG, meta: true, shift: true): () {
+            appState.prevFindMatch();
+          },
+          const SingleActivator(LogicalKeyboardKey.keyF, meta: true, shift: true): () {
+            appState.setSidebarTabIndex(2);
+            if (!appState.isExplorerVisible) {
+              appState.toggleExplorerVisibility();
+            }
+          },
           const SingleActivator(LogicalKeyboardKey.keyB, meta: true): () {
             appState.toggleExplorerVisibility();
           },
@@ -455,6 +532,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             children: [
                               const EditorTabs(),
+                              if (appState.isFindInFileVisible && appState.currentFilePath != null)
+                                const FindInFileBar(),
                               Expanded(
                                 child: appState.isLoading
                                     ? const Center(
@@ -463,7 +542,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                     : appState.openFilePaths.isEmpty
                                     ? _buildEmptyState(context)
                                     : IndexedStack(
-                                        index: appState.activeTabIndex,
+                                        index: appState.activeTabIndex.clamp(
+                                          0,
+                                          appState.openFilePaths.isEmpty
+                                              ? 0
+                                              : appState.openFilePaths.length - 1,
+                                        ),
                                         children: List.generate(
                                           appState.openFilePaths.length,
                                           (index) => _LazyTab(

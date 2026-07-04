@@ -85,25 +85,29 @@ class _FileExplorerState extends State<FileExplorer> {
     super.initState();
   }
 
+  late AppState _appState;
+
   @override
   void dispose() {
     _dirChangeSubscription?.cancel();
     _debounceTimer?.cancel();
     _verticalScrollController.dispose();
     _horizontalScrollController.dispose();
+    _appState.setExplorerRevealCallback(null);
     super.dispose();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final appState = Provider.of<AppState>(context);
+    _appState = Provider.of<AppState>(context);
+    final appState = _appState;
 
     if (!_initialized) {
-      _lastIncludePatterns = List.from(appState.includePatterns);
-      _lastExcludePatterns = List.from(appState.excludePatterns);
+      _lastIncludePatterns = List.from(_appState.includePatterns);
+      _lastExcludePatterns = List.from(_appState.excludePatterns);
 
-      appState.setExplorerRevealCallback(_revealPath);
+      _appState.setExplorerRevealCallback(_revealPath);
 
       // Listen for directory changes from the unified watcher service
       _dirChangeSubscription = appState.directoryChangeStream.listen((path) {
@@ -180,6 +184,7 @@ class _FileExplorerState extends State<FileExplorer> {
   }
 
   Future<void> _rebuildFlatList() async {
+    if (!mounted) return;
     if (_currentRoot == null) return;
 
     final appState = Provider.of<AppState>(context, listen: false);
@@ -451,6 +456,7 @@ class _FileExplorerState extends State<FileExplorer> {
   }
 
   Future<void> _revealPath(String filePath) async {
+    if (!mounted) return;
     if (_currentRoot == null) return;
 
     // Check if path is within root

@@ -58,12 +58,27 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
   void _restoreScrollPosition() {
     final appState = context.read<AppState>();
     final path = widget.filePath;
-    final offset = appState.getScrollOffset(path);
+    
     // Wait for build to attach client
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(offset);
+      if (!_scrollController.hasClients) return;
+      
+      final pending = appState.pendingScrollTarget;
+      if (pending != null) {
+        final lineHeight = appState.fontSize * 1.5;
+        final viewportHeight = _scrollController.position.viewportDimension;
+        final targetOffset =
+            (pending.lineNumber * lineHeight) - (viewportHeight / 3);
+
+        _scrollController.jumpTo(
+          targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+        );
+        appState.clearPendingScrollTarget();
+        return;
       }
+      
+      final offset = appState.getScrollOffset(path);
+      _scrollController.jumpTo(offset);
     });
   }
 
@@ -73,32 +88,65 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
     appState.setScrollOffset(widget.filePath, _scrollController.offset);
   }
 
+
   // Helper to convert highlighter nodes to TextSpan
   TextSpan _buildTextSpan(
     String source,
     List<Node> nodes,
     Map<String, TextStyle> theme,
+    _SearchState? searchState,
   ) {
     if (nodes.isEmpty) {
+      if (searchState != null && searchState.query.isNotEmpty) {
+        return TextSpan(
+          style: theme['root'],
+          children: _buildSearchHighlightSpans(
+            source,
+            searchState.query,
+            theme['root'] ?? const TextStyle(),
+            searchState.activeIndex,
+            () => searchState.matchCounter++,
+            useRegex: searchState.useRegex,
+          ),
+        );
+      }
       return TextSpan(text: source, style: theme['root']);
     }
 
     return TextSpan(
       style: theme['root'],
       children: nodes.map((node) {
-        return _convertNode(node, theme);
+        return _convertNode(node, theme, searchState);
       }).toList(),
     );
   }
 
-  TextSpan _convertNode(Node node, Map<String, TextStyle> theme) {
+  TextSpan _convertNode(
+    Node node,
+    Map<String, TextStyle> theme,
+    _SearchState? searchState,
+  ) {
     final style = theme[node.className] ?? const TextStyle();
     if (node.children == null) {
-      return TextSpan(text: node.value, style: style);
+      final value = node.value;
+      if (value == null) return const TextSpan();
+      if (searchState != null && searchState.query.isNotEmpty) {
+        return TextSpan(
+          children: _buildSearchHighlightSpans(
+            value,
+            searchState.query,
+            style,
+            searchState.activeIndex,
+            () => searchState.matchCounter++,
+            useRegex: searchState.useRegex,
+          ),
+        );
+      }
+      return TextSpan(text: value, style: style);
     }
     return TextSpan(
       style: style,
-      children: node.children!.map((n) => _convertNode(n, theme)).toList(),
+      children: node.children!.map((n) => _convertNode(n, theme, searchState)).toList(),
     );
   }
 
@@ -115,6 +163,15 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
       (state) => state.getFileContent(widget.filePath),
     );
     final fontSize = context.select<AppState, double>((state) => state.fontSize);
+    final findQuery = context.select<AppState, String>((state) => state.findInFileQuery);
+    final activeMatchIndex = context.select<AppState, int>((state) => state.findInFileActiveMatchIndex);
+    final isFindVisible = context.select<AppState, bool>((state) => state.isFindInFileVisible);
+    final useRegex = context.select<AppState, bool>((state) => state.findInFileUseRegex);
+
+    final searchState = (isFindVisible && findQuery.isNotEmpty)
+        ? _SearchState(findQuery, activeMatchIndex, useRegex)
+        : null;
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Use standard themes directly instead of SirenTheme.showcase...
@@ -205,7 +262,7 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
                     vertical: 24.0,
                   ),
                   child: SelectableText.rich(
-                    _buildTextSpan(content, ast.nodes!, theme),
+                    _buildTextSpan(content, ast.nodes!, theme, searchState),
                     style: textStyle,
                   ),
                 ),
@@ -217,3 +274,105 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
     );
   }
 }
+
+class _SearchState {
+  final String query;
+  final int activeIndex;
+  final bool useRegex;
+  int matchCounter = 0;
+  _SearchState(this.query, this.activeIndex, this.useRegex);
+}
+
+List<InlineSpan> _buildSearchHighlightSpans(
+  String text,
+  String query,
+  TextStyle style,
+  int activeIndex,
+  int Function() getAndIncrementMatchIndex, {
+  bool useRegex = false,
+}) {
+  if (query.isEmpty) {
+    return [TextSpan(text: text, style: style)];
+  }
+
+  // Parse regex if needed
+  RegExp? regExp;
+  if (useRegex) {
+    try {
+      regExp = RegExp(query, caseSensitive: false);
+    } catch (_) {
+      // Fallback to verbatim
+    }
+  }
+
+  final List<InlineSpan> spans = [];
+
+  if (regExp != null) {
+    final matches = regExp.allMatches(text);
+    int start = 0;
+
+    for (final match in matches) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: text.substring(start, match.start), style: style));
+      }
+
+      final matchText = match.group(0) ?? '';
+      final currentMatchIdx = getAndIncrementMatchIndex();
+      final isActive = currentMatchIdx == activeIndex;
+
+      spans.add(TextSpan(
+        text: matchText,
+        style: style.copyWith(
+          backgroundColor: isActive
+              ? Colors.orange.withValues(alpha: 0.8)
+              : Colors.yellow.withValues(alpha: 0.4),
+          color: Colors.black,
+        ),
+      ));
+
+      start = match.end;
+    }
+
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start), style: style));
+    }
+    return spans;
+  }
+
+  // Verbatim search fallback
+  final List<InlineSpan> spansVerbatim = [];
+  final lowercaseText = text.toLowerCase();
+  final lowercaseQuery = query.toLowerCase();
+  int start = 0;
+
+  while (true) {
+    final index = lowercaseText.indexOf(lowercaseQuery, start);
+    if (index == -1) {
+      spansVerbatim.add(TextSpan(text: text.substring(start), style: style));
+      break;
+    }
+
+    if (index > start) {
+      spansVerbatim.add(TextSpan(text: text.substring(start, index), style: style));
+    }
+
+    final matchText = text.substring(index, index + query.length);
+    final currentMatchIdx = getAndIncrementMatchIndex();
+    final isActive = currentMatchIdx == activeIndex;
+
+    spansVerbatim.add(TextSpan(
+      text: matchText,
+      style: style.copyWith(
+        backgroundColor: isActive
+            ? Colors.orange.withValues(alpha: 0.8)
+            : Colors.yellow.withValues(alpha: 0.4),
+          color: Colors.black,
+        ),
+      ));
+
+    start = index + query.length;
+  }
+
+  return spansVerbatim;
+}
+

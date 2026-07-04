@@ -68,6 +68,20 @@ class AppState extends ChangeNotifier {
   double _sidebarWidth = 250.0;
   bool _isExplorerVisible = true;
 
+  // Find in File state
+  bool _isFindInFileVisible = false;
+  String _findInFileQuery = '';
+  int _findInFileActiveMatchIndex = -1;
+  List<int> _findInFileMatchOffsets = [];
+  bool _findInFileUseRegex = false;
+  int? _pendingActiveMatchLine;
+
+  // Sidebar navigation
+  int _sidebarTabIndex = 0;
+
+  // Pending scroll target
+  ({int lineNumber, String text})? _pendingScrollTarget;
+
   // Focus & Navigation
   final FocusNode explorerFocusNode = FocusNode();
   Function(String path)? _onRevealInExplorer;
@@ -104,6 +118,13 @@ class AppState extends ChangeNotifier {
   bool get isLoading => _isLoading;
   double get sidebarWidth => _sidebarWidth;
   bool get isExplorerVisible => _isExplorerVisible;
+  bool get isFindInFileVisible => _isFindInFileVisible;
+  String get findInFileQuery => _findInFileQuery;
+  int get findInFileActiveMatchIndex => _findInFileActiveMatchIndex;
+  List<int> get findInFileMatchOffsets => _findInFileMatchOffsets;
+  bool get findInFileUseRegex => _findInFileUseRegex;
+  int get sidebarTabIndex => _sidebarTabIndex;
+  ({int lineNumber, String text})? get pendingScrollTarget => _pendingScrollTarget;
 
   String? get currentFilePath {
     if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
@@ -322,11 +343,11 @@ class AppState extends ChangeNotifier {
       final includes = List<String>.from(_includePatterns);
       final excludes = List<String>.from(_excludePatterns);
       
-      final files = await Isolate.run(() => FileIndexer.scan(
+      final files = await _runFileIndexerScanInIsolate(
         rootPath,
-        includePatterns: includes,
-        excludePatterns: excludes,
-      ));
+        includes,
+        excludes,
+      );
       _knownFiles = files;
       // Sort for consistent display
       _knownFiles.sort((a, b) => path.basename(a).toLowerCase().compareTo(path.basename(b).toLowerCase()));
@@ -351,9 +372,7 @@ class AppState extends ChangeNotifier {
       // Run file loading and decoding in a separate isolate.
       // Isolate.run uses Isolate.exit() internally to transfer the result
       // to the main thread without copying (zero-copy), eliminating UI jank.
-      final loadedFiles = await Isolate.run(
-        () => _readFilesFromDisk(savedPaths),
-      );
+      final loadedFiles = await _runReadFilesFromDiskInIsolate(savedPaths);
 
       // Apply results to state on main thread
       for (final filePath in savedPaths) {
@@ -417,6 +436,27 @@ class AppState extends ChangeNotifier {
     return results;
   }
 
+  static Future<List<String>> _runFileIndexerScanInIsolate(
+    String rootPath,
+    List<String> includes,
+    List<String> excludes,
+  ) {
+    return Isolate.run(() => FileIndexer.scan(
+      rootPath,
+      includePatterns: includes,
+      excludePatterns: excludes,
+    ));
+  }
+
+  static Future<Map<String, ({String raw, String processed})>>
+      _runReadFilesFromDiskInIsolate(List<String> savedPaths) {
+    return Isolate.run(() => _readFilesFromDisk(savedPaths));
+  }
+
+  static Future<String> _runInjectAnchorsInIsolate(String content) {
+    return Isolate.run(() => MarkdownProcessor.injectAnchors(content));
+  }
+
   Future<void> _persistState() async {
     await _prefs.setString(
       _PersistenceKeys.explorerRootPath,
@@ -451,7 +491,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setExplorerRevealCallback(Function(String path) callback) {
+  void setExplorerRevealCallback(Function(String path)? callback) {
     _onRevealInExplorer = callback;
   }
 
@@ -485,9 +525,7 @@ class AppState extends ChangeNotifier {
         final content = await file.readAsString();
         
         // Process in background to avoid jank
-        final processed = await Isolate.run(
-          () => MarkdownProcessor.injectAnchors(content),
-        );
+        final processed = await _runInjectAnchorsInIsolate(content);
 
         // Only notify if content actually changed to avoid spurious rebuilds
         if (_fileContents[path] != content) {
@@ -553,9 +591,7 @@ class AppState extends ChangeNotifier {
       if (await file.exists()) {
         final content = await file.readAsString();
         
-        final processed = await Isolate.run(
-          () => MarkdownProcessor.injectAnchors(content),
-        );
+        final processed = await _runInjectAnchorsInIsolate(content);
 
         _fileContents[filePath] = content;
         _processedContents[filePath] = processed;
@@ -568,6 +604,31 @@ class AppState extends ChangeNotifier {
         _openFilePaths.add(filePath);
         _activeTabIndex = _openFilePaths.length - 1;
         _revealInExplorer(filePath);
+
+        if (_isFindInFileVisible && _findInFileQuery.isNotEmpty) {
+          _findInFileMatchOffsets = findMatchOffsets(content, _findInFileQuery, useRegex: _findInFileUseRegex);
+          if (_findInFileMatchOffsets.isNotEmpty) {
+            if (_pendingActiveMatchLine != null) {
+              int foundIdx = -1;
+              for (int i = 0; i < _findInFileMatchOffsets.length; i++) {
+                final offset = _findInFileMatchOffsets[i];
+                final line = getLineNumberForOffset(content, offset);
+                if (line == _pendingActiveMatchLine) {
+                  foundIdx = i;
+                  break;
+                }
+              }
+              _findInFileActiveMatchIndex = foundIdx != -1 ? foundIdx : 0;
+              _pendingActiveMatchLine = null;
+            } else {
+              _findInFileActiveMatchIndex = 0;
+            }
+            Future.microtask(() => _scrollToActiveMatch());
+          } else {
+            _findInFileActiveMatchIndex = -1;
+            _pendingActiveMatchLine = null;
+          }
+        }
 
         // Start watching the new file
         _startWatching(filePath);
@@ -675,6 +736,17 @@ class AppState extends ChangeNotifier {
       _activeTabIndex = index;
       final newPath = _openFilePaths[index];
 
+      if (_isFindInFileVisible && _findInFileQuery.isNotEmpty) {
+        final newContent = getFileContent(newPath);
+        _findInFileMatchOffsets = findMatchOffsets(newContent, _findInFileQuery);
+        if (_findInFileMatchOffsets.isNotEmpty) {
+          _findInFileActiveMatchIndex = 0;
+          Future.microtask(() => _scrollToActiveMatch());
+        } else {
+          _findInFileActiveMatchIndex = -1;
+        }
+      }
+
       _recordHistory(newPath);
 
       notifyListeners();
@@ -716,6 +788,18 @@ class AppState extends ChangeNotifier {
     _isRenderedView = !_isRenderedView;
     notifyListeners();
     _persistState();
+  }
+
+  void setRenderedView(bool isRendered) {
+    if (_isRenderedView != isRendered) {
+      _isRenderedView = isRendered;
+      notifyListeners();
+      _persistState();
+    }
+  }
+
+  void clearPendingScrollTarget() {
+    _pendingScrollTarget = null;
   }
 
   void increaseFontSize() {
@@ -760,7 +844,121 @@ class AppState extends ChangeNotifier {
   }
 
   void scrollTo(int lineNumber, String text) {
-    _navigationController.add((lineNumber: lineNumber, text: text));
+    final target = (lineNumber: lineNumber, text: text);
+    _pendingScrollTarget = target;
+    _navigationController.add(target);
+  }
+
+  void setSidebarTabIndex(int index) {
+    if (_sidebarTabIndex != index) {
+      _sidebarTabIndex = index;
+      notifyListeners();
+    }
+  }
+
+  void showFindInFile() {
+    _isFindInFileVisible = true;
+    _isRenderedView = false;
+    notifyListeners();
+  }
+
+  void hideFindInFile() {
+    _isFindInFileVisible = false;
+    _findInFileQuery = '';
+    _findInFileActiveMatchIndex = -1;
+    _findInFileMatchOffsets = [];
+    notifyListeners();
+  }
+
+  void setFindInFileQuery(String query, {bool useRegex = false}) {
+    _findInFileQuery = query;
+    _findInFileUseRegex = useRegex;
+    if (query.isEmpty) {
+      _findInFileActiveMatchIndex = -1;
+      _findInFileMatchOffsets = [];
+    } else {
+      _findInFileMatchOffsets = findMatchOffsets(currentContent, query, useRegex: useRegex);
+      if (_findInFileMatchOffsets.isNotEmpty) {
+        _findInFileActiveMatchIndex = 0;
+        _scrollToActiveMatch();
+      } else {
+        _findInFileActiveMatchIndex = -1;
+      }
+    }
+    notifyListeners();
+  }
+  void setActiveMatchIndexToLine(int lineNumber) {
+    if (_isLoading) {
+      _pendingActiveMatchLine = lineNumber;
+      return;
+    }
+
+    if (_findInFileMatchOffsets.isEmpty) return;
+    for (int i = 0; i < _findInFileMatchOffsets.length; i++) {
+      final offset = _findInFileMatchOffsets[i];
+      final line = getLineNumberForOffset(currentContent, offset);
+      if (line == lineNumber) {
+        _findInFileActiveMatchIndex = i;
+        notifyListeners();
+        break;
+      }
+    }
+  }
+  void nextFindMatch() {
+    if (_findInFileMatchOffsets.isEmpty) return;
+    _findInFileActiveMatchIndex = (_findInFileActiveMatchIndex + 1) % _findInFileMatchOffsets.length;
+    _scrollToActiveMatch();
+    notifyListeners();
+  }
+
+  void prevFindMatch() {
+    if (_findInFileMatchOffsets.isEmpty) return;
+    _findInFileActiveMatchIndex = (_findInFileActiveMatchIndex - 1 + _findInFileMatchOffsets.length) % _findInFileMatchOffsets.length;
+    _scrollToActiveMatch();
+    notifyListeners();
+  }
+
+  void _scrollToActiveMatch() {
+    if (_findInFileActiveMatchIndex < 0 || _findInFileActiveMatchIndex >= _findInFileMatchOffsets.length) return;
+    final offset = _findInFileMatchOffsets[_findInFileActiveMatchIndex];
+    final lineNumber = getLineNumberForOffset(currentContent, offset);
+    scrollTo(lineNumber, '');
+  }
+
+  List<int> findMatchOffsets(String text, String query, {bool useRegex = false}) {
+    if (query.isEmpty) return [];
+    
+    if (useRegex) {
+      try {
+        final regExp = RegExp(query, caseSensitive: false);
+        return regExp.allMatches(text).map((m) => m.start).toList();
+      } catch (e) {
+        // Fallback to verbatim
+      }
+    }
+
+    final List<int> offsets = [];
+    int start = 0;
+    final lowercaseText = text.toLowerCase();
+    final lowercaseQuery = query.toLowerCase();
+    while (true) {
+      final index = lowercaseText.indexOf(lowercaseQuery, start);
+      if (index == -1) break;
+      offsets.add(index);
+      start = index + query.length;
+    }
+    return offsets;
+  }
+
+  int getLineNumberForOffset(String content, int offset) {
+    if (offset <= 0) return 1;
+    int lines = 1;
+    for (int i = 0; i < offset && i < content.length; i++) {
+      if (content.codeUnitAt(i) == 10) { // '\n'
+        lines++;
+      }
+    }
+    return lines;
   }
 
   @override

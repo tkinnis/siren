@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'app_state.dart';
 import 'file_explorer.dart';
 import 'outline_view.dart';
+import 'global_search_view.dart';
 
 class Sidebar extends StatefulWidget {
   const Sidebar({super.key});
@@ -15,7 +18,21 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        context.read<AppState>().setSidebarTabIndex(_tabController.index);
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final index = Provider.of<AppState>(context).sidebarTabIndex;
+    if (_tabController.index != index) {
+      _tabController.animateTo(index);
+    }
   }
 
   @override
@@ -65,6 +82,17 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
                   ],
                 ),
               ),
+              Tab(
+                height: 40,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.search, size: 16),
+                    SizedBox(width: 8),
+                    Text('Search', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -72,7 +100,7 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
           child: TabBarView(
             controller: _tabController,
             physics: const NeverScrollableScrollPhysics(), // Disable swipe
-            children: const [FileExplorer(), OutlineView()],
+            children: const [FileExplorer(), OutlineView(), GlobalSearchView()],
           ),
         ),
       ],

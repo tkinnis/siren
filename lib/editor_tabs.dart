@@ -14,6 +14,7 @@ class EditorTabs extends StatefulWidget {
 
 class _EditorTabsState extends State<EditorTabs> {
   final ScrollController _scrollController = ScrollController();
+  int _lastActiveIndex = -1;
 
   @override
   void dispose() {
@@ -21,11 +22,37 @@ class _EditorTabsState extends State<EditorTabs> {
     super.dispose();
   }
 
+  void _scrollToActiveTab(int activeIndex) {
+    if (!_scrollController.hasClients || activeIndex < 0) return;
+
+    final tabWidth = 150.0;
+    final targetOffset = activeIndex * tabWidth;
+
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final minScroll = _scrollController.position.minScrollExtent;
+    final viewportWidth = _scrollController.position.viewportDimension;
+
+    final scrollPosition = targetOffset - (viewportWidth / 2) + (tabWidth / 2);
+
+    _scrollController.animateTo(
+      scrollPosition.clamp(minScroll, maxScroll),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final tabs = appState.openFilePaths;
     final activeIndex = appState.activeTabIndex;
+
+    if (activeIndex != _lastActiveIndex) {
+      _lastActiveIndex = activeIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToActiveTab(activeIndex);
+      });
+    }
 
     if (tabs.isEmpty) {
       return const SizedBox.shrink();
