@@ -610,7 +610,7 @@ class _CodeBlockView extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 12.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(6),
-        color: sirenColors.codeBg,
+        color: sirenColors.codeBlockBg ?? sirenColors.codeBg,
         border: Border.all(color: sirenColors.divider!),
       ),
       clipBehavior: Clip.antiAlias,
@@ -623,7 +623,7 @@ class _CodeBlockView extends StatelessWidget {
               vertical: 6.0,
             ),
             decoration: BoxDecoration(
-              color: sirenColors.sidebarBg,
+              color: sirenColors.codeBlockHeaderBg ?? sirenColors.sidebarBg,
               border: Border(bottom: BorderSide(color: sirenColors.divider!)),
             ),
             child: Row(
