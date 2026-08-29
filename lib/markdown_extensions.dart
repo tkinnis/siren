@@ -3,6 +3,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'theme.dart';
 
 // --- GitHub Alerts ---
 
@@ -118,7 +119,13 @@ class AlertBuilder extends MarkdownElementBuilder {
             // Instead, it should just use the default styling for blockquotes or other elements.
             styleSheet: MarkdownStyleSheet.fromTheme(
               Theme.of(context),
-            ).copyWith(p: preferredStyle),
+            ).copyWith(
+              p: preferredStyle,
+              code: GoogleFonts.firaCode(
+                backgroundColor:
+                    Theme.of(context).extension<SirenColors>()?.codeBg,
+              ),
+            ),
           ),
         ],
       ),

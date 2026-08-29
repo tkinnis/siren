@@ -6,7 +6,7 @@ class SirenTheme {
   static const Color _lightSurfaceContainer = Color(
     0xFFe8e8f0,
   ); // --bg-surface-container
-  static const Color _lightCodeBg = Color(0xFFf8f8fc); // --bg-code
+  static const Color _lightCodeBg = Color(0xFFe8e8f0); // --bg-code
 
   static const Color _lightTextBody = Color(0xFF1a1a2e); // --text-body
   static const Color _lightTextMuted = Color(0xFF3a3a52); // --text-muted
@@ -24,7 +24,7 @@ class SirenTheme {
   static const Color _darkSurfaceContainer = Color(
     0xFF0f0f1a,
   ); // --bg-surface-container
-  static const Color _darkCodeBg = Color(0xFF1a1a2e); // --bg-code
+  static const Color _darkCodeBg = Color(0xFF25253e); // --bg-code
 
   static const Color _darkTextBody = Color(0xFFe0e0f0); // --text-body
   static const Color _darkTextMuted = Color(0xFFc8c8e0); // --text-muted
