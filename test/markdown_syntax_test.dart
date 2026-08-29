@@ -20,14 +20,10 @@ void main() {
     final node = nodes.first;
     expect(node, isA<md.Element>());
     final element = node as md.Element;
-    expect(element.tag, 'alert');
+    expect(element.tag, 'blockquote');
+    expect(element.attributes['class'], 'alert');
     expect(element.attributes['type'], 'NOTE');
-    expect(element.children, hasLength(1));
-    expect(element.children, hasLength(1));
-    final pElement = element.children!.first;
-    expect(pElement, isA<md.Element>());
-    expect((pElement as md.Element).tag, 'p');
-    expect(pElement.children!.first.textContent, 'This is a note.');
+    expect(element.attributes['_raw'], 'This is a note.');
   });
 
   test('AlertBlockSyntax parses indented alert', () {
@@ -44,7 +40,9 @@ void main() {
     final node = nodes.first;
     expect(node, isA<md.Element>());
     final element = node as md.Element;
-    expect(element.tag, 'alert');
+    expect(element.tag, 'blockquote');
+    expect(element.attributes['class'], 'alert');
     expect(element.attributes['type'], 'TIP');
+    expect(element.attributes['_raw'], 'Indented tip.');
   });
 }

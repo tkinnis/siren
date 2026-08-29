@@ -62,35 +62,47 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
             tabs: const [
               Tab(
                 height: 40,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.folder_outlined, size: 16),
-                    SizedBox(width: 8),
-                    Text('Explorer', style: TextStyle(fontSize: 12)),
-                  ],
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.folder_outlined, size: 16),
+                      SizedBox(width: 6),
+                      Text('Explorer', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
                 ),
               ),
               Tab(
                 height: 40,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.list, size: 16),
-                    SizedBox(width: 8),
-                    Text('Outline', style: TextStyle(fontSize: 12)),
-                  ],
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.list, size: 16),
+                      SizedBox(width: 6),
+                      Text('Outline', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
                 ),
               ),
               Tab(
                 height: 40,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.search, size: 16),
-                    SizedBox(width: 8),
-                    Text('Search', style: TextStyle(fontSize: 12)),
-                  ],
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search, size: 16),
+                      SizedBox(width: 6),
+                      Text('Search', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
                 ),
               ),
             ],

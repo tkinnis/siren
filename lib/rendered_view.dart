@@ -181,14 +181,12 @@ class _RenderedViewState extends State<RenderedView> {
                 );
               } else {
                 // Local image
-                if (basePath != null) {
-                  String localPath = uri.path;
-                  var fullPath = p.join(basePath, localPath);
-                  fullPath = p.normalize(fullPath);
-                  final file = File(fullPath);
-                  if (file.existsSync()) {
-                    return Image.file(file);
-                  }
+                String localPath = uri.path;
+                var fullPath = p.join(basePath, localPath);
+                fullPath = p.normalize(fullPath);
+                final file = File(fullPath);
+                if (file.existsSync()) {
+                  return Image.file(file);
                 }
                 return const Icon(Icons.broken_image, size: 24);
               }
@@ -219,9 +217,6 @@ class _RenderedViewState extends State<RenderedView> {
               ),
               code: GoogleFonts.firaCode(
                 backgroundColor: sirenColors.codeBg,
-                fontSize: fontSize * 0.9,
-                color: sirenColors
-                    .iconColor, // Using body text color for inline code if not colored by highlighter
               ),
               strong: TextStyle(
                 fontSize: fontSize,
@@ -361,6 +356,7 @@ class _RenderedViewState extends State<RenderedView> {
                 dividerColor: sirenColors.divider!,
                 topMargin: 0, // H1 has top margin 0 in CSS
                 onTapLink: onTapLink,
+                codeBg: sirenColors.codeBg,
               ),
               'h2': HeadingElementBuilder(
                 fontSize: fontSize * 1.75,
@@ -369,6 +365,7 @@ class _RenderedViewState extends State<RenderedView> {
                 topMargin:
                     24, // H2 margin-top: 2em -> approx 32px, adjusted for flutter padding
                 onTapLink: onTapLink,
+                codeBg: sirenColors.codeBg,
               ),
             },
           ),
@@ -409,8 +406,9 @@ class AnchorBuilder extends MarkdownElementBuilder {
 
 List<InlineSpan>? _parseInlineChildren(
   List<md.Node>? nodes,
-  void Function(String, String?, String)? onTapLink,
-) {
+  void Function(String, String?, String)? onTapLink, [
+  Color? codeBg,
+]) {
   if (nodes == null) return null;
   final List<InlineSpan> spans = [];
   for (final node in nodes) {
@@ -428,7 +426,7 @@ List<InlineSpan>? _parseInlineChildren(
           style = const TextStyle(fontStyle: FontStyle.italic);
           break;
         case 'code':
-          style = GoogleFonts.firaCode();
+          style = GoogleFonts.firaCode(backgroundColor: codeBg);
           break;
         case 'a':
           style = const TextStyle(
@@ -445,7 +443,7 @@ List<InlineSpan>? _parseInlineChildren(
       }
       spans.add(
         TextSpan(
-          children: _parseInlineChildren(node.children, onTapLink),
+          children: _parseInlineChildren(node.children, onTapLink, codeBg),
           style: style,
           recognizer: recognizer,
         ),
@@ -461,6 +459,7 @@ class HeadingElementBuilder extends MarkdownElementBuilder {
   final Color dividerColor;
   final double topMargin;
   final void Function(String, String?, String) onTapLink;
+  final Color? codeBg;
 
   HeadingElementBuilder({
     required this.fontSize,
@@ -468,11 +467,12 @@ class HeadingElementBuilder extends MarkdownElementBuilder {
     required this.dividerColor,
     required this.topMargin,
     required this.onTapLink,
+    this.codeBg,
   });
 
   @override
   Widget? visitText(md.Text text, TextStyle? preferredStyle) {
-    return null;
+    return Text(text.text, style: preferredStyle);
   }
 
   @override
@@ -481,7 +481,7 @@ class HeadingElementBuilder extends MarkdownElementBuilder {
       return SizedBox.shrink();
     }
 
-    final children = _parseInlineChildren(element.children, onTapLink);
+    final children = _parseInlineChildren(element.children, onTapLink, codeBg);
 
     return Container(
       margin: EdgeInsets.only(top: topMargin, bottom: 16.0),
@@ -517,7 +517,12 @@ class CodeElementBuilder extends MarkdownElementBuilder {
   });
 
   @override
-  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
     var language = '';
     if (element.attributes['class'] != null) {
       String lg = element.attributes['class']!;
@@ -551,7 +556,16 @@ class CodeElementBuilder extends MarkdownElementBuilder {
       );
     }
 
-    return null;
+    final TextStyle baseStyle = parentStyle ?? const TextStyle();
+    return Text.rich(
+      TextSpan(
+        text: element.textContent,
+        style: GoogleFonts.firaCode(
+          backgroundColor: sirenColors.codeBg,
+          textStyle: baseStyle,
+        ),
+      ),
+    );
   }
 }
 

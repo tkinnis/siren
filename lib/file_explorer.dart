@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
@@ -719,7 +720,10 @@ class _FileExplorerState extends State<FileExplorer> {
                       controller: _horizontalScrollController,
                       scrollDirection: Axis.horizontal,
                       child: SizedBox(
-                        width: _maxContentWidth,
+                        width: math.max(
+                          constraints.maxWidth,
+                          _maxContentWidth,
+                        ),
                         child: ListView.builder(
                           controller: _verticalScrollController,
                           itemCount: _flatList.length,
