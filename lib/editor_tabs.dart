@@ -77,8 +77,8 @@ class _EditorTabsState extends State<EditorTabs> {
         buildDefaultDragHandles: false,
         padding: const EdgeInsets.only(left: 4),
         itemCount: tabs.length,
-        onReorder: (oldIndex, newIndex) {
-          appState.reorderTabs(oldIndex, newIndex);
+        onReorderItem: (oldIndex, newIndex) {
+          appState.reorderTabsDirect(oldIndex, newIndex);
         },
         proxyDecorator: (child, index, animation) {
           return Material(
@@ -94,52 +94,58 @@ class _EditorTabsState extends State<EditorTabs> {
           return ReorderableDragStartListener(
             key: ValueKey(filePath),
             index: index,
-            child: GestureDetector(
-              onTap: () => appState.setActiveTab(index),
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 100, maxWidth: 200),
-                margin: const EdgeInsets.only(right: 1, top: 1),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: isActive ? sirenColors.activeTabBg : sirenColors.tabBg,
-                  border: isActive
-                      ? Border(
-                          top: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 2,
+            child: Semantics(
+              button: true,
+              selected: isActive,
+              label: '$fileName tab${isActive ? ", active" : ""}',
+              child: GestureDetector(
+                onTap: () => appState.setActiveTab(index),
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 100, maxWidth: 200),
+                  margin: const EdgeInsets.only(right: 1, top: 1),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: isActive ? sirenColors.activeTabBg : sirenColors.tabBg,
+                    border: isActive
+                        ? Border(
+                            top: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            ),
+                          )
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.description,
+                        size: 14,
+                        color: isActive
+                            ? Theme.of(context).colorScheme.primary
+                            : sirenColors.iconColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          fileName,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isActive
+                                ? Theme.of(context).textTheme.bodyMedium?.color
+                                : sirenColors.iconColor,
                           ),
-                        )
-                      : null,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.description,
-                      size: 14,
-                      color: isActive
-                          ? Theme.of(context).colorScheme.primary
-                          : sirenColors.iconColor,
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        fileName,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isActive
-                              ? Theme.of(context).textTheme.bodyMedium?.color
-                              : sirenColors.iconColor,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    _TabCloseButton(
-                      onPressed: () => appState.closeFile(filePath),
-                      isActive: isActive,
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      _TabCloseButton(
+                        onPressed: () => appState.closeFile(filePath),
+                        isActive: isActive,
+                        fileName: fileName,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -153,8 +159,13 @@ class _EditorTabsState extends State<EditorTabs> {
 class _TabCloseButton extends StatefulWidget {
   final VoidCallback onPressed;
   final bool isActive;
+  final String fileName;
 
-  const _TabCloseButton({required this.onPressed, required this.isActive});
+  const _TabCloseButton({
+    required this.onPressed,
+    required this.isActive,
+    required this.fileName,
+  });
 
   @override
   State<_TabCloseButton> createState() => _TabCloseButtonState();
@@ -165,25 +176,38 @@ class _TabCloseButtonState extends State<_TabCloseButton> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: Container(
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: _isHovering
-                ? Theme.of(context).colorScheme.error.withValues(alpha: 0.2)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Icon(
-            Icons.close,
-            size: 14,
-            color: _isHovering
-                ? Theme.of(context).colorScheme.error
-                : (widget.isActive ? null : Colors.grey),
+    final sirenColors = Theme.of(context).extension<SirenColors>()!;
+
+    return Semantics(
+      button: true,
+      label: 'Close ${widget.fileName}',
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        child: Tooltip(
+          message: 'Close tab',
+          waitDuration: const Duration(milliseconds: 500),
+          child: GestureDetector(
+            onTap: widget.onPressed,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
+              decoration: BoxDecoration(
+                color: _isHovering
+                    ? Theme.of(context).colorScheme.error.withValues(alpha: 0.2)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Icon(
+                Icons.close,
+                size: 14,
+                color: _isHovering
+                    ? Theme.of(context).colorScheme.error
+                    : (widget.isActive
+                        ? sirenColors.iconColor
+                        : sirenColors.iconColor?.withValues(alpha: 0.7)),
+              ),
+            ),
           ),
         ),
       ),

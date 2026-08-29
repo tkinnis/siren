@@ -72,8 +72,8 @@ class FileIndexer {
       for (final entity in entities) {
         final name = path.basename(entity.path);
         
-        String? _relativePath; 
-        String getRelativePath() => _relativePath ??= path.relative(entity.path, from: rootPath);
+        String? relativePath; 
+        String getRelativePath() => relativePath ??= path.relative(entity.path, from: rootPath);
 
         bool matchesRule(FilterRule rule) {
           if (rule.matchPath) {

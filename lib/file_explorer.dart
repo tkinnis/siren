@@ -806,65 +806,70 @@ class _FileExplorerItemViewState extends State<_FileExplorerItemView> {
         ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05)
         : null;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        onSecondaryTapUp: widget.onSecondaryTapUp,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          color: color,
-          padding: EdgeInsets.only(
-            left: paddingLeft,
-            top: 4,
-            bottom: 4,
-            right: 8,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.item.isDirectory)
+    return Semantics(
+      button: true,
+      selected: widget.isSelected,
+      label: '${widget.item.isDirectory ? (widget.item.isExpanded ? "Expanded folder" : "Collapsed folder") : "Markdown file"} $name, level ${widget.item.depth + 1}',
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          onSecondaryTapUp: widget.onSecondaryTapUp,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            color: color,
+            padding: EdgeInsets.only(
+              left: paddingLeft,
+              top: 4,
+              bottom: 4,
+              right: 8,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.item.isDirectory)
+                  Icon(
+                    widget.item.isExpanded
+                        ? Icons.keyboard_arrow_down
+                        : Icons.keyboard_arrow_right,
+                    size: iconSize,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  )
+                else
+                  const SizedBox(width: 16),
+                const SizedBox(width: iconSpacing),
                 Icon(
-                  widget.item.isExpanded
-                      ? Icons.keyboard_arrow_down
-                      : Icons.keyboard_arrow_right,
+                  widget.item.isDirectory
+                      ? (widget.item.isExpanded
+                            ? Icons.folder_open
+                            : Icons.folder)
+                      : Icons.description,
                   size: iconSize,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                )
-              else
-                const SizedBox(width: 16),
-              const SizedBox(width: iconSpacing),
-              Icon(
-                widget.item.isDirectory
-                    ? (widget.item.isExpanded
-                          ? Icons.folder_open
-                          : Icons.folder)
-                    : Icons.description,
-                size: iconSize,
-                color: widget.item.isDirectory
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: widget.isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : null,
-                    fontWeight: widget.isSelected
-                        ? FontWeight.w500
-                        : FontWeight.normal,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  color: widget.item.isDirectory
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: widget.isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                      fontWeight: widget.isSelected
+                          ? FontWeight.w500
+                          : FontWeight.normal,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

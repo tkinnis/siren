@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_highlighter/flutter_highlighter.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:path/path.dart' as p;
@@ -175,8 +175,14 @@ class _RenderedViewState extends State<RenderedView> {
                   (uri.scheme == 'http' || uri.scheme == 'https')) {
                 return Image.network(
                   uri.toString(),
+                  semanticLabel: alt,
                   errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.broken_image, size: 24);
+                    return Semantics(
+                      label: alt != null && alt.isNotEmpty
+                          ? 'Image failed to load: $alt'
+                          : 'Image failed to load',
+                      child: const Icon(Icons.broken_image, size: 24),
+                    );
                   },
                 );
               } else {
@@ -186,9 +192,14 @@ class _RenderedViewState extends State<RenderedView> {
                 fullPath = p.normalize(fullPath);
                 final file = File(fullPath);
                 if (file.existsSync()) {
-                  return Image.file(file);
+                  return Image.file(file, semanticLabel: alt);
                 }
-                return const Icon(Icons.broken_image, size: 24);
+                return Semantics(
+                  label: alt != null && alt.isNotEmpty
+                      ? 'Image not found: $alt'
+                      : 'Image not found',
+                  child: const Icon(Icons.broken_image, size: 24),
+                );
               }
             },
             extensionSet: md.ExtensionSet(
@@ -207,7 +218,6 @@ class _RenderedViewState extends State<RenderedView> {
             ),
             styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
               blockSpacing: 12.0, // --spacing-md
-              textScaleFactor: 1.0,
 
               // Typography
               p: TextStyle(
@@ -412,42 +422,36 @@ List<InlineSpan>? _parseInlineChildren(
   if (nodes == null) return null;
   final List<InlineSpan> spans = [];
   for (final node in nodes) {
-    if (node is md.Text) {
-      spans.add(TextSpan(text: node.text));
-    } else if (node is md.Element) {
-      TextStyle? style;
-      TapGestureRecognizer? recognizer;
-
-      switch (node.tag) {
-        case 'strong':
-          style = const TextStyle(fontWeight: FontWeight.bold);
-          break;
-        case 'em':
-          style = const TextStyle(fontStyle: FontStyle.italic);
-          break;
-        case 'code':
-          style = GoogleFonts.firaCode(backgroundColor: codeBg);
-          break;
-        case 'a':
-          style = const TextStyle(
+    switch (node) {
+      case md.Text(:final text):
+        spans.add(TextSpan(text: text));
+      case md.Element(:final tag, :final children, :final attributes, :final textContent):
+        final style = switch (tag) {
+          'strong' => const TextStyle(fontWeight: FontWeight.bold),
+          'em' => const TextStyle(fontStyle: FontStyle.italic),
+          'code' => GoogleFonts.firaCode(backgroundColor: codeBg),
+          'a' => const TextStyle(
             color: Colors.blue,
             decoration: TextDecoration.underline,
-          );
-          final href = node.attributes['href'];
-          final title = node.attributes['title'] ?? '';
-          if (onTapLink != null) {
-            recognizer = TapGestureRecognizer()
-              ..onTap = () => onTapLink(node.textContent, href, title);
-          }
-          break;
-      }
-      spans.add(
-        TextSpan(
-          children: _parseInlineChildren(node.children, onTapLink, codeBg),
-          style: style,
-          recognizer: recognizer,
-        ),
-      );
+          ),
+          _ => null,
+        };
+
+        TapGestureRecognizer? recognizer;
+        if (tag == 'a' && onTapLink != null) {
+          final href = attributes['href'];
+          final title = attributes['title'] ?? '';
+          recognizer = TapGestureRecognizer()
+            ..onTap = () => onTapLink(textContent, href, title);
+        }
+
+        spans.add(
+          TextSpan(
+            children: _parseInlineChildren(children, onTapLink, codeBg),
+            style: style,
+            recognizer: recognizer,
+          ),
+        );
     }
   }
   return spans;
@@ -483,21 +487,24 @@ class HeadingElementBuilder extends MarkdownElementBuilder {
 
     final children = _parseInlineChildren(element.children, onTapLink, codeBg);
 
-    return Container(
-      margin: EdgeInsets.only(top: topMargin, bottom: 16.0),
-      padding: const EdgeInsets.only(bottom: 6.0),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: dividerColor, width: 1.0)),
-      ),
-      width: double.infinity,
-      child: Text.rich(
-        TextSpan(
-          children: children,
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.w600,
-            color: color,
-            height: 1.25,
+    return Semantics(
+      header: true,
+      child: Container(
+        margin: EdgeInsets.only(top: topMargin, bottom: 16.0),
+        padding: const EdgeInsets.only(bottom: 6.0),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: dividerColor, width: 1.0)),
+        ),
+        width: double.infinity,
+        child: Text.rich(
+          TextSpan(
+            children: children,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+              color: color,
+              height: 1.25,
+            ),
           ),
         ),
       ),

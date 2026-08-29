@@ -765,9 +765,12 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void reorderTabs(int oldIndex, int newIndex) {
-    if (oldIndex < newIndex) {
-      newIndex -= 1;
+  void reorderTabsDirect(int oldIndex, int newIndex) {
+    if (oldIndex < 0 ||
+        oldIndex >= _openFilePaths.length ||
+        newIndex < 0 ||
+        newIndex >= _openFilePaths.length) {
+      return;
     }
     final String item = _openFilePaths.removeAt(oldIndex);
     _openFilePaths.insert(newIndex, item);
@@ -782,6 +785,14 @@ class AppState extends ChangeNotifier {
     }
 
     notifyListeners();
+    _persistState();
+  }
+
+  void reorderTabs(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    reorderTabsDirect(oldIndex, newIndex);
   }
 
   void toggleViewMode() {
@@ -963,6 +974,7 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _indexDebounceTimer?.cancel();
     _navigationController.close();
     _directoryChangeController.close();
     _watcherService.dispose();

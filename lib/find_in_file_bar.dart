@@ -14,6 +14,7 @@ class FindInFileBar extends StatefulWidget {
 class _FindInFileBarState extends State<FindInFileBar> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final FocusNode _keyboardFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -44,6 +45,7 @@ class _FindInFileBarState extends State<FindInFileBar> {
   void dispose() {
     _controller.dispose();
     _focusNode.dispose();
+    _keyboardFocusNode.dispose();
     super.dispose();
   }
 
@@ -74,7 +76,7 @@ class _FindInFileBarState extends State<FindInFileBar> {
         : 'No results';
 
     return KeyboardListener(
-      focusNode: FocusNode(),
+      focusNode: _keyboardFocusNode,
       onKeyEvent: _onKey,
       child: Container(
         height: 38,

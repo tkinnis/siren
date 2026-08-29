@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
@@ -68,44 +68,19 @@ class AlertBuilder extends MarkdownElementBuilder {
     final type = element.attributes['type'] ?? 'NOTE';
     final rawContent = element.attributes['_raw'] ?? '';
 
-    Color color;
-    IconData icon;
-    String title;
-
-    switch (type) {
-      case 'TIP':
-        color = Colors.green;
-        icon = Icons.lightbulb_outline;
-        title = 'Tip';
-        break;
-      case 'IMPORTANT':
-        color = Colors.purple;
-        icon = Icons.info_outline; // Or explicit error
-        title = 'Important';
-        break;
-      case 'WARNING':
-        color = Colors.orange;
-        icon = Icons.warning_amber_rounded;
-        title = 'Warning';
-        break;
-      case 'CAUTION':
-        color = Colors.red;
-        icon = Icons.error_outline;
-        title = 'Caution';
-        break;
-      case 'NOTE':
-      default:
-        color = Colors.blue;
-        icon = Icons.info_outline;
-        title = 'Note';
-        break;
-    }
+    final (color, icon, title) = switch (type) {
+      'TIP' => (Colors.green, Icons.lightbulb_outline, 'Tip'),
+      'IMPORTANT' => (Colors.purple, Icons.info_outline, 'Important'),
+      'WARNING' => (Colors.orange, Icons.warning_amber_rounded, 'Warning'),
+      'CAUTION' => (Colors.red, Icons.error_outline, 'Caution'),
+      _ => (Colors.blue, Icons.info_outline, 'Note'),
+    };
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         border: Border(left: BorderSide(color: color, width: 4.0)),
         borderRadius: const BorderRadius.only(
           topRight: Radius.circular(8),
@@ -227,8 +202,8 @@ class HighlightBuilder extends MarkdownElementBuilder {
     final theme = Theme.of(context);
     // Use a yellow tint or primary tint
     final color = theme.brightness == Brightness.dark
-        ? Colors.yellow.withOpacity(0.3)
-        : Colors.yellow.withOpacity(0.5);
+        ? Colors.yellow.withValues(alpha: 0.3)
+        : Colors.yellow.withValues(alpha: 0.5);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 2.0),
