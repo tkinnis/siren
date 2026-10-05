@@ -8,7 +8,7 @@
 PRODUCT_NAME = Siren
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.tkinnis.siren
+PRODUCT_BUNDLE_IDENTIFIER = com.tonykinnis.Siren
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.tkinnis. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.tonykinnis. All rights reserved.
