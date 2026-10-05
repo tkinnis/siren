@@ -11,6 +11,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.47+-02569B?logo=flutter&logoColor=white" alt="Flutter" />
   <img src="https://img.shields.io/badge/Platform-macOS-000000?logo=apple&logoColor=white" alt="macOS" />
+  <a href="https://github.com/tkinnis/siren/releases/latest"><img src="https://img.shields.io/github/v/release/tkinnis/siren?color=007AFF&logo=apple&logoColor=white" alt="Latest Release" /></a>
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
 </p>
 
@@ -117,14 +118,28 @@ Comprehensive guides and architectural notes are available in the [`docs/`](docs
 
 ---
 
-## Getting Started
+## Download & Installation
 
-### Prerequisites
+### Pre-Built macOS App (Recommended)
+
+Download the latest universal macOS release from [**GitHub Releases**](https://github.com/tkinnis/siren/releases/latest):
+
+1. Download **`Siren-v0.1.0-macos.zip`**.
+2. Double-click to extract **`Siren.app`**.
+3. Drag **`Siren.app`** into your **`/Applications`** folder and launch.
+
+*Supports macOS 11.0+ on both Apple Silicon (M-series) and Intel Macs.*
+
+---
+
+### Building from Source
+
+#### Prerequisites
 - macOS 11.0+ (Big Sur or newer)
 - [Flutter SDK](https://flutter.dev/docs/get-started/install/macos) (version 3.47 or newer)
 - Xcode (latest command-line tools)
 
-### Installation & Running
+#### Build Instructions
 
 1. **Clone the repository**:
    ```bash
