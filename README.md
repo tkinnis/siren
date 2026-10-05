@@ -120,7 +120,7 @@ Comprehensive guides and architectural notes are available in the [`docs/`](docs
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/tonykinnis/siren.git
+   git clone https://github.com/tkinnis/siren.git
    cd siren
    ```
 
