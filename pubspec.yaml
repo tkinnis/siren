@@ -1,30 +1,30 @@
 name: siren
-description: "A new Flutter project."
+description: "A sleek, native desktop Markdown viewer with real-time preview, LaTeX, Mermaid, and fast workspace navigation."
 publish_to: 'none'
 version: 0.1.0
 
 environment:
-  sdk: ^3.10.4
+  sdk: ^3.13.0
 
 dependencies:
-  desktop_drop: ^0.7.0
+  desktop_drop: ^0.8.4
   file_selector: ^1.1.0
   flutter:
     sdk: flutter
   flutter_highlighter: ^0.1.1
   flutter_markdown_plus: ^1.0.12
   flutter_math_fork: ^0.7.4
-  google_fonts: ^7.0.0
+  google_fonts: ^9.0.0
   highlighter: ^0.1.1
   markdown: ^7.3.0
   path: ^1.9.1
   provider: ^6.1.5+1
   shared_preferences: ^2.5.4
-  url_launcher: ^6.3.2
+  url_launcher: ^6.3.3
   watcher: ^1.2.1
-  webview_flutter: ^4.13.1
-  webview_flutter_wkwebview: ^3.23.5
-  window_manager: ^0.5.1
+  webview_flutter: ^4.14.1
+  webview_flutter_wkwebview: ^3.27.0
+  window_manager: ^0.5.2
 
 dev_dependencies:
   flutter_test:
@@ -32,13 +32,11 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
 
-dependency_overrides:
-  path_provider_foundation: 2.5.1
-
 flutter:
   uses-material-design: true
   assets:
     - assets/bin/rg
+    - assets/images/
 
 flutter_launcher_icons:
   image_path: "assets/images/app_icon.png"
