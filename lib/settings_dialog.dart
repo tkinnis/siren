@@ -122,18 +122,54 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
     return AlertDialog(
       title: const Text('Settings'),
       content: SizedBox(
-        width: 500,
-        height: 400,
+        width: 520,
+        height: 520,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'File Indexing Patterns (Regex)',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+              const Text(
+                'Appearance',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Text('Theme Mode:'),
+                  const SizedBox(width: 16),
+                  SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        label: Text('System'),
+                        icon: Icon(Icons.brightness_auto, size: 16),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        label: Text('Light'),
+                        icon: Icon(Icons.light_mode, size: 16),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        label: Text('Dark'),
+                        icon: Icon(Icons.dark_mode, size: 16),
+                      ),
+                    ],
+                    selected: {appState.themeMode},
+                    onSelectionChanged: (Set<ThemeMode> newSelection) {
+                      appState.setThemeMode(newSelection.first);
+                    },
+                  ),
+                ],
+              ),
+              const Divider(height: 28),
+              const Text(
+                'File Indexing Patterns (Regex)',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             const SizedBox(height: 8),
             const Text(
               'Include Patterns (Leave empty to include all .md/.markdown)',

@@ -369,6 +369,37 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             PlatformMenuItem(
+              label: 'Toggle Dark/Light Mode',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.keyD,
+                meta: true,
+                shift: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  final appState = context.read<AppState>();
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  appState.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
+                }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Use Light Theme',
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().setThemeMode(ThemeMode.light);
+                }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Use Dark Theme',
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().setThemeMode(ThemeMode.dark);
+                }
+              },
+            ),
+            PlatformMenuItem(
               label: 'Zoom In',
               shortcut: const SingleActivator(
                 LogicalKeyboardKey.equal,
