@@ -14,6 +14,7 @@ import 'rendered_view.dart';
 import 'theme.dart';
 import 'file_search_modal.dart';
 import 'settings_dialog.dart';
+import 'about_dialog.dart';
 import 'find_in_file_bar.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -50,10 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   PlatformMenuItem(
                     label: 'About Siren',
                     onSelected: () {
-                      showAboutDialog(
+                      showDialog(
                         context: context,
-                        applicationName: 'Siren',
-                        applicationVersion: '0.1.0',
+                        builder: (context) => const AboutSirenDialog(),
                       );
                     },
                   ),
@@ -333,6 +333,42 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             PlatformMenuItem(
+              label: 'Show Explorer',
+              onSelected: () {
+                if (mounted) {
+                  final appState = context.read<AppState>();
+                  appState.setSidebarTabIndex(0);
+                  if (!appState.isExplorerVisible) {
+                    appState.toggleExplorerVisibility();
+                  }
+                }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Show Outline',
+              onSelected: () {
+                if (mounted) {
+                  final appState = context.read<AppState>();
+                  appState.setSidebarTabIndex(1);
+                  if (!appState.isExplorerVisible) {
+                    appState.toggleExplorerVisibility();
+                  }
+                }
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Show Search',
+              onSelected: () {
+                if (mounted) {
+                  final appState = context.read<AppState>();
+                  appState.setSidebarTabIndex(2);
+                  if (!appState.isExplorerVisible) {
+                    appState.toggleExplorerVisibility();
+                  }
+                }
+              },
+            ),
+            PlatformMenuItem(
               label: 'Zoom In',
               shortcut: const SingleActivator(
                 LogicalKeyboardKey.equal,
@@ -607,12 +643,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 _DesktopIconButton(
                   icon: Icons.arrow_back,
                   tooltip: 'Go Back (Cmd+[)',
-                  onPressed: appState.goBack,
+                  onPressed: appState.canGoBack ? appState.goBack : null,
                 ),
                 _DesktopIconButton(
                   icon: Icons.arrow_forward,
                   tooltip: 'Go Forward (Cmd+])',
-                  onPressed: appState.goForward,
+                  onPressed: appState.canGoForward ? appState.goForward : null,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -874,12 +910,12 @@ class _Breadcrumbs extends StatelessWidget {
 
 class _DesktopIconButton extends StatefulWidget {
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final String tooltip;
 
   const _DesktopIconButton({
     required this.icon,
-    required this.onPressed,
+    this.onPressed,
     required this.tooltip,
   });
 
@@ -893,28 +929,40 @@ class _DesktopIconButtonState extends State<_DesktopIconButton> {
 
   @override
   Widget build(BuildContext context) {
+    final isEnabled = widget.onPressed != null;
     final sirenColors = Theme.of(context).extension<SirenColors>()!;
-    final color = sirenColors.iconColor ?? Theme.of(context).iconTheme.color!;
-    final hoverColor = color.withValues(alpha: 0.05);
-    final pressedColor = color.withValues(alpha: 0.1);
+    final baseColor = sirenColors.iconColor ?? Theme.of(context).iconTheme.color!;
+    final color = isEnabled ? baseColor : baseColor.withValues(alpha: 0.25);
+    final hoverColor = baseColor.withValues(alpha: 0.05);
+    final pressedColor = baseColor.withValues(alpha: 0.1);
 
     return Tooltip(
       message: widget.tooltip,
       waitDuration: const Duration(milliseconds: 500),
       child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovering = true),
-        onExit: (_) => setState(() => _isHovering = false),
-        cursor: SystemMouseCursors.click,
+        onEnter: (_) {
+          if (isEnabled) setState(() => _isHovering = true);
+        },
+        onExit: (_) {
+          if (isEnabled) setState(() => _isHovering = false);
+        },
+        cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
         child: GestureDetector(
-          onTapDown: (_) => setState(() => _isPressed = true),
-          onTapUp: (_) => setState(() => _isPressed = false),
-          onTapCancel: () => setState(() => _isPressed = false),
+          onTapDown: (_) {
+            if (isEnabled) setState(() => _isPressed = true);
+          },
+          onTapUp: (_) {
+            if (isEnabled) setState(() => _isPressed = false);
+          },
+          onTapCancel: () {
+            if (isEnabled) setState(() => _isPressed = false);
+          },
           onTap: widget.onPressed,
           child: Container(
             decoration: BoxDecoration(
-              color: _isPressed
+              color: isEnabled && _isPressed
                   ? pressedColor
-                  : _isHovering
+                  : isEnabled && _isHovering
                   ? hoverColor
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(4),
@@ -923,9 +971,9 @@ class _DesktopIconButtonState extends State<_DesktopIconButton> {
             child: Icon(
               widget.icon,
               size: 18,
-              color: _isPressed || _isHovering
-                  ? color
-                  : color.withValues(alpha: 0.7),
+              color: isEnabled
+                  ? (_isPressed || _isHovering ? color : color.withValues(alpha: 0.7))
+                  : color,
             ),
           ),
         ),

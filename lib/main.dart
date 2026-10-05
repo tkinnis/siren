@@ -1,11 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'app_state.dart';
 import 'home_screen.dart';
 import 'theme.dart';
 
-void main() async {
+void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
@@ -14,10 +16,24 @@ void main() async {
   // we'll keep it here but we've optimized its internal file loading.
   final appState = await AppState.create();
 
+  if (args.isNotEmpty) {
+    final candidate = p.canonicalize(args.first);
+    if (File(candidate).existsSync()) {
+      await appState.openFileAndSetDirectory(candidate);
+    }
+  } else if (appState.openFilePaths.isEmpty) {
+    final comp = p.canonicalize('comprehensive.md');
+    if (File(comp).existsSync()) {
+      await appState.openFileAndSetDirectory(comp);
+    }
+  }
+
+  final isStandardWindow = args.any((a) => a.startsWith('--screenshot') || a == '--standard-window');
+
   runApp(MainApp(appState: appState));
 
   WindowOptions windowOptions = const WindowOptions(
-    size: Size(800, 600),
+    size: Size(1200, 800),
     minimumSize: Size(400, 300),
     center: true,
     backgroundColor: Colors.transparent,
@@ -25,8 +41,8 @@ void main() async {
     titleBarStyle: TitleBarStyle.hidden,
   );
 
-  // Restore saved bounds if available
-  if (appState.windowBounds != null) {
+  // Restore saved bounds if available (unless forced standard window)
+  if (!isStandardWindow && appState.windowBounds != null) {
     windowOptions = WindowOptions(
       size: appState.windowBounds!.size,
       minimumSize: const Size(400, 300),
@@ -38,7 +54,10 @@ void main() async {
   }
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
-    if (appState.windowBounds != null) {
+    if (isStandardWindow) {
+      await windowManager.setSize(const Size(1200, 800));
+      await windowManager.center();
+    } else if (appState.windowBounds != null) {
       await windowManager.setBounds(appState.windowBounds!);
     }
     await windowManager.show();
