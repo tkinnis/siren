@@ -16,7 +16,7 @@
 
 ---
 
-![Siren Hero Preview](docs/screenshots/siren_comprehensive_rendered.png)
+![Siren Hero Preview - Light & Dark Modes](docs/screenshots/siren_theme_split.png)
 
 ## Overview
 
@@ -44,6 +44,8 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | **Search** | **Workspace Ripgrep** | Embedded binary full-text search across thousands of files with match counts | `Cmd + Shift + F` |
 | | **Quick Open** | Background isolate fuzzy finder for instant file switching | `Cmd + P` |
 | | **In-File Find** | Active document search with regex support, match counter, and next/prev jumps | `Cmd + F` |
+| **Appearance** | **Light & Dark Themes** | Seamless toggling between System, Light, and Dark themes with tailored typography and syntax highlighting | Toolbar icon / `Cmd + Shift + D` |
+| | **Settings Configuration** | Modal dialog (`Cmd + ,`) to set default theme mode and customize regex file indexing patterns | `Cmd + ,` |
 | **Desktop Integration** | **Live File Watching** | Monitors open documents on disk and auto-reloads upon external edits | Automatic |
 | | **Finder Drag & Drop** | Drag files or folders directly into the window to open immediately | Drag & drop |
 | | **Desktop About & Licenses** | Native modal dialog with Siren branding and aligned 2-column license browser | App menu > About Siren |
@@ -64,11 +66,15 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | :---: | :---: |
 | ![Siren Search View](docs/screenshots/siren_search_view.png) | ![Siren Quick Open](docs/screenshots/siren_quick_open.png) |
 
-### Native Desktop Experience
+### Native Desktop Experience & Preferences
 
-| Desktop About Dialog | Integrated Open Source Licenses Viewer |
+| Desktop About Dialog | Application Settings (`Cmd + ,`) |
 | :---: | :---: |
-| ![Siren About Dialog](docs/screenshots/siren_about_dialog.png) | ![Siren Licenses Viewer](docs/screenshots/siren_licenses_view.png) |
+| ![Siren About Dialog](docs/screenshots/siren_about_dialog.png) | ![Siren Settings Dialog](docs/screenshots/siren_settings_dialog.png) |
+
+| Light & Dark Split Showcase | Integrated Licenses Viewer |
+| :---: | :---: |
+| ![Siren Theme Split](docs/screenshots/siren_theme_split.png) | ![Siren Licenses Viewer](docs/screenshots/siren_licenses_view.png) |
 
 ---
 
@@ -83,6 +89,8 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | `Cmd + Shift + W` | Close All Tabs |
 | `Cmd + Shift + T` | Reopen Recently Closed Tab |
 | `Cmd + E` | Toggle Preview / Raw View |
+| `Cmd + Shift + D` | Toggle Dark / Light Theme |
+| `Cmd + ,` | Open Settings |
 | `Cmd + F` | Find in Active File |
 | `Cmd + Shift + F` | Global Search (Ripgrep) |
 | `Cmd + P` | Quick Open (Fuzzy Finder) |

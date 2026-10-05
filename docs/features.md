@@ -22,6 +22,8 @@ This guide provides a detailed walkthrough of all the features and capabilities 
 | **Search** | **Workspace Ripgrep** | Embedded binary full-text search across thousands of files with match counts | `Cmd + Shift + F` |
 | | **Quick Open** | Background isolate fuzzy finder for instant file switching | `Cmd + P` |
 | | **In-File Find** | Active document search with regex support, match counter, and next/prev jumps | `Cmd + F` |
+| **Appearance** | **Light & Dark Themes** | Seamless toggling between System, Light, and Dark themes with tailored typography and syntax highlighting | Toolbar icon / `Cmd + Shift + D` |
+| | **Settings Configuration** | Modal dialog (`Cmd + ,`) to set default theme mode and customize regex file indexing patterns | `Cmd + ,` |
 | **Desktop Integration** | **Live File Watching** | Monitors open documents on disk and auto-reloads upon external edits | Automatic |
 | | **Finder Drag & Drop** | Drag files or folders directly into the window to open immediately | Drag & drop |
 | | **Desktop About & Licenses** | Native modal dialog with Siren branding and aligned 2-column license browser | App menu > About Siren |
@@ -124,13 +126,29 @@ Siren provides three levels of search for finding information instantly:
 
 ---
 
-## 6. Native macOS Desktop Experience
+## 6. Native macOS Desktop Experience & Settings
 
 - **Native Modal Dialogs**: Clean, modern floating dialogs for Settings and About Siren that respect macOS window buttons and title bar geometry.
 - **Desktop Open Source License Browser**: Filterable master-detail view for reviewing third-party dependency licenses with selectable monospace typography.
 - **Theme Support**: High-contrast, dark and light themes crafted according to macOS Human Interface Guidelines.
 - **Persistent State**: Window size, position, active tabs, and preferences persist seamlessly across application restarts.
 
-| About Siren Dialog | Desktop Open Source Licenses Viewer |
+### Light & Dark Themes
+
+Siren natively supports **System**, **Light**, and **Dark** themes. Easily toggle between Light and Dark modes at any time with `Cmd+Shift+D` or via the toolbar moon/sun button. Syntax highlighting for code blocks and Markdown alerts adapt dynamically to maintain optimal legibility and contrast in any environment.
+
+![Siren Theme Split](screenshots/siren_theme_split.png)
+
+### Settings Dialog (`Cmd+,`)
+
+The Settings dialog provides user configuration:
+- **Appearance (Theme Mode)**: Choose between System (automatic adaptation to macOS settings), Light, or Dark.
+- **File Indexing Patterns (Regex)**: Customize which files and directories are indexed for Quick Open and Workspace Search. Add regular expressions targeting file names or entire paths to explicitly include or exclude patterns (e.g. `^node_modules$`, `build/`).
+
+| Desktop Settings Dialog | Desktop About Siren Dialog |
 | :---: | :---: |
-| ![About Siren](screenshots/siren_about_dialog.png) | ![Licenses Viewer](screenshots/siren_licenses_view.png) |
+| ![Settings Dialog](screenshots/siren_settings_dialog.png) | ![About Siren](screenshots/siren_about_dialog.png) |
+
+| Open Source Licenses Browser |
+| :---: |
+| ![Licenses Viewer](screenshots/siren_licenses_view.png) |

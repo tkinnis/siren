@@ -9,10 +9,11 @@ Siren is built with a keyboard-first philosophy. This document lists all availab
 | Action | Shortcut | Description |
 | :--- | :---: | :--- |
 | **Toggle Render / Raw View** | `Cmd+E` | Switch between formatted rendered view and raw Markdown with gutter |
+| **Toggle Dark / Light Theme** | `Cmd+Shift+D` | Instantly switch between light and dark themes |
 | **Toggle Sidebar** | `Cmd+B` | Show or hide the sidebar (Explorer & Outline) |
 | **Back in History** | `Cmd+[` or `Alt+Left` | Navigate to the previous document in tab history |
 | **Forward in History** | `Cmd+]` or `Alt+Right` | Navigate forward in tab history |
-| **Open Settings** | `Cmd+,` | Configure theme, font size, and file indexing patterns |
+| **Open Settings** | `Cmd+,` | Configure appearance, theme mode, and file indexing patterns |
 
 ---
 
@@ -39,6 +40,17 @@ Siren is built with a keyboard-first philosophy. This document lists all availab
 | **Next Match** | `Enter` | Jump to the next match in Find in File |
 | **Previous Match** | `Shift+Enter` | Jump to the previous match in Find in File |
 | **Dismiss Search / Modals** | `Escape` | Close the find bar or Quick Open modal |
+
+---
+
+## View, Zoom & Reload
+
+| Action | Shortcut | Description |
+| :--- | :---: | :--- |
+| **Increase Font Size** | `Cmd++` or `Cmd+=` | Enlarge document body and raw text font |
+| **Decrease Font Size** | `Cmd+-` | Reduce document body and raw text font |
+| **Reset Font Size** | `Cmd+0` | Reset font size to default (15.0) |
+| **Reload File** | `Cmd+R` | Reload active document from disk |
 
 ---
 
