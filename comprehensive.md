@@ -1,114 +1,123 @@
-# Siren Markdown Feature Verification
+# Siren Markdown Feature Showcase
 
-This document contains examples of all supported markdown features in Siren, including standard markdown and custom extensions.
+Welcome to the **Siren** feature verification and showcase document. This document demonstrates all standard CommonMark features alongside Siren's custom extensions and interactive elements.
+
+---
 
 ## Custom Extensions
 
 ### GitHub Alerts
 
 > [!NOTE]
-> This is a **Note** alert. useful for general information.
+> This is a **Note** alert. Useful for general guidance and background context.
 
 > [!TIP]
-> This is a **Tip** alert. Helpful advice or shortcuts.
+> This is a **Tip** alert. Helpful advice, workflow shortcuts, and performance recommendations.
 
 > [!IMPORTANT]
-> This is an **Important** alert. Key information users should know.
+> This is an **Important** alert. Essential requirements and must-know information.
 
 > [!WARNING]
-> This is a **Warning** alert. Urgent info that needs immediate attention.
+> This is a **Warning** alert. Urgent notifications requiring attention to prevent issues.
 
 > [!CAUTION]
-> This is a **Caution** alert. Advises about risks or negative outcomes.
+> This is a **Caution** alert. Advises about high-risk actions, edge cases, and potential data loss.
 
-### LaTeX Math
+---
 
-Inline math: The mass-energy equivalence formula is $E = mc^2$.
+### LaTeX Mathematics
 
-Block math:
+Siren renders beautiful mathematical notation via KaTeX.
+
+**Inline equation**: The mass-energy equivalence is defined as $E = mc^2$, where $c \approx 3 \times 10^8 \text{ m/s}$.
+
+**Block formula**:
 $$
 \int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}
 $$
 
-### Highlighting
+---
 
-To emphasize specific text, you can use ==highlighting== like this.
+### Mermaid Diagrams
 
-### Subscript and Superscript
+Interactive diagrams render natively using Mermaid syntax:
 
-- H~2~O (Water)
-- E = mc^2^ (Energy)
-- Text with both: X^2^~i~
+```mermaid
+graph TD
+    A[Open Document] --> B{Parse Syntax}
+    B -->|Standard| C[CommonMark Engine]
+    B -->|Extended| D[Alerts & LaTeX & Mermaid]
+    C --> E[Rendered View]
+    D --> E
+    E --> F[Interactive Outline]
+```
+
+---
+
+### Text Highlighting, Subscript & Superscript
+
+- Text with ==highlighted emphasis== for critical identifiers.
+- Chemical formulas: H~2~O, C~6~H~12~O~6~
+- Exponents: $x^2 + y^2 = r^2$, or markdown superscripts: 2^10^ = 1024
+- Combined notations: A^2^~k~
 
 ---
 
 ## Standard Markdown
 
-### Typography
+### Typography & Formatting
 
-**Bold Text**
-*Italic Text*
-***Bold and Italic***
-~~Strikethrough~~
+- **Bold text** with asterisks or underscores.
+- *Italic text* for emphasis.
+- ***Bold and italic combined***.
+- ~~Strikethrough~~ for deprecated content.
+- `Inline code snippet` for functions and variables.
 
-### Headings
+### Code Syntax Highlighting
 
-# Heading 1
-## Heading 2
-### Heading 3
-#### Heading 4
-##### Heading 5
-###### Heading 6
-
-### Lists
-
-#### Unordered
-- Item 1
-- Item 2
-  - Subitem 2.1
-  - Subitem 2.2
-
-#### Ordered
-1. First item
-2. Second item
-   1. Subitem A
-   2. Subitem B
-
-#### Task List
-- [x] Completed task
-- [ ] Incomplete task
-
-### Blockquotes
-
-> This is a blockquote.
->
-> > Nested blockquote.
-
-### Code
-
-Inline code: `print("Hello World")`
-
-Code block with syntax highlighting:
 ```dart
+import 'package:flutter/material.dart';
+
 void main() {
-  print('Hello, Siren!');
+  runApp(const SirenApp());
+}
+
+class SirenApp extends StatelessWidget {
+  const SirenApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      title: 'Siren',
+      home: HomeScreen(),
+    );
+  }
 }
 ```
 
 ### Tables
 
-| Name    |  Role   | Location |
-| :------ | :-----: | -------: |
-| Alice   |   Dev   |       NY |
-| Bob     | Design  |       LA |
-| Charlie | Manager |   London |
+| Feature | Supported | Description |
+| :--- | :---: | :--- |
+| **GitHub Alerts** | `Yes` | 5 alert levels with custom icons and borders |
+| **LaTeX Math** | `Yes` | Inline (`$`) and display (`$$`) KaTeX formulas |
+| **Mermaid Diagrams** | `Yes` | Flowcharts, sequences, and class diagrams |
+| **Document Outline** | `Yes` | Auto-generated clickable heading table of contents |
+| **Raw Mode Gutter** | `Yes` | Aligned line numbers in monospace raw view |
 
-### Links and Images
+### Task Lists
 
-[Siren Repository](https://github.com/tkinnis/siren)
+- [x] CommonMark specification compliance
+- [x] Multi-tab workspace with single-tab invariant
+- [x] Real-time file system watching
+- [x] Fast fuzzy file search (`Cmd+P`)
+- [ ] Export to PDF / HTML
 
-![Placeholder Image](https://placehold.co/600x200?text=Siren+Markdown)
+### Relative Documentation Links
 
-### Horizontal Rule
-
----
+Explore more in the official Siren documentation:
+- **[Documentation Index](docs/index.md)**
+- **[Feature Overview](docs/features.md)**
+- **[Markdown Syntax Guide](docs/markdown-guide.md)**
+- **[Keyboard Shortcuts](docs/shortcuts.md)**
+- **[Architecture & Development](docs/architecture.md)**
