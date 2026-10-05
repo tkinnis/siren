@@ -104,7 +104,8 @@ class AppState extends ChangeNotifier {
   Timer? _indexDebounceTimer;
 
   bool get canGoBack => _historyIndex > 0;
-  bool get canGoForward => _historyIndex < _navigationHistory.length - 1;
+  bool get canGoForward =>
+      _historyIndex >= 0 && _historyIndex < _navigationHistory.length - 1;
 
   // Getters
   List<String> get openFilePaths => List.unmodifiable(_openFilePaths);
@@ -136,7 +137,7 @@ class AppState extends ChangeNotifier {
   String get currentContent {
     final path = currentFilePath;
     if (path != null) {
-      return _fileContents[path] ?? '';
+      return getFileContent(path);
     }
     return '';
   }
@@ -144,17 +145,19 @@ class AppState extends ChangeNotifier {
   String get currentProcessedContent {
     final path = currentFilePath;
     if (path != null) {
-      return _processedContents[path] ?? '';
+      return getProcessedContent(path);
     }
     return '';
   }
 
-  String getFileContent(String path) {
-    return _fileContents[path] ?? '';
+  String getFileContent(String filePath) {
+    final canonical = path.canonicalize(filePath);
+    return _fileContents[canonical] ?? _fileContents[filePath] ?? '';
   }
 
-  String getProcessedContent(String path) {
-    return _processedContents[path] ?? '';
+  String getProcessedContent(String filePath) {
+    final canonical = path.canonicalize(filePath);
+    return _processedContents[canonical] ?? _processedContents[filePath] ?? '';
   }
 
   void setIncludePatterns(List<String> patterns) {
@@ -181,8 +184,9 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  void _recordHistory(String path) {
+  void _recordHistory(String filePath) {
     if (_isNavigatingHistory) return;
+    final canonicalPath = path.canonicalize(filePath);
 
     // If we are not at the end of history, truncate forward history
     if (_historyIndex < _navigationHistory.length - 1) {
@@ -194,46 +198,112 @@ class AppState extends ChangeNotifier {
 
     // Don't record duplicates if we are already at this path
     if (_navigationHistory.isNotEmpty &&
-        _navigationHistory.last == path) {
+        path.canonicalize(_navigationHistory.last) == canonicalPath) {
       return;
     }
 
-    _navigationHistory.add(path);
+    _navigationHistory.add(canonicalPath);
     _historyIndex = _navigationHistory.length - 1;
     notifyListeners();
   }
 
-  void goBack() {
+  void _removeFromHistory(String canonicalPath) {
+    if (_navigationHistory.isEmpty) {
+      _historyIndex = -1;
+      return;
+    }
+
+    final targetCanonical = path.canonicalize(canonicalPath);
+    final String? currentHistoryPath =
+        (_historyIndex >= 0 && _historyIndex < _navigationHistory.length)
+            ? _navigationHistory[_historyIndex]
+            : null;
+
+    // Filter out all instances of targetCanonical
+    final List<String> newHistory = [];
+    for (final p in _navigationHistory) {
+      if (path.canonicalize(p) != targetCanonical) {
+        // Avoid adjacent duplicates when filtering
+        if (newHistory.isEmpty || path.canonicalize(newHistory.last) != path.canonicalize(p)) {
+          newHistory.add(p);
+        }
+      }
+    }
+
+    _navigationHistory.clear();
+    _navigationHistory.addAll(newHistory);
+
+    if (_navigationHistory.isEmpty) {
+      _historyIndex = -1;
+    } else {
+      // 1. If active file is in history, point to the latest occurrence of active file
+      final activePath = currentFilePath;
+      final activeCanonical = activePath != null ? path.canonicalize(activePath) : null;
+      if (activeCanonical != null) {
+        final activeIndex = _navigationHistory.lastIndexWhere(
+          (p) => path.canonicalize(p) == activeCanonical,
+        );
+        if (activeIndex != -1) {
+          _historyIndex = activeIndex;
+          return;
+        }
+      }
+
+      // 2. Otherwise, if currentHistoryPath was not removed and still in newHistory:
+      if (currentHistoryPath != null && path.canonicalize(currentHistoryPath) != targetCanonical) {
+        final prevIndex = _navigationHistory.lastIndexWhere(
+          (p) => path.canonicalize(p) == path.canonicalize(currentHistoryPath),
+        );
+        if (prevIndex != -1) {
+          _historyIndex = prevIndex;
+          return;
+        }
+      }
+
+      // 3. Fallback: clamp _historyIndex to valid range
+      _historyIndex = _historyIndex.clamp(0, _navigationHistory.length - 1);
+    }
+  }
+
+  Future<void> goBack() async {
     if (!canGoBack) return;
     _historyIndex--;
-    _navigateToHistoryItem();
+    await _navigateToHistoryItem();
   }
 
-  void goForward() {
+  Future<void> goForward() async {
     if (!canGoForward) return;
     _historyIndex++;
-    _navigateToHistoryItem();
+    await _navigateToHistoryItem();
   }
 
-  void _navigateToHistoryItem() {
-    final path = _navigationHistory[_historyIndex];
+  Future<void> _navigateToHistoryItem() async {
+    if (_navigationHistory.isEmpty ||
+        _historyIndex < 0 ||
+        _historyIndex >= _navigationHistory.length) {
+      return;
+    }
+    final historyPath = _navigationHistory[_historyIndex];
+    final canonicalPath = path.canonicalize(historyPath);
     _isNavigatingHistory = true;
-    
+
     // Check if file is already open
-    final index = _openFilePaths.indexOf(path);
+    final index = _openFilePaths.indexWhere(
+      (p) => path.canonicalize(p) == canonicalPath,
+    );
     if (index != -1) {
       setActiveTab(index);
     } else {
-      // If file was closed, re-open it
-      openFile(path);
+      // If file is no longer open, prune it from history and do not reopen
+      _removeFromHistory(canonicalPath);
     }
-    
+
     _isNavigatingHistory = false;
     notifyListeners();
   }
 
   static const MethodChannel _channel = MethodChannel(
-    'com.tkinnis.siren/files',
+    'com.tonykinnis.Siren/files',
   );
 
   static Future<AppState> create() async {
@@ -406,9 +476,11 @@ class AppState extends ChangeNotifier {
       _activeTabIndex = 0;
     }
 
-    // Ensure active tab is watched if not already
+    // Ensure active tab is watched if not already and recorded in history
     if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
-      _startWatching(_openFilePaths[_activeTabIndex]);
+      final activeFile = _openFilePaths[_activeTabIndex];
+      _startWatching(activeFile);
+      _recordHistory(activeFile);
     }
 
     notifyListeners();
@@ -534,6 +606,8 @@ class AppState extends ChangeNotifier {
           notifyListeners();
         }
       }
+    } on FileSystemException {
+      // File was deleted or moved during file watcher event
     } catch (e) {
       debugPrint('Error reloading modified file $path: $e');
     }
@@ -572,14 +646,16 @@ class AppState extends ChangeNotifier {
     _persistState();
   }
 
-  Future<void> openFile(String filePath) async {
-    // If already open, just switch to it
-    final existingIndex = _openFilePaths.indexOf(filePath);
+  Future<void> openFile(String filePath, {bool inNewTab = true}) async {
+    final canonicalPath = path.canonicalize(filePath);
+
+    // If already open, switch to it without duplicating
+    final existingIndex = _openFilePaths.indexWhere(
+      (p) => path.canonicalize(p) == canonicalPath,
+    );
     if (existingIndex != -1) {
-      _activeTabIndex = existingIndex;
-      notifyListeners();
-      _revealInExplorer(filePath);
-      _persistState();
+      setActiveTab(existingIndex);
+      _revealInExplorer(canonicalPath);
       return;
     }
 
@@ -587,23 +663,38 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final file = File(filePath);
+      final file = File(canonicalPath);
       if (await file.exists()) {
         final content = await file.readAsString();
-        
+
         final processed = await _runInjectAnchorsInIsolate(content);
 
-        _fileContents[filePath] = content;
-        _processedContents[filePath] = processed;
+        _fileContents[canonicalPath] = content;
+        _processedContents[canonicalPath] = processed;
 
         // Stop watching previous active file
         if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
           _stopWatching(_openFilePaths[_activeTabIndex]);
         }
 
-        _openFilePaths.add(filePath);
-        _activeTabIndex = _openFilePaths.length - 1;
-        _revealInExplorer(filePath);
+        if (!inNewTab && _activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
+          // Replace current tab in-place
+          final oldPath = _openFilePaths[_activeTabIndex];
+          _openFilePaths[_activeTabIndex] = canonicalPath;
+          if (oldPath != canonicalPath) {
+            _fileContents.remove(oldPath);
+            _processedContents.remove(oldPath);
+            _scrollOffsets.remove(oldPath);
+            _stopWatching(oldPath);
+            _removeFromHistory(oldPath);
+          }
+        } else {
+          // Open in a new tab
+          _openFilePaths.add(canonicalPath);
+          _activeTabIndex = _openFilePaths.length - 1;
+        }
+
+        _revealInExplorer(canonicalPath);
 
         if (_isFindInFileVisible && _findInFileQuery.isNotEmpty) {
           _findInFileMatchOffsets = findMatchOffsets(content, _findInFileQuery, useRegex: _findInFileUseRegex);
@@ -631,9 +722,9 @@ class AppState extends ChangeNotifier {
         }
 
         // Start watching the new file
-        _startWatching(filePath);
+        _startWatching(canonicalPath);
 
-        _recordHistory(filePath);
+        _recordHistory(canonicalPath);
         _persistState();
       }
     } catch (e) {
@@ -645,18 +736,23 @@ class AppState extends ChangeNotifier {
   }
 
   void closeFile(String filePath) {
-    final index = _openFilePaths.indexOf(filePath);
+    final canonicalPath = path.canonicalize(filePath);
+    final index = _openFilePaths.indexWhere(
+      (p) => path.canonicalize(p) == canonicalPath,
+    );
     if (index == -1) return;
 
-    _closedTabs.add(filePath);
+    final targetPath = _openFilePaths[index];
+    _closedTabs.add(targetPath);
     if (_closedTabs.length > _Constants.closedTabHistoryLimit) {
       _closedTabs.removeAt(0);
     }
 
     _openFilePaths.removeAt(index);
-    _fileContents.remove(filePath);
-    _scrollOffsets.remove(filePath);
-    _stopWatching(filePath);
+    _fileContents.remove(targetPath);
+    _processedContents.remove(targetPath);
+    _scrollOffsets.remove(targetPath);
+    _stopWatching(targetPath);
 
     if (_openFilePaths.isEmpty) {
       _activeTabIndex = -1;
@@ -672,6 +768,8 @@ class AppState extends ChangeNotifier {
         _onFileModified(newActivePath); // Refresh content
       }
     }
+
+    _removeFromHistory(canonicalPath);
 
     notifyListeners();
     _persistState();
@@ -699,6 +797,8 @@ class AppState extends ChangeNotifier {
 
     _openFilePaths.clear();
     _activeTabIndex = -1;
+    _navigationHistory.clear();
+    _historyIndex = -1;
     notifyListeners();
     _persistState();
   }
@@ -848,10 +948,13 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  double getScrollOffset(String path) => _scrollOffsets[path] ?? 0.0;
+  double getScrollOffset(String filePath) {
+    final canonical = path.canonicalize(filePath);
+    return _scrollOffsets[canonical] ?? _scrollOffsets[filePath] ?? 0.0;
+  }
 
-  void setScrollOffset(String path, double offset) {
-    _scrollOffsets[path] = offset;
+  void setScrollOffset(String filePath, double offset) {
+    _scrollOffsets[path.canonicalize(filePath)] = offset;
   }
 
   void scrollTo(int lineNumber, String text) {

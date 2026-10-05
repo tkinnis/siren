@@ -114,15 +114,28 @@ class _RenderedViewState extends State<RenderedView> {
       }
 
       // Local file navigation
-      String filePath = uri.path;
+      String filePath = Uri.decodeComponent(uri.path);
       if (filePath.isEmpty) return;
 
       var fullPath = p.join(basePath, filePath);
       fullPath = p.normalize(fullPath);
-      final file = File(fullPath);
-      if (await file.exists()) {
-        if (await FileSystemEntity.isFile(fullPath)) {
+      var file = File(fullPath);
+      if (!file.existsSync() && appState.explorerRootPath != null) {
+        final rootPath = p.normalize(p.join(appState.explorerRootPath!, filePath));
+        final rootFile = File(rootPath);
+        if (rootFile.existsSync()) {
+          fullPath = rootPath;
+          file = rootFile;
+        }
+      }
+      if (file.existsSync()) {
+        if (FileSystemEntity.isFileSync(fullPath)) {
           appState.openFile(fullPath);
+          if (uri.fragment.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToAnchor(uri.fragment);
+            });
+          }
         }
       }
     }
@@ -167,7 +180,7 @@ class _RenderedViewState extends State<RenderedView> {
         child: SelectionArea(
           child: MarkdownBody(
             data: content,
-            softLineBreak: true,
+            softLineBreak: false,
             onTapLink: onTapLink,
             // ignore: deprecated_member_use
             imageBuilder: (uri, title, alt) {
@@ -561,6 +574,12 @@ class CodeElementBuilder extends MarkdownElementBuilder {
         sirenColors: sirenColors,
         fontSize: fontSize,
       );
+    }
+
+    // If parent is a link, return null so flutter_markdown attaches the link's
+    // gesture recognizer to the inline text span.
+    if (parentStyle?.decoration == TextDecoration.underline) {
+      return null;
     }
 
     final TextStyle baseStyle = parentStyle ?? const TextStyle();
