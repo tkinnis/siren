@@ -1,0 +1,3 @@
+# Cursor Rules for Siren
+# Refer to AGENTS.md for complete architecture, invariants, and quality gates.
+Always consult AGENTS.md in the repository root for architectural invariants, single-tab rules, bounded desktop constraints, and mandatory verification commands (`flutter analyze` and `flutter test`).
