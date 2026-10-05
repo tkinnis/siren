@@ -137,7 +137,7 @@ Siren provides three levels of search for finding information instantly:
 
 Siren natively supports **System**, **Light**, and **Dark** themes. Easily toggle between Light and Dark modes at any time with `Cmd+Shift+D` or via the toolbar moon/sun button. Syntax highlighting for code blocks and Markdown alerts adapt dynamically to maintain optimal legibility and contrast in any environment.
 
-![Siren Theme Split](screenshots/siren_theme_split.png)
+![Light and Dark Theme Support](screenshots/siren_theme_split.png)
 
 ### Settings Dialog (`Cmd+,`)
 

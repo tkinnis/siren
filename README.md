@@ -72,9 +72,9 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | :---: | :---: |
 | ![Siren About Dialog](docs/screenshots/siren_about_dialog.png) | ![Siren Settings Dialog](docs/screenshots/siren_settings_dialog.png) |
 
-| Light & Dark Split Showcase | Integrated Licenses Viewer |
+| Light & Dark Theme Support | Integrated Licenses Viewer |
 | :---: | :---: |
-| ![Siren Theme Split](docs/screenshots/siren_theme_split.png) | ![Siren Licenses Viewer](docs/screenshots/siren_licenses_view.png) |
+| ![Light and Dark Themes](docs/screenshots/siren_theme_split.png) | ![Siren Licenses Viewer](docs/screenshots/siren_licenses_view.png) |
 
 ---
 
