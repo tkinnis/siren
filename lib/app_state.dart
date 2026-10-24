@@ -1086,8 +1086,9 @@ class AppState extends ChangeNotifier {
 
   void _scrollToActiveMatch() {
     if (_findInFileActiveMatchIndex < 0 ||
-        _findInFileActiveMatchIndex >= _findInFileMatchOffsets.length)
+        _findInFileActiveMatchIndex >= _findInFileMatchOffsets.length) {
       return;
+    }
     final offset = _findInFileMatchOffsets[_findInFileActiveMatchIndex];
     final lineNumber = getLineNumberForOffset(currentContent, offset);
     scrollTo(lineNumber, '');

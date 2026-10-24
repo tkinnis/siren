@@ -1639,8 +1639,22 @@
       startOnLoad: false,
       securityLevel: 'strict',
       theme: request.dark ? 'dark' : 'default',
+      look: 'neo',
+      layout: /^\s*mindmap\b/m.test(request.source || '') ? 'cose-bilkent' : 'elk',
       htmlLabels: false,
-      flowchart: Object.assign({}, config.flowchart || {}, {htmlLabels: false}),
+      flowchart: Object.assign({}, config.flowchart || {}, {
+        htmlLabels: false,
+        diagramPadding: 48,
+      }),
+      gantt: Object.assign({}, config.gantt || {}, {useWidth: 1200}),
+      pie: Object.assign({}, config.pie || {}, {useWidth: 1200}),
+      sequence: Object.assign({}, config.sequence || {}, {diagramMarginY: 40}),
+      elk: Object.assign({}, config.elk || {}, {
+        mergeEdges: false,
+        nodePlacementStrategy: 'BRANDES_KOEPF',
+        nodePlacementAlignment: 'BALANCED',
+        cycleBreakingStrategy: 'GREEDY',
+      }),
       suppressErrorRendering: true,
       maxTextSize: LIMITS.maxSourceChars,
       maxEdges: LIMITS.maxEdges,
@@ -1721,8 +1735,13 @@
       'pointer-events:none;width:' + width + 'px';
     document.body.appendChild(holder);
     try {
+      const svgXml = /xmlns:xlink\s*=/.test(result.svg)
+        ? result.svg
+        : result.svg.replace(
+            /<svg\b/,
+            '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
       const parsed =
-        new DOMParser().parseFromString(result.svg, 'image/svg+xml');
+        new DOMParser().parseFromString(svgXml, 'image/svg+xml');
       if (parsed.getElementsByTagName('parsererror').length > 0) {
         throw new Failure('unflattenable', 'The diagram was not well formed.');
       }

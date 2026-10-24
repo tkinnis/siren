@@ -12,6 +12,7 @@ Explore the documentation guides below:
 
 - **[Features Overview](features.md)** — A comprehensive breakdown of Siren's core features, including the dual-mode editor, document outline, multi-tab workspace, fuzzy search, and live file system watching.
 - **[Markdown Syntax Guide](markdown-guide.md)** — Complete reference for standard Markdown and extended features supported by Siren, such as GitHub Alerts, LaTeX Math, Mermaid diagrams, highlighting, and task lists.
+- **[Mermaid Diagram Examples Gallery](mermaid-examples.md)** — Comprehensive gallery of Mermaid diagrams from the official Mermaid docs and GitHub's Mermaid showcase for testing and visual comparison.
 - **[Keyboard Shortcuts](shortcuts.md)** — Quick reference guide for all keyboard shortcuts and navigation commands.
 - **[Architecture & Development](architecture.md)** — Technical deep-dive into Siren's internals, isolate-powered indexing, Ripgrep integration, and development instructions.
 

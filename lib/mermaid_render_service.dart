@@ -235,11 +235,18 @@ class MermaidRenderService {
       mermaidBytes.offsetInBytes,
       mermaidBytes.lengthInBytes,
     );
+    final elkBytes = await rootBundle.load(
+      'assets/mermaid/mermaid-layout-elk.min.js',
+    );
+    final elkUint8 = elkBytes.buffer.asUint8List(
+      elkBytes.offsetInBytes,
+      elkBytes.lengthInBytes,
+    );
     final pageScript = await rootBundle.loadString(
       'assets/mermaid/mermaid_page.js',
     );
     return Isolate.run(
-      () => _buildPreparedPageInIsolate(mermaidUint8, pageScript),
+      () => _buildPreparedPageInIsolate(mermaidUint8, elkUint8, pageScript),
     );
   }
 
@@ -414,13 +421,15 @@ class _PreparedMermaidPage {
   final List<_PagePiece> pieces;
 }
 
-/// Runs in a background isolate to decode `mermaid.min.js` and slice scripts
-/// into ASCII-safe JS string literal chunks so loading never stalls the UI isolate.
+/// Runs in a background isolate to decode `mermaid.min.js` and `mermaid-layout-elk.min.js`
+/// and slice scripts into ASCII-safe JS string literal chunks so loading never stalls the UI isolate.
 _PreparedMermaidPage _buildPreparedPageInIsolate(
   Uint8List mermaidScriptBytes,
+  Uint8List elkScriptBytes,
   String pageScript,
 ) {
   final mermaidScript = utf8.decode(mermaidScriptBytes);
+  final elkScript = utf8.decode(elkScriptBytes);
   final config = <String, Object?>{
     'family': 'Helvetica Neue',
     'faces': const <Object>[],
@@ -480,6 +489,7 @@ $configJson
       },
       commit: function () {
         run('mermaid');
+        run('elk');
         run('page');
         delete window.finchBoot;
       }
@@ -496,6 +506,7 @@ $configJson
     bootstrapHtml: bootstrapHtml,
     pieces: [
       ..._chunkScript('mermaid', mermaidScript),
+      ..._chunkScript('elk', elkScript),
       ..._chunkScript('page', pageScript),
     ],
   );
