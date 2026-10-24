@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:watcher/watcher.dart';
 import 'package:window_manager/window_manager.dart';
+
 import 'watcher_service.dart';
 import 'markdown_processor.dart';
 import 'file_indexer.dart';
@@ -50,7 +52,7 @@ class AppState extends ChangeNotifier {
   final Map<String, String> _fileContents = {};
   final Map<String, String> _processedContents = {};
   final Map<String, double> _scrollOffsets = {};
-  
+
   late final WatcherService _watcherService;
 
   // File Explorer
@@ -92,7 +94,8 @@ class AppState extends ChangeNotifier {
   Stream<({int lineNumber, String text})> get navigationStream =>
       _navigationController.stream;
 
-  final StreamController<String> _directoryChangeController = StreamController.broadcast();
+  final StreamController<String> _directoryChangeController =
+      StreamController.broadcast();
   Stream<String> get directoryChangeStream => _directoryChangeController.stream;
 
   // History
@@ -100,7 +103,7 @@ class AppState extends ChangeNotifier {
   final List<String> _closedTabs = [];
   int _historyIndex = -1;
   bool _isNavigatingHistory = false;
-  
+
   Timer? _indexDebounceTimer;
 
   bool get canGoBack => _historyIndex > 0;
@@ -125,7 +128,8 @@ class AppState extends ChangeNotifier {
   List<int> get findInFileMatchOffsets => _findInFileMatchOffsets;
   bool get findInFileUseRegex => _findInFileUseRegex;
   int get sidebarTabIndex => _sidebarTabIndex;
-  ({int lineNumber, String text})? get pendingScrollTarget => _pendingScrollTarget;
+  ({int lineNumber, String text})? get pendingScrollTarget =>
+      _pendingScrollTarget;
 
   String? get currentFilePath {
     if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
@@ -216,15 +220,16 @@ class AppState extends ChangeNotifier {
     final targetCanonical = path.canonicalize(canonicalPath);
     final String? currentHistoryPath =
         (_historyIndex >= 0 && _historyIndex < _navigationHistory.length)
-            ? _navigationHistory[_historyIndex]
-            : null;
+        ? _navigationHistory[_historyIndex]
+        : null;
 
     // Filter out all instances of targetCanonical
     final List<String> newHistory = [];
     for (final p in _navigationHistory) {
       if (path.canonicalize(p) != targetCanonical) {
         // Avoid adjacent duplicates when filtering
-        if (newHistory.isEmpty || path.canonicalize(newHistory.last) != path.canonicalize(p)) {
+        if (newHistory.isEmpty ||
+            path.canonicalize(newHistory.last) != path.canonicalize(p)) {
           newHistory.add(p);
         }
       }
@@ -238,7 +243,9 @@ class AppState extends ChangeNotifier {
     } else {
       // 1. If active file is in history, point to the latest occurrence of active file
       final activePath = currentFilePath;
-      final activeCanonical = activePath != null ? path.canonicalize(activePath) : null;
+      final activeCanonical = activePath != null
+          ? path.canonicalize(activePath)
+          : null;
       if (activeCanonical != null) {
         final activeIndex = _navigationHistory.lastIndexWhere(
           (p) => path.canonicalize(p) == activeCanonical,
@@ -250,7 +257,8 @@ class AppState extends ChangeNotifier {
       }
 
       // 2. Otherwise, if currentHistoryPath was not removed and still in newHistory:
-      if (currentHistoryPath != null && path.canonicalize(currentHistoryPath) != targetCanonical) {
+      if (currentHistoryPath != null &&
+          path.canonicalize(currentHistoryPath) != targetCanonical) {
         final prevIndex = _navigationHistory.lastIndexWhere(
           (p) => path.canonicalize(p) == path.canonicalize(currentHistoryPath),
         );
@@ -321,14 +329,14 @@ class AppState extends ChangeNotifier {
     _watcherService = WatcherService(
       onFileEvent: (path, type) {
         if (type == ChangeType.REMOVE) {
-           // Atomic save handling: wait and see
-           Future.delayed(_Constants.atomicSaveDelay, () async {
-             if (await File(path).exists()) {
-               _stopWatching(path);
-               _startWatching(path);
-               _onFileModified(path);
-             }
-           });
+          // Atomic save handling: wait and see
+          Future.delayed(_Constants.atomicSaveDelay, () async {
+            if (await File(path).exists()) {
+              _stopWatching(path);
+              _startWatching(path);
+              _onFileModified(path);
+            }
+          });
         } else if (type == ChangeType.MODIFY) {
           _onFileModified(path);
         }
@@ -339,7 +347,7 @@ class AppState extends ChangeNotifier {
         // FileExplorer manages its own for now? No, we want centralized.
         // But FileExplorer is a widget. We can expose a Stream from AppState for directory changes.
         _directoryChangeController.add(path);
-        
+
         // Re-index on directory changes (add/remove file/folder)
         // Debounce handled by caller? No, this is raw.
         // We should debounce re-indexing.
@@ -381,9 +389,11 @@ class AppState extends ChangeNotifier {
     _sidebarWidth = _prefs.getDouble(_PersistenceKeys.sidebarWidth) ?? 250.0;
     _isExplorerVisible =
         _prefs.getBool(_PersistenceKeys.isExplorerVisible) ?? true;
-        
-    _includePatterns = _prefs.getStringList(_PersistenceKeys.includePatterns) ?? [];
-    _excludePatterns = _prefs.getStringList(_PersistenceKeys.excludePatterns) ?? [];
+
+    _includePatterns =
+        _prefs.getStringList(_PersistenceKeys.includePatterns) ?? [];
+    _excludePatterns =
+        _prefs.getStringList(_PersistenceKeys.excludePatterns) ?? [];
 
     final themeIndex = _prefs.getInt(_PersistenceKeys.themeMode);
     if (themeIndex != null &&
@@ -412,7 +422,7 @@ class AppState extends ChangeNotifier {
       // Must pass copies of lists because isolate can't access closure variables directly
       final includes = List<String>.from(_includePatterns);
       final excludes = List<String>.from(_excludePatterns);
-      
+
       final files = await _runFileIndexerScanInIsolate(
         rootPath,
         includes,
@@ -420,7 +430,12 @@ class AppState extends ChangeNotifier {
       );
       _knownFiles = files;
       // Sort for consistent display
-      _knownFiles.sort((a, b) => path.basename(a).toLowerCase().compareTo(path.basename(b).toLowerCase()));
+      _knownFiles.sort(
+        (a, b) => path
+            .basename(a)
+            .toLowerCase()
+            .compareTo(path.basename(b).toLowerCase()),
+      );
       notifyListeners(); // Notify search modal if open
     } catch (e) {
       debugPrint('Error indexing files: $e');
@@ -487,9 +502,8 @@ class AppState extends ChangeNotifier {
   }
 
   /// Static method to run in the isolate. Reads multiple files in parallel.
-  static Future<Map<String, ({String raw, String processed})>> _readFilesFromDisk(
-    List<String> paths,
-  ) async {
+  static Future<Map<String, ({String raw, String processed})>>
+  _readFilesFromDisk(List<String> paths) async {
     final Map<String, ({String raw, String processed})> results = {};
     await Future.wait(
       paths.map((path) async {
@@ -513,15 +527,17 @@ class AppState extends ChangeNotifier {
     List<String> includes,
     List<String> excludes,
   ) {
-    return Isolate.run(() => FileIndexer.scan(
-      rootPath,
-      includePatterns: includes,
-      excludePatterns: excludes,
-    ));
+    return Isolate.run(
+      () => FileIndexer.scan(
+        rootPath,
+        includePatterns: includes,
+        excludePatterns: excludes,
+      ),
+    );
   }
 
   static Future<Map<String, ({String raw, String processed})>>
-      _runReadFilesFromDiskInIsolate(List<String> savedPaths) {
+  _runReadFilesFromDiskInIsolate(List<String> savedPaths) {
     return Isolate.run(() => _readFilesFromDisk(savedPaths));
   }
 
@@ -543,8 +559,14 @@ class AppState extends ChangeNotifier {
       _PersistenceKeys.isExplorerVisible,
       _isExplorerVisible,
     );
-    await _prefs.setStringList(_PersistenceKeys.includePatterns, _includePatterns);
-    await _prefs.setStringList(_PersistenceKeys.excludePatterns, _excludePatterns);
+    await _prefs.setStringList(
+      _PersistenceKeys.includePatterns,
+      _includePatterns,
+    );
+    await _prefs.setStringList(
+      _PersistenceKeys.excludePatterns,
+      _excludePatterns,
+    );
   }
 
   void setWindowBounds(Rect bounds) {
@@ -595,7 +617,7 @@ class AppState extends ChangeNotifier {
       if (await file.exists()) {
         // Read raw content
         final content = await file.readAsString();
-        
+
         // Process in background to avoid jank
         final processed = await _runInjectAnchorsInIsolate(content);
 
@@ -677,7 +699,9 @@ class AppState extends ChangeNotifier {
           _stopWatching(_openFilePaths[_activeTabIndex]);
         }
 
-        if (!inNewTab && _activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
+        if (!inNewTab &&
+            _activeTabIndex >= 0 &&
+            _activeTabIndex < _openFilePaths.length) {
           // Replace current tab in-place
           final oldPath = _openFilePaths[_activeTabIndex];
           _openFilePaths[_activeTabIndex] = canonicalPath;
@@ -697,7 +721,11 @@ class AppState extends ChangeNotifier {
         _revealInExplorer(canonicalPath);
 
         if (_isFindInFileVisible && _findInFileQuery.isNotEmpty) {
-          _findInFileMatchOffsets = findMatchOffsets(content, _findInFileQuery, useRegex: _findInFileUseRegex);
+          _findInFileMatchOffsets = findMatchOffsets(
+            content,
+            _findInFileQuery,
+            useRegex: _findInFileUseRegex,
+          );
           if (_findInFileMatchOffsets.isNotEmpty) {
             if (_pendingActiveMatchLine != null) {
               int foundIdx = -1;
@@ -759,7 +787,10 @@ class AppState extends ChangeNotifier {
     } else {
       // If we closed the active tab, or a tab before it, adjust index
       if (_activeTabIndex >= index) {
-        _activeTabIndex = (_activeTabIndex - 1).clamp(0, _openFilePaths.length - 1);
+        _activeTabIndex = (_activeTabIndex - 1).clamp(
+          0,
+          _openFilePaths.length - 1,
+        );
       }
       // Start watching the new active tab
       if (_activeTabIndex >= 0) {
@@ -777,14 +808,17 @@ class AppState extends ChangeNotifier {
 
   void closeAllFiles() {
     if (_openFilePaths.isEmpty) return;
-    
+
     // Add all to closed history
     for (final path in _openFilePaths) {
       _closedTabs.add(path);
     }
     // Trim history
     if (_closedTabs.length > _Constants.closedTabHistoryLimit) {
-      _closedTabs.removeRange(0, _closedTabs.length - _Constants.closedTabHistoryLimit);
+      _closedTabs.removeRange(
+        0,
+        _closedTabs.length - _Constants.closedTabHistoryLimit,
+      );
     }
 
     // Cleanup watchers
@@ -838,7 +872,10 @@ class AppState extends ChangeNotifier {
 
       if (_isFindInFileVisible && _findInFileQuery.isNotEmpty) {
         final newContent = getFileContent(newPath);
-        _findInFileMatchOffsets = findMatchOffsets(newContent, _findInFileQuery);
+        _findInFileMatchOffsets = findMatchOffsets(
+          newContent,
+          _findInFileQuery,
+        );
         if (_findInFileMatchOffsets.isNotEmpty) {
           _findInFileActiveMatchIndex = 0;
           Future.microtask(() => _scrollToActiveMatch());
@@ -925,6 +962,12 @@ class AppState extends ChangeNotifier {
     _persistState();
   }
 
+  void resetFontSize() {
+    _fontSize = 14.0;
+    notifyListeners();
+    _persistState();
+  }
+
   void setSidebarWidth(double width) {
     _sidebarWidth = width.clamp(150.0, 500.0);
     notifyListeners();
@@ -991,7 +1034,11 @@ class AppState extends ChangeNotifier {
       _findInFileActiveMatchIndex = -1;
       _findInFileMatchOffsets = [];
     } else {
-      _findInFileMatchOffsets = findMatchOffsets(currentContent, query, useRegex: useRegex);
+      _findInFileMatchOffsets = findMatchOffsets(
+        currentContent,
+        query,
+        useRegex: useRegex,
+      );
       if (_findInFileMatchOffsets.isNotEmpty) {
         _findInFileActiveMatchIndex = 0;
         _scrollToActiveMatch();
@@ -1001,6 +1048,7 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
   }
+
   void setActiveMatchIndexToLine(int lineNumber) {
     if (_isLoading) {
       _pendingActiveMatchLine = lineNumber;
@@ -1018,30 +1066,40 @@ class AppState extends ChangeNotifier {
       }
     }
   }
+
   void nextFindMatch() {
     if (_findInFileMatchOffsets.isEmpty) return;
-    _findInFileActiveMatchIndex = (_findInFileActiveMatchIndex + 1) % _findInFileMatchOffsets.length;
+    _findInFileActiveMatchIndex =
+        (_findInFileActiveMatchIndex + 1) % _findInFileMatchOffsets.length;
     _scrollToActiveMatch();
     notifyListeners();
   }
 
   void prevFindMatch() {
     if (_findInFileMatchOffsets.isEmpty) return;
-    _findInFileActiveMatchIndex = (_findInFileActiveMatchIndex - 1 + _findInFileMatchOffsets.length) % _findInFileMatchOffsets.length;
+    _findInFileActiveMatchIndex =
+        (_findInFileActiveMatchIndex - 1 + _findInFileMatchOffsets.length) %
+        _findInFileMatchOffsets.length;
     _scrollToActiveMatch();
     notifyListeners();
   }
 
   void _scrollToActiveMatch() {
-    if (_findInFileActiveMatchIndex < 0 || _findInFileActiveMatchIndex >= _findInFileMatchOffsets.length) return;
+    if (_findInFileActiveMatchIndex < 0 ||
+        _findInFileActiveMatchIndex >= _findInFileMatchOffsets.length)
+      return;
     final offset = _findInFileMatchOffsets[_findInFileActiveMatchIndex];
     final lineNumber = getLineNumberForOffset(currentContent, offset);
     scrollTo(lineNumber, '');
   }
 
-  List<int> findMatchOffsets(String text, String query, {bool useRegex = false}) {
+  List<int> findMatchOffsets(
+    String text,
+    String query, {
+    bool useRegex = false,
+  }) {
     if (query.isEmpty) return [];
-    
+
     if (useRegex) {
       try {
         final regExp = RegExp(query, caseSensitive: false);
@@ -1068,7 +1126,8 @@ class AppState extends ChangeNotifier {
     if (offset <= 0) return 1;
     int lines = 1;
     for (int i = 0; i < offset && i < content.length; i++) {
-      if (content.codeUnitAt(i) == 10) { // '\n'
+      if (content.codeUnitAt(i) == 10) {
+        // '\n'
         lines++;
       }
     }

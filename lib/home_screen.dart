@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+
 import 'app_state.dart';
 import 'editor_tabs.dart';
 import 'sidebar.dart';
@@ -189,7 +191,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 meta: true,
               ),
               onSelected: () {
-                if (mounted && context.read<AppState>().currentFilePath != null) {
+                if (mounted &&
+                    context.read<AppState>().currentFilePath != null) {
                   context.read<AppState>().showFindInFile();
                 }
               },
@@ -378,8 +381,11 @@ class _HomeScreenState extends State<HomeScreen> {
               onSelected: () {
                 if (mounted) {
                   final appState = context.read<AppState>();
-                  final isDark = Theme.of(context).brightness == Brightness.dark;
-                  appState.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
+                  final isDark =
+                      Theme.of(context).brightness == Brightness.dark;
+                  appState.setThemeMode(
+                    isDark ? ThemeMode.light : ThemeMode.dark,
+                  );
                 }
               },
             ),
@@ -423,6 +429,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               },
             ),
+            PlatformMenuItem(
+              label: 'Reset Zoom',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.digit0,
+                meta: true,
+              ),
+              onSelected: () {
+                if (mounted) {
+                  context.read<AppState>().resetFontSize();
+                }
+              },
+            ),
           ],
         ),
       ],
@@ -434,13 +452,24 @@ class _HomeScreenState extends State<HomeScreen> {
           const SingleActivator(LogicalKeyboardKey.minus, meta: true): () {
             appState.decreaseFontSize();
           },
+          const SingleActivator(LogicalKeyboardKey.digit0, meta: true): () {
+            appState.resetFontSize();
+          },
           const SingleActivator(LogicalKeyboardKey.keyW, meta: true): () {
             appState.closeCurrentFile();
           },
-          const SingleActivator(LogicalKeyboardKey.keyW, meta: true, shift: true): () {
+          const SingleActivator(
+            LogicalKeyboardKey.keyW,
+            meta: true,
+            shift: true,
+          ): () {
             appState.closeAllFiles();
           },
-          const SingleActivator(LogicalKeyboardKey.keyT, meta: true, shift: true): () {
+          const SingleActivator(
+            LogicalKeyboardKey.keyT,
+            meta: true,
+            shift: true,
+          ): () {
             appState.reopenClosedTab();
           },
           const SingleActivator(LogicalKeyboardKey.keyO, meta: true): () async {
@@ -498,10 +527,18 @@ class _HomeScreenState extends State<HomeScreen> {
           const SingleActivator(LogicalKeyboardKey.keyG, meta: true): () {
             appState.nextFindMatch();
           },
-          const SingleActivator(LogicalKeyboardKey.keyG, meta: true, shift: true): () {
+          const SingleActivator(
+            LogicalKeyboardKey.keyG,
+            meta: true,
+            shift: true,
+          ): () {
             appState.prevFindMatch();
           },
-          const SingleActivator(LogicalKeyboardKey.keyF, meta: true, shift: true): () {
+          const SingleActivator(
+            LogicalKeyboardKey.keyF,
+            meta: true,
+            shift: true,
+          ): () {
             appState.setSidebarTabIndex(2);
             if (!appState.isExplorerVisible) {
               appState.toggleExplorerVisibility();
@@ -516,22 +553,37 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context) => const FileSearchModal(),
             );
           },
-          const SingleActivator(LogicalKeyboardKey.bracketLeft, meta: true): () {
+          const SingleActivator(
+            LogicalKeyboardKey.bracketLeft,
+            meta: true,
+          ): () {
             appState.goBack();
           },
-          const SingleActivator(LogicalKeyboardKey.bracketRight, meta: true): () {
+          const SingleActivator(
+            LogicalKeyboardKey.bracketRight,
+            meta: true,
+          ): () {
             appState.goForward();
           },
           // Jump to tab 1-9
-          const SingleActivator(LogicalKeyboardKey.digit1, meta: true): () => appState.setActiveTab(0),
-          const SingleActivator(LogicalKeyboardKey.digit2, meta: true): () => appState.setActiveTab(1),
-          const SingleActivator(LogicalKeyboardKey.digit3, meta: true): () => appState.setActiveTab(2),
-          const SingleActivator(LogicalKeyboardKey.digit4, meta: true): () => appState.setActiveTab(3),
-          const SingleActivator(LogicalKeyboardKey.digit5, meta: true): () => appState.setActiveTab(4),
-          const SingleActivator(LogicalKeyboardKey.digit6, meta: true): () => appState.setActiveTab(5),
-          const SingleActivator(LogicalKeyboardKey.digit7, meta: true): () => appState.setActiveTab(6),
-          const SingleActivator(LogicalKeyboardKey.digit8, meta: true): () => appState.setActiveTab(7),
-          const SingleActivator(LogicalKeyboardKey.digit9, meta: true): () => appState.setActiveTab(8),
+          const SingleActivator(LogicalKeyboardKey.digit1, meta: true): () =>
+              appState.setActiveTab(0),
+          const SingleActivator(LogicalKeyboardKey.digit2, meta: true): () =>
+              appState.setActiveTab(1),
+          const SingleActivator(LogicalKeyboardKey.digit3, meta: true): () =>
+              appState.setActiveTab(2),
+          const SingleActivator(LogicalKeyboardKey.digit4, meta: true): () =>
+              appState.setActiveTab(3),
+          const SingleActivator(LogicalKeyboardKey.digit5, meta: true): () =>
+              appState.setActiveTab(4),
+          const SingleActivator(LogicalKeyboardKey.digit6, meta: true): () =>
+              appState.setActiveTab(5),
+          const SingleActivator(LogicalKeyboardKey.digit7, meta: true): () =>
+              appState.setActiveTab(6),
+          const SingleActivator(LogicalKeyboardKey.digit8, meta: true): () =>
+              appState.setActiveTab(7),
+          const SingleActivator(LogicalKeyboardKey.digit9, meta: true): () =>
+              appState.setActiveTab(8),
         },
         child: Focus(
           autofocus: true,
@@ -562,9 +614,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               : 0,
                           clipBehavior: Clip.hardEdge,
                           decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).extension<SirenColors>()!.sidebarBg,
+                            color: Theme.of(context)
+                                .extension<SirenColors>()!
+                                .sidebarBg,
                           ),
                           child: appState.isExplorerVisible
                               ? const Sidebar()
@@ -599,7 +651,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             children: [
                               const EditorTabs(),
-                              if (appState.isFindInFileVisible && appState.currentFilePath != null)
+                              if (appState.isFindInFileVisible &&
+                                  appState.currentFilePath != null)
                                 const FindInFileBar(),
                               Expanded(
                                 child: appState.isLoading
@@ -613,7 +666,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                           0,
                                           appState.openFilePaths.isEmpty
                                               ? 0
-                                              : appState.openFilePaths.length - 1,
+                                              : appState.openFilePaths.length -
+                                                    1,
                                         ),
                                         children: List.generate(
                                           appState.openFilePaths.length,
@@ -794,9 +848,8 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 16),
           Text(
             'No file open',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(context).disabledColor,
-            ),
+            style: Theme.of(context).textTheme.headlineSmall
+                ?.copyWith(color: Theme.of(context).disabledColor),
           ),
           const SizedBox(height: 8),
           ElevatedButton.icon(
@@ -872,18 +925,12 @@ class _TabContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    
+
     // Actually, IndexedStack children order matters.
-    
+
     return appState.isRenderedView
-        ? RenderedView(
-            key: ValueKey('rendered_$filePath'),
-            filePath: filePath,
-          )
-        : MarkdownRawView(
-            key: ValueKey('raw_$filePath'),
-            filePath: filePath,
-          );
+        ? RenderedView(key: ValueKey('rendered_$filePath'), filePath: filePath)
+        : MarkdownRawView(key: ValueKey('raw_$filePath'), filePath: filePath);
   }
 }
 
@@ -962,7 +1009,8 @@ class _DesktopIconButtonState extends State<_DesktopIconButton> {
   Widget build(BuildContext context) {
     final isEnabled = widget.onPressed != null;
     final sirenColors = Theme.of(context).extension<SirenColors>()!;
-    final baseColor = sirenColors.iconColor ?? Theme.of(context).iconTheme.color!;
+    final baseColor =
+        sirenColors.iconColor ?? Theme.of(context).iconTheme.color!;
     final color = isEnabled ? baseColor : baseColor.withValues(alpha: 0.25);
     final hoverColor = baseColor.withValues(alpha: 0.05);
     final pressedColor = baseColor.withValues(alpha: 0.1);
@@ -1003,7 +1051,9 @@ class _DesktopIconButtonState extends State<_DesktopIconButton> {
               widget.icon,
               size: 18,
               color: isEnabled
-                  ? (_isPressed || _isHovering ? color : color.withValues(alpha: 0.7))
+                  ? (_isPressed || _isHovering
+                        ? color
+                        : color.withValues(alpha: 0.7))
                   : color,
             ),
           ),

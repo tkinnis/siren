@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,37 +35,46 @@ void main() {
       } catch (_) {}
     });
 
-    test('reorderTabsDirect moves tab forward correctly and maintains active tab', () async {
-      await appState.openFile(fileA);
-      await appState.openFile(fileB);
-      await appState.openFile(fileC);
+    test(
+      'reorderTabsDirect moves tab forward correctly and maintains active tab',
+      () async {
+        await appState.openFile(fileA);
+        await appState.openFile(fileB);
+        await appState.openFile(fileC);
 
-      // Active tab is fileC (index 2)
-      expect(appState.openFilePaths, [fileA, fileB, fileC]);
-      expect(appState.activeTabIndex, 2);
+        // Active tab is fileC (index 2)
+        expect(appState.openFilePaths, [fileA, fileB, fileC]);
+        expect(appState.activeTabIndex, 2);
 
-      // Move fileA (0) to position 1
-      appState.reorderTabsDirect(0, 1);
+        // Move fileA (0) to position 1
+        appState.reorderTabsDirect(0, 1);
 
-      expect(appState.openFilePaths, [fileB, fileA, fileC]);
-      expect(appState.activeTabIndex, 2); // fileC is still at index 2
-    });
+        expect(appState.openFilePaths, [fileB, fileA, fileC]);
+        expect(appState.activeTabIndex, 2); // fileC is still at index 2
+      },
+    );
 
-    test('reorderTabsDirect moves active tab and updates activeTabIndex', () async {
-      await appState.openFile(fileA);
-      await appState.openFile(fileB);
-      await appState.openFile(fileC);
+    test(
+      'reorderTabsDirect moves active tab and updates activeTabIndex',
+      () async {
+        await appState.openFile(fileA);
+        await appState.openFile(fileB);
+        await appState.openFile(fileC);
 
-      // Select fileB (index 1)
-      appState.setActiveTab(1);
-      expect(appState.activeTabIndex, 1);
+        // Select fileB (index 1)
+        appState.setActiveTab(1);
+        expect(appState.activeTabIndex, 1);
 
-      // Move fileB (1) to index 0
-      appState.reorderTabsDirect(1, 0);
+        // Move fileB (1) to index 0
+        appState.reorderTabsDirect(1, 0);
 
-      expect(appState.openFilePaths, [fileB, fileA, fileC]);
-      expect(appState.activeTabIndex, 0); // fileB moved to index 0, active index updated
-    });
+        expect(appState.openFilePaths, [fileB, fileA, fileC]);
+        expect(
+          appState.activeTabIndex,
+          0,
+        ); // fileB moved to index 0, active index updated
+      },
+    );
 
     test('reorderTabsDirect ignores out-of-bound indices', () async {
       await appState.openFile(fileA);

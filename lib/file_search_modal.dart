@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as path;
+
 import 'app_state.dart';
 import 'fuzzy_matcher.dart';
 
@@ -15,7 +16,7 @@ class FileSearchModal extends StatefulWidget {
 class _FileSearchModalState extends State<FileSearchModal> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  
+
   List<String> _allFiles = [];
   List<String> _relativePaths = [];
   List<String> _filteredFiles = [];
@@ -92,14 +93,18 @@ class _FileSearchModalState extends State<FileSearchModal> {
           bindings: {
             const SingleActivator(LogicalKeyboardKey.arrowDown): () {
               setState(() {
-                _selectedIndex =
-                    (_selectedIndex + 1).clamp(0, _filteredFiles.length - 1);
+                _selectedIndex = (_selectedIndex + 1).clamp(
+                  0,
+                  _filteredFiles.length - 1,
+                );
               });
             },
             const SingleActivator(LogicalKeyboardKey.arrowUp): () {
               setState(() {
-                _selectedIndex =
-                    (_selectedIndex - 1).clamp(0, _filteredFiles.length - 1);
+                _selectedIndex = (_selectedIndex - 1).clamp(
+                  0,
+                  _filteredFiles.length - 1,
+                );
               });
             },
             const SingleActivator(LogicalKeyboardKey.enter): _selectFile,
@@ -155,9 +160,9 @@ class _FileSearchModalState extends State<FileSearchModal> {
                           child: Text(
                             'No matching files',
                             style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                         )
@@ -194,9 +199,9 @@ class _FileSearchModalState extends State<FileSearchModal> {
                                     Icon(
                                       Icons.description_outlined,
                                       size: 20,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -214,9 +219,9 @@ class _FileSearchModalState extends State<FileSearchModal> {
                                             relativePath,
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.onSurfaceVariant,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
                                             ),
                                             overflow: TextOverflow.ellipsis,
                                           ),

@@ -1,10 +1,12 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_highlighter/themes/github.dart';
 import 'package:flutter_highlighter/themes/dracula.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:highlighter/highlighter.dart' show highlight, Node;
 import 'package:provider/provider.dart';
+
 import 'app_state.dart';
 
 class MarkdownRawView extends StatefulWidget {
@@ -58,11 +60,11 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
   void _restoreScrollPosition() {
     final appState = context.read<AppState>();
     final path = widget.filePath;
-    
+
     // Wait for build to attach client
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      
+
       final pending = appState.pendingScrollTarget;
       if (pending != null) {
         final lineHeight = appState.fontSize * 1.5;
@@ -76,7 +78,7 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
         appState.clearPendingScrollTarget();
         return;
       }
-      
+
       final offset = appState.getScrollOffset(path);
       _scrollController.jumpTo(offset);
     });
@@ -87,7 +89,6 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
     final appState = context.read<AppState>();
     appState.setScrollOffset(widget.filePath, _scrollController.offset);
   }
-
 
   // Helper to convert highlighter nodes to TextSpan
   TextSpan _buildTextSpan(
@@ -146,7 +147,9 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
     }
     return TextSpan(
       style: style,
-      children: node.children!.map((n) => _convertNode(n, theme, searchState)).toList(),
+      children: node.children!
+          .map((n) => _convertNode(n, theme, searchState))
+          .toList(),
     );
   }
 
@@ -162,11 +165,21 @@ class _MarkdownRawViewState extends State<MarkdownRawView> {
     final content = context.select<AppState, String>(
       (state) => state.getFileContent(widget.filePath),
     );
-    final fontSize = context.select<AppState, double>((state) => state.fontSize);
-    final findQuery = context.select<AppState, String>((state) => state.findInFileQuery);
-    final activeMatchIndex = context.select<AppState, int>((state) => state.findInFileActiveMatchIndex);
-    final isFindVisible = context.select<AppState, bool>((state) => state.isFindInFileVisible);
-    final useRegex = context.select<AppState, bool>((state) => state.findInFileUseRegex);
+    final fontSize = context.select<AppState, double>(
+      (state) => state.fontSize,
+    );
+    final findQuery = context.select<AppState, String>(
+      (state) => state.findInFileQuery,
+    );
+    final activeMatchIndex = context.select<AppState, int>(
+      (state) => state.findInFileActiveMatchIndex,
+    );
+    final isFindVisible = context.select<AppState, bool>(
+      (state) => state.isFindInFileVisible,
+    );
+    final useRegex = context.select<AppState, bool>(
+      (state) => state.findInFileUseRegex,
+    );
 
     final searchState = (isFindVisible && findQuery.isNotEmpty)
         ? _SearchState(findQuery, activeMatchIndex, useRegex)
@@ -313,22 +326,26 @@ List<InlineSpan> _buildSearchHighlightSpans(
 
     for (final match in matches) {
       if (match.start > start) {
-        spans.add(TextSpan(text: text.substring(start, match.start), style: style));
+        spans.add(
+          TextSpan(text: text.substring(start, match.start), style: style),
+        );
       }
 
       final matchText = match.group(0) ?? '';
       final currentMatchIdx = getAndIncrementMatchIndex();
       final isActive = currentMatchIdx == activeIndex;
 
-      spans.add(TextSpan(
-        text: matchText,
-        style: style.copyWith(
-          backgroundColor: isActive
-              ? Colors.orange.withValues(alpha: 0.8)
-              : Colors.yellow.withValues(alpha: 0.4),
-          color: Colors.black,
+      spans.add(
+        TextSpan(
+          text: matchText,
+          style: style.copyWith(
+            backgroundColor: isActive
+                ? Colors.orange.withValues(alpha: 0.8)
+                : Colors.yellow.withValues(alpha: 0.4),
+            color: Colors.black,
+          ),
         ),
-      ));
+      );
 
       start = match.end;
     }
@@ -353,26 +370,29 @@ List<InlineSpan> _buildSearchHighlightSpans(
     }
 
     if (index > start) {
-      spansVerbatim.add(TextSpan(text: text.substring(start, index), style: style));
+      spansVerbatim.add(
+        TextSpan(text: text.substring(start, index), style: style),
+      );
     }
 
     final matchText = text.substring(index, index + query.length);
     final currentMatchIdx = getAndIncrementMatchIndex();
     final isActive = currentMatchIdx == activeIndex;
 
-    spansVerbatim.add(TextSpan(
-      text: matchText,
-      style: style.copyWith(
-        backgroundColor: isActive
-            ? Colors.orange.withValues(alpha: 0.8)
-            : Colors.yellow.withValues(alpha: 0.4),
+    spansVerbatim.add(
+      TextSpan(
+        text: matchText,
+        style: style.copyWith(
+          backgroundColor: isActive
+              ? Colors.orange.withValues(alpha: 0.8)
+              : Colors.yellow.withValues(alpha: 0.4),
           color: Colors.black,
         ),
-      ));
+      ),
+    );
 
     start = index + query.length;
   }
 
   return spansVerbatim;
 }
-

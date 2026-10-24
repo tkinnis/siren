@@ -5,10 +5,7 @@ class _PackageLicenses {
   final String packageName;
   final List<List<LicenseParagraph>> entries;
 
-  _PackageLicenses({
-    required this.packageName,
-    required this.entries,
-  });
+  _PackageLicenses({required this.packageName, required this.entries});
 }
 
 /// A desktop-first About and License dialog for Siren.
@@ -49,8 +46,10 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
         .map((e) => _PackageLicenses(packageName: e.key, entries: e.value))
         .toList();
 
-    packages.sort((a, b) =>
-        a.packageName.toLowerCase().compareTo(b.packageName.toLowerCase()));
+    packages.sort(
+      (a, b) =>
+          a.packageName.toLowerCase().compareTo(b.packageName.toLowerCase()),
+    );
 
     if (mounted) {
       setState(() {
@@ -95,7 +94,9 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
       child: SizedBox(
         width: 760,
         height: 520,
-        child: _showLicenses ? _buildLicensesView(theme, isDark, borderColor) : _buildAboutView(theme, isDark, borderColor),
+        child: _showLicenses
+            ? _buildLicensesView(theme, isDark, borderColor)
+            : _buildAboutView(theme, isDark, borderColor),
       ),
     );
   }
@@ -127,7 +128,9 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.15),
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.35 : 0.15,
+                        ),
                         blurRadius: 16,
                         offset: const Offset(0, 6),
                       ),
@@ -167,7 +170,7 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Version 0.1.0',
+                  'Version 0.2.0',
                   style: TextStyle(
                     fontSize: 13,
                     color: isDark ? Colors.white60 : Colors.black54,
@@ -213,7 +216,9 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           decoration: BoxDecoration(
             border: Border(top: BorderSide(color: borderColor)),
-            color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.02),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.02)
+                : Colors.black.withValues(alpha: 0.02),
           ),
           child: Row(
             children: [
@@ -221,7 +226,10 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                 icon: const Icon(Icons.article_outlined, size: 16),
                 label: const Text('View Open Source Licenses'),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   side: BorderSide(color: borderColor),
                 ),
                 onPressed: () {
@@ -235,7 +243,10 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                 ),
                 child: const Text('Close'),
               ),
@@ -248,12 +259,15 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
 
   Widget _buildLicensesView(ThemeData theme, bool isDark, Color borderColor) {
     final filtered = _filteredPackages;
-    final selectedPackage = (filtered.isNotEmpty && _selectedIndex < filtered.length)
+    final selectedPackage =
+        (filtered.isNotEmpty && _selectedIndex < filtered.length)
         ? filtered[_selectedIndex]
         : null;
 
     final headerBg = isDark ? const Color(0xFF181825) : const Color(0xFFF5F5F7);
-    final sidebarBg = isDark ? const Color(0xFF14141E) : const Color(0xFFFAFAFC);
+    final sidebarBg = isDark
+        ? const Color(0xFF14141E)
+        : const Color(0xFFFAFAFC);
 
     return Column(
       children: [
@@ -271,7 +285,10 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                 icon: const Icon(Icons.arrow_back, size: 16),
                 label: const Text('About Siren'),
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
                 ),
                 onPressed: () {
                   setState(() {
@@ -284,10 +301,7 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
               const SizedBox(width: 12),
               const Text(
                 'Open Source Licenses',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
               const Spacer(),
               // Compact Search Bar
@@ -321,7 +335,10 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                         : null,
                     filled: true,
                     fillColor: isDark ? Colors.black26 : Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 0,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
                       borderSide: BorderSide(color: borderColor),
@@ -377,7 +394,9 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                             height: 36,
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                             decoration: BoxDecoration(
-                              border: Border(bottom: BorderSide(color: borderColor)),
+                              border: Border(
+                                bottom: BorderSide(color: borderColor),
+                              ),
                             ),
                             alignment: Alignment.centerLeft,
                             child: Text(
@@ -398,7 +417,9 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                                       'No packages found',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: isDark ? Colors.white38 : Colors.black38,
+                                        color: isDark
+                                            ? Colors.white38
+                                            : Colors.black38,
                                       ),
                                     ),
                                   )
@@ -407,7 +428,8 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                                     itemCount: filtered.length,
                                     itemBuilder: (context, index) {
                                       final pkg = filtered[index];
-                                      final isSelected = index == _selectedIndex;
+                                      final isSelected =
+                                          index == _selectedIndex;
                                       return InkWell(
                                         onTap: () {
                                           setState(() {
@@ -423,8 +445,18 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                                           decoration: BoxDecoration(
                                             color: isSelected
                                                 ? (isDark
-                                                    ? theme.colorScheme.primary.withValues(alpha: 0.18)
-                                                    : theme.colorScheme.primary.withValues(alpha: 0.12))
+                                                      ? theme
+                                                            .colorScheme
+                                                            .primary
+                                                            .withValues(
+                                                              alpha: 0.18,
+                                                            )
+                                                      : theme
+                                                            .colorScheme
+                                                            .primary
+                                                            .withValues(
+                                                              alpha: 0.12,
+                                                            ))
                                                 : Colors.transparent,
                                             border: Border(
                                               left: BorderSide(
@@ -436,16 +468,23 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                                             ),
                                           ),
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 pkg.packageName,
                                                 style: TextStyle(
                                                   fontSize: 12,
-                                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                                  fontWeight: isSelected
+                                                      ? FontWeight.bold
+                                                      : FontWeight.w500,
                                                   color: isSelected
-                                                      ? theme.colorScheme.primary
-                                                      : (isDark ? Colors.white : Colors.black87),
+                                                      ? theme
+                                                            .colorScheme
+                                                            .primary
+                                                      : (isDark
+                                                            ? Colors.white
+                                                            : Colors.black87),
                                                 ),
                                                 overflow: TextOverflow.ellipsis,
                                               ),
@@ -454,7 +493,9 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                                                 '${pkg.entries.length} ${pkg.entries.length == 1 ? 'license' : 'licenses'}',
                                                 style: TextStyle(
                                                   fontSize: 10,
-                                                  color: isDark ? Colors.white38 : Colors.black38,
+                                                  color: isDark
+                                                      ? Colors.white38
+                                                      : Colors.black38,
                                                 ),
                                               ),
                                             ],
@@ -477,7 +518,9 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                                 'Select a package to view its license.',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: isDark ? Colors.white38 : Colors.black38,
+                                  color: isDark
+                                      ? Colors.white38
+                                      : Colors.black38,
                                 ),
                               ),
                             )
@@ -486,10 +529,16 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                                 // Aligned Top Bar for Right Column (Exact same height as left: 36px)
                                 Container(
                                   height: 36,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
                                   decoration: BoxDecoration(
-                                    border: Border(bottom: BorderSide(color: borderColor)),
-                                    color: isDark ? Colors.black12 : Colors.white70,
+                                    border: Border(
+                                      bottom: BorderSide(color: borderColor),
+                                    ),
+                                    color: isDark
+                                        ? Colors.black12
+                                        : Colors.white70,
                                   ),
                                   alignment: Alignment.centerLeft,
                                   child: Row(
@@ -503,16 +552,27 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                                       ),
                                       const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
-                                          borderRadius: BorderRadius.circular(4),
+                                          color: isDark
+                                              ? Colors.white10
+                                              : Colors.black.withValues(
+                                                  alpha: 0.06,
+                                                ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
                                         ),
                                         child: Text(
                                           '${selectedPackage.entries.length} ${selectedPackage.entries.length == 1 ? 'entry' : 'entries'}',
                                           style: TextStyle(
                                             fontSize: 10,
-                                            color: isDark ? Colors.white60 : Colors.black54,
+                                            color: isDark
+                                                ? Colors.white60
+                                                : Colors.black54,
                                           ),
                                         ),
                                       ),
@@ -528,45 +588,68 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                                       controller: _licenseTextController,
                                       padding: const EdgeInsets.all(20),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
                                         children: [
-                                          for (int entryIdx = 0; entryIdx < selectedPackage.entries.length; entryIdx++) ...[
+                                          for (
+                                            int entryIdx = 0;
+                                            entryIdx <
+                                                selectedPackage.entries.length;
+                                            entryIdx++
+                                          ) ...[
                                             if (entryIdx > 0) ...[
                                               const SizedBox(height: 24),
                                               Divider(color: borderColor),
                                               const SizedBox(height: 16),
                                             ],
-                                            ...selectedPackage.entries[entryIdx].map((paragraph) {
-                                              if (paragraph.indent == LicenseParagraph.centeredIndent) {
-                                                return Padding(
-                                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                                  child: SelectableText(
-                                                    paragraph.text,
-                                                    textAlign: TextAlign.center,
-                                                    style: const TextStyle(
-                                                      fontFamily: 'SF Mono',
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.bold,
+                                            ...selectedPackage.entries[entryIdx]
+                                                .map((paragraph) {
+                                                  if (paragraph.indent ==
+                                                      LicenseParagraph
+                                                          .centeredIndent) {
+                                                    return Padding(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 8,
+                                                          ),
+                                                      child: SelectableText(
+                                                        paragraph.text,
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: const TextStyle(
+                                                          fontFamily: 'SF Mono',
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                  return Padding(
+                                                    padding: EdgeInsets.only(
+                                                      left:
+                                                          (paragraph.indent *
+                                                                  16.0)
+                                                              .clamp(0.0, 80.0),
+                                                      bottom: 8.0,
                                                     ),
-                                                  ),
-                                                );
-                                              }
-                                              return Padding(
-                                                padding: EdgeInsets.only(
-                                                  left: (paragraph.indent * 16.0).clamp(0.0, 80.0),
-                                                  bottom: 8.0,
-                                                ),
-                                                child: SelectableText(
-                                                  paragraph.text,
-                                                  style: TextStyle(
-                                                    fontFamily: 'SF Mono',
-                                                    fontSize: 11,
-                                                    height: 1.45,
-                                                    color: isDark ? const Color(0xFFDCDFE4) : const Color(0xFF24292E),
-                                                  ),
-                                                ),
-                                              );
-                                            }),
+                                                    child: SelectableText(
+                                                      paragraph.text,
+                                                      style: TextStyle(
+                                                        fontFamily: 'SF Mono',
+                                                        fontSize: 11,
+                                                        height: 1.45,
+                                                        color: isDark
+                                                            ? const Color(
+                                                                0xFFDCDFE4,
+                                                              )
+                                                            : const Color(
+                                                                0xFF24292E,
+                                                              ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                }),
                                           ],
                                         ],
                                       ),

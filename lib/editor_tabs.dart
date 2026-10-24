@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
+
 import 'app_state.dart';
 
 import 'theme.dart';
@@ -101,11 +102,16 @@ class _EditorTabsState extends State<EditorTabs> {
               child: GestureDetector(
                 onTap: () => appState.setActiveTab(index),
                 child: Container(
-                  constraints: const BoxConstraints(minWidth: 100, maxWidth: 200),
+                  constraints: const BoxConstraints(
+                    minWidth: 100,
+                    maxWidth: 200,
+                  ),
                   margin: const EdgeInsets.only(right: 1, top: 1),
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
-                    color: isActive ? sirenColors.activeTabBg : sirenColors.tabBg,
+                    color: isActive
+                        ? sirenColors.activeTabBg
+                        : sirenColors.tabBg,
                     border: isActive
                         ? Border(
                             top: BorderSide(
@@ -204,8 +210,8 @@ class _TabCloseButtonState extends State<_TabCloseButton> {
                 color: _isHovering
                     ? Theme.of(context).colorScheme.error
                     : (widget.isActive
-                        ? sirenColors.iconColor
-                        : sirenColors.iconColor?.withValues(alpha: 0.7)),
+                          ? sirenColors.iconColor
+                          : sirenColors.iconColor?.withValues(alpha: 0.7)),
               ),
             ),
           ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as path;
 
@@ -9,17 +10,9 @@ class Submatch {
   final int start;
   final int end;
 
-  Submatch({
-    required this.text,
-    required this.start,
-    required this.end,
-  });
+  Submatch({required this.text, required this.start, required this.end});
 
-  Map<String, dynamic> toJson() => {
-    'text': text,
-    'start': start,
-    'end': end,
-  };
+  Map<String, dynamic> toJson() => {'text': text, 'start': start, 'end': end};
 
   factory Submatch.fromJson(Map<String, dynamic> json) => Submatch(
     text: json['text'] as String,
@@ -49,13 +42,13 @@ class RipgrepMatch {
   };
 
   factory RipgrepMatch.fromJson(Map<String, dynamic> json) => RipgrepMatch(
-        filePath: json['filePath'] as String,
-        lineNumber: json['lineNumber'] as int,
-        lineContent: json['lineContent'] as String,
-        submatches: (json['submatches'] as List)
-            .map((s) => Submatch.fromJson(s as Map<String, dynamic>))
-            .toList(),
-      );
+    filePath: json['filePath'] as String,
+    lineNumber: json['lineNumber'] as int,
+    lineContent: json['lineContent'] as String,
+    submatches: (json['submatches'] as List)
+        .map((s) => Submatch.fromJson(s as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 class RipgrepService {
@@ -69,20 +62,22 @@ class RipgrepService {
     }
 
     final home = Platform.environment['HOME']!;
-    final supportDir = Directory(path.join(home, 'Library', 'Application Support', 'siren'));
+    final supportDir = Directory(
+      path.join(home, 'Library', 'Application Support', 'siren'),
+    );
     if (!supportDir.existsSync()) {
       supportDir.createSync(recursive: true);
     }
 
     final targetFile = File(path.join(supportDir.path, 'rg'));
-    
+
     if (!targetFile.existsSync()) {
       final bytes = await rootBundle.load('assets/bin/rg');
       await targetFile.writeAsBytes(
         bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
         flush: true,
       );
-      
+
       // Apply execute permissions
       await Process.run('chmod', ['+x', targetFile.path]);
     }
@@ -132,7 +127,8 @@ class RipgrepService {
 
       final process = await Process.run(rgPath, args);
       if (process.exitCode != 0 && process.stderr.toString().isNotEmpty) {
-        if (process.exitCode != 1) { // Exit code 1 means no matches, which is normal
+        if (process.exitCode != 1) {
+          // Exit code 1 means no matches, which is normal
           throw Exception('ripgrep failed: ${process.stderr}');
         }
       }
@@ -143,7 +139,8 @@ class RipgrepService {
       for (final line in lines) {
         if (line.isEmpty) continue;
         try {
-          final Map<String, dynamic> json = jsonDecode(line) as Map<String, dynamic>;
+          final Map<String, dynamic> json =
+              jsonDecode(line) as Map<String, dynamic>;
           if (json['type'] == 'match') {
             final data = json['data'] as Map<String, dynamic>;
             final filePath = data['path']['text'] as String;
@@ -164,12 +161,14 @@ class RipgrepService {
               );
             }).toList();
 
-            matches.add(RipgrepMatch(
-              filePath: filePath,
-              lineNumber: lineNumber,
-              lineContent: lineContent,
-              submatches: submatches,
-            ));
+            matches.add(
+              RipgrepMatch(
+                filePath: filePath,
+                lineNumber: lineNumber,
+                lineContent: lineContent,
+                submatches: submatches,
+              ),
+            );
           }
         } catch (e) {
           // Ignore individual parsing exceptions

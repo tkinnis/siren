@@ -47,9 +47,9 @@ Siren is built with a keyboard-first philosophy. This document lists all availab
 
 | Action | Shortcut | Description |
 | :--- | :---: | :--- |
-| **Increase Font Size** | `Cmd++` or `Cmd+=` | Enlarge document body and raw text font |
-| **Decrease Font Size** | `Cmd+-` | Reduce document body and raw text font |
-| **Reset Font Size** | `Cmd+0` | Reset font size to default (15.0) |
+| **Increase Font & Diagram Scale** | `Cmd++` or `Cmd+=` | Enlarge document body, raw text font, and Mermaid diagrams |
+| **Decrease Font & Diagram Scale** | `Cmd+-` | Reduce document body, raw text font, and Mermaid diagrams |
+| **Reset Font & Diagram Scale** | `Cmd+0` | Reset font size and diagram scale to default (14.0) |
 | **Reload File** | `Cmd+R` | Reload active document from disk |
 
 ---
@@ -61,3 +61,4 @@ Siren is built with a keyboard-first philosophy. This document lists all availab
 | **Jump to Heading** | Click any heading in the **Outline View** |
 | **Open Link** | Click any relative Markdown link |
 | **Follow In-Document Anchor** | Click an anchor link (e.g. `#section-heading`) to scroll smoothly |
+| **Inspect / Zoom Mermaid Diagram** | Click any rendered Mermaid diagram to open the interactive Zoom & Pan viewer (`+`, `-`, `Cmd+0`, double-click, drag/pinch) |

@@ -39,27 +39,35 @@ graph TD
 - Monitors file system modification and removal events.
 - Employs debounce timers and delay strategies to handle macOS atomic saves (where editors write to a temporary file, delete the original, and rename).
 
+### Offscreen Mermaid Vector Engine (`lib/mermaid_render_service.dart`)
+- Uses a single shared headless `WebViewController` loaded with offline `mermaid.min.js` and `mermaid_page.js` assets.
+- Flattens computed SVG styles, markers, and `<foreignObject>` labels into standalone SVG XML and compiles them into binary `vector_graphics` bytecode (`VectorGraphic`), with automatic high-DPI PNG fallback.
+- Caches compiled diagrams in an LRU memory cache (`(code, isDarkMode)`) for instant scrolling, font scaling, and interactive zoom/pan inspection (`lib/mermaid_zoom_dialog.dart`).
+
 ---
 
 ## 3. Directory Structure
 
 ```text
 siren/
-├── assets/             # Bundled application assets and screenshots
+├── assets/             # Bundled application assets (images, ripgrep, mermaid)
 ├── docs/               # User and developer documentation
 ├── lib/                # Flutter Dart source code
-│   ├── app_state.dart          # Core application state
-│   ├── editor_tabs.dart        # Workspace tab bar with drag-and-drop
-│   ├── file_explorer.dart      # Directory tree view
-│   ├── file_search_modal.dart  # Quick Open (Cmd+P) dialog
-│   ├── find_in_file_bar.dart   # In-document search bar
-│   ├── global_search_view.dart # Workspace full-text search
-│   ├── home_screen.dart        # Main window scaffold & toolbar
-│   ├── markdown_extensions.dart# GitHub alerts, math, & syntax parsers
-│   ├── outline_view.dart       # Heading hierarchy tree
-│   ├── raw_view.dart           # Raw Markdown editor with line gutter
-│   ├── rendered_view.dart      # Formatted Markdown view
-│   └── theme.dart              # Light & dark theme extensions
+│   ├── app_state.dart             # Core application state
+│   ├── editor_tabs.dart           # Workspace tab bar with drag-and-drop
+│   ├── file_explorer.dart         # Directory tree view
+│   ├── file_search_modal.dart     # Quick Open (Cmd+P) dialog
+│   ├── find_in_file_bar.dart      # In-document search bar
+│   ├── global_search_view.dart    # Workspace full-text search
+│   ├── home_screen.dart           # Main window scaffold & toolbar
+│   ├── markdown_extensions.dart   # GitHub alerts, math, & syntax parsers
+│   ├── mermaid_diagram.dart       # Scaled Mermaid vector diagram widget
+│   ├── mermaid_render_service.dart# Offscreen SVG/vector compilation engine
+│   ├── mermaid_zoom_dialog.dart   # Interactive zoom & pan diagram modal
+│   ├── outline_view.dart          # Heading hierarchy tree
+│   ├── raw_view.dart              # Raw Markdown editor with line gutter
+│   ├── rendered_view.dart         # Formatted Markdown view
+│   └── theme.dart                 # Light & dark theme extensions
 ├── macos/              # macOS native Runner project
 └── test/               # Comprehensive automated test suite
 ```

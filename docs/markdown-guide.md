@@ -76,7 +76,10 @@ $$
 
 ## 3. Mermaid Diagrams
 
-Siren renders Mermaid diagrams directly within the Markdown document using fenced code blocks labeled `mermaid`.
+Siren renders Mermaid diagrams offline using an offscreen vector compilation pipeline (`vector_graphics`) with fenced code blocks labeled `mermaid`.
+
+- **Proportional Scaling**: Increasing or decreasing the document font size via the `+` / `-` toolbar buttons (`Cmd+=` / `Cmd+-` / `Cmd+0`) scales Mermaid diagrams proportionally while remaining crisp at any resolution.
+- **Interactive Zoom & Pan Viewer**: Click any rendered diagram (or the hover **Zoom** button) to open it in a dedicated modal viewer supporting up to `800%` magnification, drag-to-pan, trackpad pinch-to-zoom, Fit-to-Window, and 100% reset.
 
 ### Flowcharts
 ```mermaid

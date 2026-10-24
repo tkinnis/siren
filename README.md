@@ -33,7 +33,7 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | :--- | :--- | :--- | :--- |
 | **Rendering** | **GitHub Alerts** | 5 color-coded alert levels (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) with custom icons | Automatic |
 | | **LaTeX Mathematics** | Typeset inline formulas (`$E = mc^2$`) and block equations (`$$\sum x_i$$`) | CommonMark math blocks |
-| | **Mermaid Diagrams** | Flowcharts, sequence diagrams, state machines, and class diagrams | ````mermaid```` code fences |
+| | **Mermaid Diagrams** | Offline SVG vector diagrams with proportional font scaling and click-to-zoom/pan viewer | ````mermaid```` code fences / Click diagram |
 | | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting | Fenced code blocks |
 | | **Extended Formatting** | Text highlighting (`==text==`), subscript (`~sub~`), superscript (`^sup^`), tables, task lists | Extended syntax |
 | **Viewer Modes** | **Rendered Preview** | Rich typography, interactive task lists, and diagram rendering | `Cmd + E` (Toggle) |
@@ -124,7 +124,7 @@ Comprehensive guides and architectural notes are available in the [`docs/`](docs
 
 Download the latest universal macOS release from [**GitHub Releases**](https://github.com/tkinnis/siren/releases/latest):
 
-1. Download **`Siren-v0.1.0-macos.zip`**.
+1. Download **`Siren-v0.2.0-macos.zip`**.
 2. Double-click to extract **`Siren.app`**.
 3. Drag **`Siren.app`** into your **`/Applications`** folder and launch.
 

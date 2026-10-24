@@ -1,7 +1,9 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
+
 import 'app_state.dart';
 import 'ripgrep_service.dart';
 import 'theme.dart';
@@ -16,15 +18,15 @@ class GlobalSearchView extends StatefulWidget {
 class _GlobalSearchViewState extends State<GlobalSearchView> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  
+
   bool _matchCase = false;
   bool _wholeWord = false;
   bool _useRegex = false;
-  
+
   bool _isSearching = false;
   List<RipgrepMatch> _results = [];
   String _errorMessage = '';
-  
+
   Timer? _debounceTimer;
   int _lastTabIndex = -1;
   bool _lastExplorerVisible = false;
@@ -76,7 +78,7 @@ class _GlobalSearchViewState extends State<GlobalSearchView> {
 
   Future<void> _performSearch(String query) async {
     if (!mounted) return;
-    
+
     if (query.isEmpty) {
       setState(() {
         _results = [];
@@ -88,7 +90,7 @@ class _GlobalSearchViewState extends State<GlobalSearchView> {
 
     final appState = Provider.of<AppState>(context, listen: false);
     final rootPath = appState.explorerRootPath;
-    
+
     if (rootPath == null) {
       setState(() {
         _results = [];
@@ -106,7 +108,7 @@ class _GlobalSearchViewState extends State<GlobalSearchView> {
     try {
       // Map knownFiles list to a Set for O(1) matching against search results
       final allowedFiles = Set<String>.from(appState.knownFiles);
-      
+
       final matches = await RipgrepService.search(
         query: query,
         directoryPath: rootPath,
@@ -115,7 +117,7 @@ class _GlobalSearchViewState extends State<GlobalSearchView> {
         wholeWord: _wholeWord,
         useRegex: _useRegex,
       );
-      
+
       if (mounted) {
         setState(() {
           _results = matches;
@@ -187,7 +189,8 @@ class _GlobalSearchViewState extends State<GlobalSearchView> {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: sirenColors.borderColor ?? Theme.of(context).dividerColor,
+                color:
+                    sirenColors.borderColor ?? Theme.of(context).dividerColor,
                 width: 1,
               ),
             ),
@@ -215,7 +218,9 @@ class _GlobalSearchViewState extends State<GlobalSearchView> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6),
                     borderSide: BorderSide(
-                      color: sirenColors.borderColor ?? Theme.of(context).dividerColor,
+                      color:
+                          sirenColors.borderColor ??
+                          Theme.of(context).dividerColor,
                     ),
                   ),
                 ),
@@ -253,170 +258,199 @@ class _GlobalSearchViewState extends State<GlobalSearchView> {
             ],
           ),
         ),
-        
+
         // Search Results / Loading / Guidance
         Expanded(
           child: _isSearching
               ? const Center(child: CircularProgressIndicator())
               : _errorMessage.isNotEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        _errorMessage,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
-                        textAlign: TextAlign.center,
+              ? Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    _errorMessage,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              : _results.isEmpty
+              ? Center(
+                  child: Text(
+                    _controller.text.isEmpty
+                        ? 'Type a query to search'
+                        : 'No results found',
+                    style: TextStyle(color: Theme.of(context).disabledColor),
+                  ),
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 8.0,
                       ),
-                    )
-                  : _results.isEmpty
-                      ? Center(
-                          child: Text(
-                            _controller.text.isEmpty
-                                ? 'Type a query to search'
-                                : 'No results found',
-                            style: TextStyle(color: Theme.of(context).disabledColor),
-                          ),
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                              child: Text(
-                                'Found $matchCount matches in $fileCount files',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: ListView.builder(
-                                itemCount: groupedResults.length,
-                                itemBuilder: (context, index) {
-                                  final filePath = groupedResults.keys.elementAt(index);
-                                  final fileMatches = groupedResults[filePath]!;
-                                  final relativePath = path.relative(filePath, from: rootPath);
-                                  final fileName = path.basename(filePath);
+                      child: Text(
+                        'Found $matchCount matches in $fileCount files',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: groupedResults.length,
+                        itemBuilder: (context, index) {
+                          final filePath = groupedResults.keys.elementAt(index);
+                          final fileMatches = groupedResults[filePath]!;
+                          final relativePath = path.relative(
+                            filePath,
+                            from: rootPath,
+                          );
+                          final fileName = path.basename(filePath);
 
-                                  return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // File Header
+                              InkWell(
+                                onTap: () {
+                                  appState.openFile(filePath);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12.0,
+                                    vertical: 6.0,
+                                  ),
+                                  child: Row(
                                     children: [
-                                      // File Header
-                                      InkWell(
-                                        onTap: () {
-                                          appState.openFile(filePath);
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12.0,
-                                            vertical: 6.0,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                Icons.description_outlined,
-                                                size: 14,
-                                                color: Theme.of(context).colorScheme.primary,
+                                      Icon(
+                                        Icons.description_outlined,
+                                        size: 14,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              fileName,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
                                               ),
-                                              const SizedBox(width: 6),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      fileName,
-                                                      style: const TextStyle(
-                                                        fontSize: 12,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                    Text(
-                                                      relativePath,
-                                                      style: TextStyle(
-                                                        fontSize: 10,
-                                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ],
-                                                ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            Text(
+                                              relativePath,
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
                                               ),
-                                            ],
-                                          ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      // Matches in File
-                                      ...fileMatches.map((match) {
-                                        return InkWell(
-                                          onTap: () {
-                                            appState.setRenderedView(false);
-                                            appState.openFile(match.filePath);
-                                            if (_controller.text.isNotEmpty) {
-                                              appState.showFindInFile();
-                                              appState.setFindInFileQuery(_controller.text, useRegex: _useRegex);
-                                              appState.setActiveMatchIndexToLine(match.lineNumber);
-                                            }
-                                            appState.scrollTo(match.lineNumber, match.lineContent);
-                                          },
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(
-                                              left: 28.0,
-                                              right: 12.0,
-                                              top: 4.0,
-                                              bottom: 4.0,
-                                            ),
-                                            child: Row(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Container(
-                                                  width: 24,
-                                                  alignment: Alignment.topRight,
-                                                  padding: const EdgeInsets.only(right: 6.0),
-                                                  child: Text(
-                                                    '${match.lineNumber}',
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      fontFamily: 'monospace',
-                                                      color: Theme.of(context).disabledColor,
-                                                    ),
-                                                  ),
-                                                ),
-                                                Expanded(
-                                                  child: _buildLineRichText(
-                                                    match.lineContent.trim(),
-                                                    match.submatches,
-                                                    TextStyle(
-                                                      fontSize: 11,
-                                                      color: Theme.of(context).colorScheme.onSurface,
-                                                    ),
-                                                    TextStyle(
-                                                      fontSize: 11,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: Theme.of(context).colorScheme.primary,
-                                                      backgroundColor: Theme.of(context)
-                                                          .colorScheme
-                                                          .primary
-                                                          .withValues(alpha: 0.1),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Matches in File
+                              ...fileMatches.map((match) {
+                                return InkWell(
+                                  onTap: () {
+                                    appState.setRenderedView(false);
+                                    appState.openFile(match.filePath);
+                                    if (_controller.text.isNotEmpty) {
+                                      appState.showFindInFile();
+                                      appState.setFindInFileQuery(
+                                        _controller.text,
+                                        useRegex: _useRegex,
+                                      );
+                                      appState.setActiveMatchIndexToLine(
+                                        match.lineNumber,
+                                      );
+                                    }
+                                    appState.scrollTo(
+                                      match.lineNumber,
+                                      match.lineContent,
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                      left: 28.0,
+                                      right: 12.0,
+                                      top: 4.0,
+                                      bottom: 4.0,
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          width: 24,
+                                          alignment: Alignment.topRight,
+                                          padding: const EdgeInsets.only(
+                                            right: 6.0,
+                                          ),
+                                          child: Text(
+                                            '${match.lineNumber}',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontFamily: 'monospace',
+                                              color: Theme.of(context)
+                                                  .disabledColor,
                                             ),
                                           ),
-                                        );
-                                      }),
-                                      const Divider(height: 12, thickness: 0.5),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
+                                        ),
+                                        Expanded(
+                                          child: _buildLineRichText(
+                                            match.lineContent.trim(),
+                                            match.submatches,
+                                            TextStyle(
+                                              fontSize: 11,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface,
+                                            ),
+                                            TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                              backgroundColor: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                                  .withValues(alpha: 0.1),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }),
+                              const Divider(height: 12, thickness: 0.5),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ],
     );
@@ -440,12 +474,19 @@ class _GlobalSearchViewState extends State<GlobalSearchView> {
 
     for (final sub in sortedMatches) {
       if (sub.start > current && sub.start <= line.length) {
-        spans.add(TextSpan(text: line.substring(current, sub.start), style: normalStyle));
+        spans.add(
+          TextSpan(
+            text: line.substring(current, sub.start),
+            style: normalStyle,
+          ),
+        );
       }
 
       final end = sub.end.clamp(0, line.length);
       if (sub.start < line.length && end > sub.start) {
-        spans.add(TextSpan(text: line.substring(sub.start, end), style: matchStyle));
+        spans.add(
+          TextSpan(text: line.substring(sub.start, end), style: matchStyle),
+        );
       }
       current = end;
     }
@@ -491,10 +532,14 @@ class _FilterToggle extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             decoration: BoxDecoration(
-              color: isActive ? activeColor.withValues(alpha: 0.15) : Colors.transparent,
+              color: isActive
+                  ? activeColor.withValues(alpha: 0.15)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(4),
               border: Border.all(
-                color: isActive ? activeColor : inactiveColor.withValues(alpha: 0.3),
+                color: isActive
+                    ? activeColor
+                    : inactiveColor.withValues(alpha: 0.3),
                 width: 1,
               ),
             ),

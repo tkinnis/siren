@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -78,33 +79,36 @@ void main() {
       expect(appState.currentFilePath, fileB);
     });
 
-    test('History navigation: canGoBack, canGoForward, and tab switching', () async {
-      await appState.openFile(fileA);
-      // Initially at root of history
-      expect(appState.canGoBack, isFalse);
-      expect(appState.canGoForward, isFalse);
+    test(
+      'History navigation: canGoBack, canGoForward, and tab switching',
+      () async {
+        await appState.openFile(fileA);
+        // Initially at root of history
+        expect(appState.canGoBack, isFalse);
+        expect(appState.canGoForward, isFalse);
 
-      await appState.openFile(fileB);
-      expect(appState.canGoBack, isTrue);
-      expect(appState.canGoForward, isFalse);
+        await appState.openFile(fileB);
+        expect(appState.canGoBack, isTrue);
+        expect(appState.canGoForward, isFalse);
 
-      // Go back to fileA
-      await appState.goBack();
-      expect(appState.activeTabIndex, 0);
-      expect(appState.currentFilePath, fileA);
-      // Tab list maintained without duplicates
-      expect(appState.openFilePaths, [fileA, fileB]);
-      expect(appState.canGoBack, isFalse);
-      expect(appState.canGoForward, isTrue);
+        // Go back to fileA
+        await appState.goBack();
+        expect(appState.activeTabIndex, 0);
+        expect(appState.currentFilePath, fileA);
+        // Tab list maintained without duplicates
+        expect(appState.openFilePaths, [fileA, fileB]);
+        expect(appState.canGoBack, isFalse);
+        expect(appState.canGoForward, isTrue);
 
-      // Go forward to fileB
-      await appState.goForward();
-      expect(appState.activeTabIndex, 1);
-      expect(appState.currentFilePath, fileB);
-      expect(appState.openFilePaths, [fileA, fileB]);
-      expect(appState.canGoBack, isTrue);
-      expect(appState.canGoForward, isFalse);
-    });
+        // Go forward to fileB
+        await appState.goForward();
+        expect(appState.activeTabIndex, 1);
+        expect(appState.currentFilePath, fileB);
+        expect(appState.openFilePaths, [fileA, fileB]);
+        expect(appState.canGoBack, isTrue);
+        expect(appState.canGoForward, isFalse);
+      },
+    );
 
     test('Closing a file removes it from history and updates canGoBack/canGoForward', () async {
       await appState.openFile(fileA);
@@ -175,16 +179,19 @@ void main() {
       expect(appState.openFilePaths, [fileA, fileC]);
     });
 
-    test('closeAllFiles completely clears history and disables navigation buttons', () async {
-      await appState.openFile(fileA);
-      await appState.openFile(fileB);
-      expect(appState.canGoBack, isTrue);
+    test(
+      'closeAllFiles completely clears history and disables navigation buttons',
+      () async {
+        await appState.openFile(fileA);
+        await appState.openFile(fileB);
+        expect(appState.canGoBack, isTrue);
 
-      appState.closeAllFiles();
-      expect(appState.openFilePaths, isEmpty);
-      expect(appState.canGoBack, isFalse);
-      expect(appState.canGoForward, isFalse);
-    });
+        appState.closeAllFiles();
+        expect(appState.openFilePaths, isEmpty);
+        expect(appState.canGoBack, isFalse);
+        expect(appState.canGoForward, isFalse);
+      },
+    );
 
     test('Path canonicalization: relative path and canonical path match the same tab', () async {
       await appState.openFile(fileA);
@@ -200,78 +207,82 @@ void main() {
   });
 
   group('Toolbar Navigation Button UI Tests', () {
-    testWidgets('Disabled button renders with dimmed opacity and does not trigger action', (
-      WidgetTester tester,
-    ) async {
-      bool pressed = false;
+    testWidgets(
+      'Disabled button renders with dimmed opacity and does not trigger action',
+      (WidgetTester tester) async {
+        bool pressed = false;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: SirenTheme.light,
-          home: Scaffold(
-            body: Center(
-              child: Builder(
-                builder: (context) {
-                  final sirenColors = Theme.of(context).extension<SirenColors>()!;
-                  final baseColor = sirenColors.iconColor ?? Theme.of(context).iconTheme.color!;
-                  final disabledColor = baseColor.withValues(alpha: 0.25);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: SirenTheme.light,
+            home: Scaffold(
+              body: Center(
+                child: Builder(
+                  builder: (context) {
+                    final sirenColors = Theme.of(context)
+                        .extension<SirenColors>()!;
+                    final baseColor =
+                        sirenColors.iconColor ??
+                        Theme.of(context).iconTheme.color!;
+                    final disabledColor = baseColor.withValues(alpha: 0.25);
 
-                  return Row(
-                    children: [
-                      // Simulated disabled button
-                      Tooltip(
-                        message: 'Go Back (Cmd+[)',
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.basic,
-                          child: GestureDetector(
-                            onTap: null,
-                            child: Icon(
-                              Icons.arrow_back,
-                              size: 18,
-                              color: disabledColor,
+                    return Row(
+                      children: [
+                        // Simulated disabled button
+                        Tooltip(
+                          message: 'Go Back (Cmd+[)',
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.basic,
+                            child: GestureDetector(
+                              onTap: null,
+                              child: Icon(
+                                Icons.arrow_back,
+                                size: 18,
+                                color: disabledColor,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      // Simulated enabled button
-                      Tooltip(
-                        message: 'Go Forward (Cmd+])',
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            onTap: () => pressed = true,
-                            child: Icon(
-                              Icons.arrow_forward,
-                              size: 18,
-                              color: baseColor,
+                        // Simulated enabled button
+                        Tooltip(
+                          message: 'Go Forward (Cmd+])',
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () => pressed = true,
+                              child: Icon(
+                                Icons.arrow_forward,
+                                size: 18,
+                                color: baseColor,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                },
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
-        ),
-      );
+        );
 
-      await tester.pump();
+        await tester.pump();
 
-      // Tap disabled back icon
-      final backFinder = find.byIcon(Icons.arrow_back);
-      expect(backFinder, findsOneWidget);
-      await tester.tap(backFinder);
-      await tester.pump();
-      expect(pressed, isFalse);
+        // Tap disabled back icon
+        final backFinder = find.byIcon(Icons.arrow_back);
+        expect(backFinder, findsOneWidget);
+        await tester.tap(backFinder);
+        await tester.pump();
+        expect(pressed, isFalse);
 
-      // Tap enabled forward icon
-      final forwardFinder = find.byIcon(Icons.arrow_forward);
-      expect(forwardFinder, findsOneWidget);
-      await tester.tap(forwardFinder);
-      await tester.pump();
-      expect(pressed, isTrue);
-    });
+        // Tap enabled forward icon
+        final forwardFinder = find.byIcon(Icons.arrow_forward);
+        expect(forwardFinder, findsOneWidget);
+        await tester.tap(forwardFinder);
+        await tester.pump();
+        expect(pressed, isTrue);
+      },
+    );
   });
 }

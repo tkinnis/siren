@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'app_state.dart';
 
 class SettingsDialog extends StatefulWidget {
@@ -15,7 +16,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   List<String> _includes = [];
   List<String> _excludes = [];
   String? _errorText;
-  
+
   bool _includePathMatch = false; // false = Name, true = Path
   bool _excludePathMatch = false;
 
@@ -25,7 +26,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     final appState = Provider.of<AppState>(context, listen: false);
     _includes = List.from(appState.includePatterns);
     _excludes = List.from(appState.excludePatterns);
-    
+
     _includeController.addListener(_clearError);
     _excludeController.addListener(_clearError);
   }
@@ -48,9 +49,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
   void _addInclude() {
     final text = _includeController.text.trim();
     if (text.isEmpty) return;
-    
+
     final pattern = _includePathMatch ? 'p:$text' : 'n:$text';
-    
+
     if (_includes.contains(pattern)) {
       _includeController.clear();
       return;
@@ -131,45 +132,45 @@ class _SettingsDialogState extends State<SettingsDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-              const Text(
-                'Appearance',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Text('Theme Mode:'),
-                  const SizedBox(width: 16),
-                  SegmentedButton<ThemeMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: ThemeMode.system,
-                        label: Text('System'),
-                        icon: Icon(Icons.brightness_auto, size: 16),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.light,
-                        label: Text('Light'),
-                        icon: Icon(Icons.light_mode, size: 16),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.dark,
-                        label: Text('Dark'),
-                        icon: Icon(Icons.dark_mode, size: 16),
-                      ),
-                    ],
-                    selected: {appState.themeMode},
-                    onSelectionChanged: (Set<ThemeMode> newSelection) {
-                      appState.setThemeMode(newSelection.first);
-                    },
-                  ),
-                ],
-              ),
-              const Divider(height: 28),
-              const Text(
-                'File Indexing Patterns (Regex)',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+            const Text(
+              'Appearance',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Text('Theme Mode:'),
+                const SizedBox(width: 16),
+                SegmentedButton<ThemeMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: ThemeMode.system,
+                      label: Text('System'),
+                      icon: Icon(Icons.brightness_auto, size: 16),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.light,
+                      label: Text('Light'),
+                      icon: Icon(Icons.light_mode, size: 16),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.dark,
+                      label: Text('Dark'),
+                      icon: Icon(Icons.dark_mode, size: 16),
+                    ),
+                  ],
+                  selected: {appState.themeMode},
+                  onSelectionChanged: (Set<ThemeMode> newSelection) {
+                    appState.setThemeMode(newSelection.first);
+                  },
+                ),
+              ],
+            ),
+            const Divider(height: 28),
+            const Text(
+              'File Indexing Patterns (Regex)',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             const Text(
               'Include Patterns (Leave empty to include all .md/.markdown)',
@@ -215,10 +216,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
-          onPressed: _save,
-          child: const Text('Save & Re-index'),
-        ),
+        ElevatedButton(onPressed: _save, child: const Text('Save & Re-index')),
       ],
     );
   }
@@ -262,10 +260,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           ),
         ),
         const SizedBox(width: 8),
-        IconButton(
-          icon: const Icon(Icons.add),
-          onPressed: onAdd,
-        ),
+        IconButton(icon: const Icon(Icons.add), onPressed: onAdd),
       ],
     );
   }
@@ -332,8 +327,9 @@ class _PatternListItemState extends State<_PatternListItem> {
 
   void _initValues() {
     _isPath = widget.pattern.startsWith('p:');
-    final rawText = (widget.pattern.startsWith('p:') || widget.pattern.startsWith('n:')) 
-        ? widget.pattern.substring(2) 
+    final rawText =
+        (widget.pattern.startsWith('p:') || widget.pattern.startsWith('n:'))
+        ? widget.pattern.substring(2)
         : widget.pattern;
     _controller = TextEditingController(text: rawText);
   }
@@ -450,7 +446,8 @@ class _PatternListItemState extends State<_PatternListItem> {
     }
 
     final isPath = widget.pattern.startsWith('p:');
-    final hasPrefix = widget.pattern.startsWith('p:') || widget.pattern.startsWith('n:');
+    final hasPrefix =
+        widget.pattern.startsWith('p:') || widget.pattern.startsWith('n:');
     final display = hasPrefix ? widget.pattern.substring(2) : widget.pattern;
     final typeLabel = isPath ? 'PATH' : 'NAME';
 
@@ -458,8 +455,8 @@ class _PatternListItemState extends State<_PatternListItem> {
       leading: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
-          color: isPath 
-              ? Theme.of(context).colorScheme.primaryContainer 
+          color: isPath
+              ? Theme.of(context).colorScheme.primaryContainer
               : Theme.of(context).colorScheme.tertiaryContainer,
           borderRadius: BorderRadius.circular(4),
         ),

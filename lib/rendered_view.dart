@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_highlighter/flutter_highlighter.dart';
@@ -10,6 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
+
 import 'app_state.dart';
 import 'mermaid_diagram.dart';
 import 'markdown_extensions.dart';
@@ -49,7 +51,7 @@ class _RenderedViewState extends State<RenderedView> {
     _navSubscription?.cancel();
     final appState = context.read<AppState>();
     _navSubscription = appState.navigationStream.listen((event) {
-      // Only scroll if we are the visible tab? 
+      // Only scroll if we are the visible tab?
       // Actually, navigation events are usually for the active tab.
       // But checking if we are visible is hard here without passing 'isVisible'.
       // However, scrolling an invisible controller is harmless usually.
@@ -121,7 +123,9 @@ class _RenderedViewState extends State<RenderedView> {
       fullPath = p.normalize(fullPath);
       var file = File(fullPath);
       if (!file.existsSync() && appState.explorerRootPath != null) {
-        final rootPath = p.normalize(p.join(appState.explorerRootPath!, filePath));
+        final rootPath = p.normalize(
+          p.join(appState.explorerRootPath!, filePath),
+        );
         final rootFile = File(rootPath);
         if (rootFile.existsSync()) {
           fullPath = rootPath;
@@ -155,10 +159,12 @@ class _RenderedViewState extends State<RenderedView> {
     final content = context.select<AppState, String>(
       (state) => state.getProcessedContent(widget.filePath),
     );
-    
+
     // Select font size (global preference)
-    final fontSize = context.select<AppState, double>((state) => state.fontSize);
-    
+    final fontSize = context.select<AppState, double>(
+      (state) => state.fontSize,
+    );
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final sirenColors = theme.extension<SirenColors>()!;
@@ -231,16 +237,13 @@ class _RenderedViewState extends State<RenderedView> {
             ),
             styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
               blockSpacing: 12.0, // --spacing-md
-
               // Typography
               p: TextStyle(
                 fontSize: fontSize,
                 height: 1.6,
                 color: theme.colorScheme.onSurface,
               ),
-              code: GoogleFonts.firaCode(
-                backgroundColor: sirenColors.codeBg,
-              ),
+              code: GoogleFonts.firaCode(backgroundColor: sirenColors.codeBg),
               strong: TextStyle(
                 fontSize: fontSize,
                 fontWeight: FontWeight.bold,
@@ -385,8 +388,7 @@ class _RenderedViewState extends State<RenderedView> {
                 fontSize: fontSize * 1.75,
                 color: sirenColors.headingColor!,
                 dividerColor: sirenColors.divider!,
-                topMargin:
-                    24, // H2 margin-top: 2em -> approx 32px, adjusted for flutter padding
+                topMargin: 24, // H2 margin-top: 2em -> approx 32px, adjusted for flutter padding
                 onTapLink: onTapLink,
                 codeBg: sirenColors.codeBg,
               ),
@@ -438,7 +440,12 @@ List<InlineSpan>? _parseInlineChildren(
     switch (node) {
       case md.Text(:final text):
         spans.add(TextSpan(text: text));
-      case md.Element(:final tag, :final children, :final attributes, :final textContent):
+      case md.Element(
+        :final tag,
+        :final children,
+        :final attributes,
+        :final textContent,
+      ):
         final style = switch (tag) {
           'strong' => const TextStyle(fontWeight: FontWeight.bold),
           'em' => const TextStyle(fontStyle: FontStyle.italic),
@@ -554,7 +561,11 @@ class CodeElementBuilder extends MarkdownElementBuilder {
     }
 
     if (language == 'mermaid') {
-      return MermaidDiagram(code: element.textContent, isDark: isDark);
+      return MermaidDiagram(
+        code: element.textContent,
+        isDark: isDark,
+        fontSize: fontSize,
+      );
     }
 
     // Detect if this is likely a code block or inline code.

@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
+
 import 'app_state.dart';
 import 'file_indexer.dart'; // For FilterRule
 
@@ -543,9 +545,8 @@ class _FileExplorerState extends State<FileExplorer> {
                   color: Theme.of(context).colorScheme.surfaceContainer,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.outline.withValues(alpha: 0.2),
+                    color: Theme.of(context).colorScheme.outline
+                        .withValues(alpha: 0.2),
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -720,10 +721,7 @@ class _FileExplorerState extends State<FileExplorer> {
                       controller: _horizontalScrollController,
                       scrollDirection: Axis.horizontal,
                       child: SizedBox(
-                        width: math.max(
-                          constraints.maxWidth,
-                          _maxContentWidth,
-                        ),
+                        width: math.max(constraints.maxWidth, _maxContentWidth),
                         child: ListView.builder(
                           controller: _verticalScrollController,
                           itemCount: _flatList.length,
@@ -809,7 +807,8 @@ class _FileExplorerItemViewState extends State<_FileExplorerItemView> {
     return Semantics(
       button: true,
       selected: widget.isSelected,
-      label: '${widget.item.isDirectory ? (widget.item.isExpanded ? "Expanded folder" : "Collapsed folder") : "Markdown file"} $name, level ${widget.item.depth + 1}',
+      label:
+          '${widget.item.isDirectory ? (widget.item.isExpanded ? "Expanded folder" : "Collapsed folder") : "Markdown file"} $name, level ${widget.item.depth + 1}',
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovering = true),
         onExit: (_) => setState(() => _isHovering = false),

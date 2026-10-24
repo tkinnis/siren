@@ -30,7 +30,8 @@ class FuzzyMatchResult {
 class FuzzyMatcher {
   // Scoring Weights
   static const int _scoreMatch = 16;
-  static const int _scoreBonusBoundary = 16; // Start of component (/, _, ., etc.)
+  static const int _scoreBonusBoundary =
+      16; // Start of component (/, _, ., etc.)
   static const int _scoreBonusConsecutive = 8;
   static const int _scoreBonusCamelCase = 12;
   static const int _scoreFilenameBonus = 4;
@@ -50,13 +51,20 @@ class FuzzyMatcher {
     int limit = 50,
   }) {
     if (query.isEmpty) {
-      return items.take(limit).map((e) => FuzzyMatchResult(item: e, score: 0)).toList();
+      return items
+          .take(limit)
+          .map((e) => FuzzyMatchResult(item: e, score: 0))
+          .toList();
     }
 
     // Prepare query codes once (lowercase, spaces stripped or kept depending on logic)
     // We strictly use integer code units for performance (zero allocation).
     // Note: We ignore spaces in query to allow "foo bar" matching "foo/bar" easily.
-    final List<int> queryCodes = query.toLowerCase().codeUnits.where((c) => c != 32).toList();
+    final List<int> queryCodes = query
+        .toLowerCase()
+        .codeUnits
+        .where((c) => c != 32)
+        .toList();
     if (queryCodes.isEmpty) return [];
 
     final List<FuzzyMatchResult> results = [];
@@ -84,7 +92,7 @@ class FuzzyMatcher {
     final targetLower = target.toLowerCase();
     final targetLowerCodes = targetLower.codeUnits;
     final targetOriginalCodes = target.codeUnits;
-    
+
     final int n = queryCodes.length;
     final int m = targetLowerCodes.length;
 
@@ -105,7 +113,7 @@ class FuzzyMatcher {
     int score = 0;
     int lastMatchIdx = -1;
     tIdx = 0;
-    
+
     // Find where the filename starts to apply filename bonus
     // forward slash = 47
     int filenameStart = -1;
@@ -132,9 +140,10 @@ class FuzzyMatcher {
 
           // Boundary bonus
           // Check previous char for boundary
-          final bool isBoundary = j == 0 || _isBoundary(targetLowerCodes[j - 1]);
+          final bool isBoundary =
+              j == 0 || _isBoundary(targetLowerCodes[j - 1]);
           final bool isCamel = !isBoundary && _isUpper(targetOriginalCodes[j]);
-          
+
           if (isBoundary) {
             currentScore += _scoreBonusBoundary;
           } else if (isCamel) {
@@ -159,10 +168,12 @@ class FuzzyMatcher {
           if (currentScore > bestLocalScore) {
             bestLocalScore = currentScore;
             bestIdx = j;
-            
+
             // Greedy Optimization: If we found a strong match (boundary/camel/consecutive), take it.
-            if (isBoundary || isCamel || (lastMatchIdx != -1 && j == lastMatchIdx + 1)) {
-              break; 
+            if (isBoundary ||
+                isCamel ||
+                (lastMatchIdx != -1 && j == lastMatchIdx + 1)) {
+              break;
             }
           }
         }
@@ -182,8 +193,12 @@ class FuzzyMatcher {
 
   static bool _isBoundary(int charCode) {
     // / (47), \ (92), _ (95), - (45), . (46), space (32)
-    return charCode == 47 || charCode == 92 || charCode == 95 || 
-           charCode == 45 || charCode == 46 || charCode == 32;
+    return charCode == 47 ||
+        charCode == 92 ||
+        charCode == 95 ||
+        charCode == 45 ||
+        charCode == 46 ||
+        charCode == 32;
   }
 
   static bool _isUpper(int charCode) {

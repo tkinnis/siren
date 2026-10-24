@@ -1,8 +1,10 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+
 import 'app_state.dart';
 import 'home_screen.dart';
 import 'theme.dart';
@@ -28,7 +30,9 @@ void main(List<String> args) async {
     }
   }
 
-  final isStandardWindow = args.any((a) => a.startsWith('--screenshot') || a == '--standard-window');
+  final isStandardWindow = args.any(
+    (a) => a.startsWith('--screenshot') || a == '--standard-window',
+  );
 
   runApp(MainApp(appState: appState));
 

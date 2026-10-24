@@ -10,7 +10,7 @@ This guide provides a detailed walkthrough of all the features and capabilities 
 | :--- | :--- | :--- | :--- |
 | **Rendering** | **GitHub Alerts** | 5 color-coded alert levels (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) with custom icons | Automatic |
 | | **LaTeX Mathematics** | Typeset inline formulas (`$E = mc^2$`) and block equations (`$$\sum x_i$$`) | CommonMark math blocks |
-| | **Mermaid Diagrams** | Flowcharts, sequence diagrams, state machines, and class diagrams | ````mermaid```` code fences |
+| | **Mermaid Diagrams** | Offline SVG vector diagrams (flowcharts, sequence, state, class) with proportional font scaling and click-to-zoom/pan viewer | ````mermaid```` code fences / Click diagram |
 | | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting | Fenced code blocks |
 | | **Extended Formatting** | Text highlighting (`==text==`), subscript (`~sub~`), superscript (`^sup^`), tables, task lists | Extended syntax |
 | **Viewer Modes** | **Rendered Preview** | Rich typography, interactive task lists, and diagram rendering | `Cmd + E` (Toggle) |
@@ -37,6 +37,7 @@ Siren lets you work with Markdown files in two distinct modes, toggleable at any
 ### Rendered Mode
 - Clean, typography-focused Markdown rendering compliant with CommonMark.
 - Extended Markdown syntax support including **GitHub Alerts**, **LaTeX Math**, and **Mermaid Diagrams**.
+- **Offscreen Vector Mermaid Diagrams**: Diagrams are compiled offscreen into native Flutter vector graphics (`vector_graphics`), scaling proportionally with document font zoom (`+` / `-`, `Cmd+=` / `Cmd+-` / `Cmd+0`) and supporting an interactive **Zoom & Pan Inspector** when clicked.
 - Full support for interactive clickable relative links, images, tables, and task lists.
 - Smooth anchor navigation when clicking heading links.
 

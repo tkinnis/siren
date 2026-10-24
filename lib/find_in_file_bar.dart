@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import 'app_state.dart';
 import 'theme.dart';
 
@@ -21,10 +22,10 @@ class _FindInFileBarState extends State<FindInFileBar> {
     super.initState();
     final appState = Provider.of<AppState>(context, listen: false);
     _controller.text = appState.findInFileQuery;
-    
+
     // Request focus on the input field when the bar is shown
     _focusNode.requestFocus();
-    
+
     _controller.addListener(() {
       if (appState.findInFileQuery != _controller.text) {
         appState.setFindInFileQuery(_controller.text);
@@ -169,7 +170,8 @@ class _IconButtonState extends State<_IconButton> {
   @override
   Widget build(BuildContext context) {
     final sirenColors = Theme.of(context).extension<SirenColors>()!;
-    final baseColor = sirenColors.iconColor ?? Theme.of(context).iconTheme.color!;
+    final baseColor =
+        sirenColors.iconColor ?? Theme.of(context).iconTheme.color!;
 
     return Tooltip(
       message: widget.tooltip,

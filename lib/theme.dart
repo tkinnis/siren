@@ -6,9 +6,13 @@ class SirenTheme {
   static const Color _lightSurfaceContainer = Color(
     0xFFe8e8f0,
   ); // --bg-surface-container
-  static const Color _lightCodeBg = Color(0xFFe8e8f0); // --bg-code (inline code badge)
+  static const Color _lightCodeBg = Color(
+    0xFFe8e8f0,
+  ); // --bg-code (inline code badge)
   static const Color _lightCodeBlockBg = Color(0xFFf8f8fc); // --bg-code-block
-  static const Color _lightCodeBlockHeaderBg = Color(0xFFe4e6f0); // --bg-code-block-header
+  static const Color _lightCodeBlockHeaderBg = Color(
+    0xFFe4e6f0,
+  ); // --bg-code-block-header
 
   static const Color _lightTextBody = Color(0xFF1a1a2e); // --text-body
   static const Color _lightTextMuted = Color(0xFF3a3a52); // --text-muted
@@ -26,9 +30,13 @@ class SirenTheme {
   static const Color _darkSurfaceContainer = Color(
     0xFF0f0f1a,
   ); // --bg-surface-container
-  static const Color _darkCodeBg = Color(0xFF25253e); // --bg-code (inline code badge)
+  static const Color _darkCodeBg = Color(
+    0xFF25253e,
+  ); // --bg-code (inline code badge)
   static const Color _darkCodeBlockBg = Color(0xFF141424); // --bg-code-block
-  static const Color _darkCodeBlockHeaderBg = Color(0xFF1e1e30); // --bg-code-block-header
+  static const Color _darkCodeBlockHeaderBg = Color(
+    0xFF1e1e30,
+  ); // --bg-code-block-header
 
   static const Color _darkTextBody = Color(0xFFe0e0f0); // --text-body
   static const Color _darkTextMuted = Color(0xFFc8c8e0); // --text-muted
@@ -60,13 +68,13 @@ class SirenTheme {
       textTheme: base.textTheme.apply(
         bodyColor: _lightTextBody,
         displayColor: _lightTextBody,
-        fontFamily: '.AppleSystemUIFont', // Explicitly prefer system font on macOS
+        fontFamily:
+            '.AppleSystemUIFont', // Explicitly prefer system font on macOS
       ),
       iconTheme: const IconThemeData(color: _lightTextBody, size: 20),
       extensions: [
         const SirenColors(
-          sidebarBg:
-              _lightSurfaceContainer, // Using container color for sidebar to distinguish
+          sidebarBg: _lightSurfaceContainer, // Using container color for sidebar to distinguish
           codeBg: _lightCodeBg,
           codeBlockBg: _lightCodeBlockBg,
           codeBlockHeaderBg: _lightCodeBlockHeaderBg,
@@ -242,7 +250,11 @@ class SirenColors extends ThemeExtension<SirenColors> {
       sidebarBg: Color.lerp(sidebarBg, other.sidebarBg, t),
       codeBg: Color.lerp(codeBg, other.codeBg, t),
       codeBlockBg: Color.lerp(codeBlockBg, other.codeBlockBg, t),
-      codeBlockHeaderBg: Color.lerp(codeBlockHeaderBg, other.codeBlockHeaderBg, t),
+      codeBlockHeaderBg: Color.lerp(
+        codeBlockHeaderBg,
+        other.codeBlockHeaderBg,
+        t,
+      ),
       headingColor: Color.lerp(headingColor, other.headingColor, t),
       quoteBorder: Color.lerp(quoteBorder, other.quoteBorder, t),
       divider: Color.lerp(divider, other.divider, t),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'app_state.dart';
 import 'file_explorer.dart';
 import 'outline_view.dart';
@@ -54,9 +55,9 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
             indicatorSize: TabBarIndicatorSize.tab,
             labelPadding: EdgeInsets.zero,
             labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor: Theme.of(
-              context,
-            ).colorScheme.onSurfaceVariant,
+            unselectedLabelColor: Theme.of(context)
+                .colorScheme
+                .onSurfaceVariant,
             indicatorColor: Theme.of(context).colorScheme.primary,
             overlayColor: WidgetStateProperty.all(Colors.transparent),
             tabs: const [

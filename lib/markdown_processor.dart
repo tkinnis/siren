@@ -31,4 +31,3 @@ class MarkdownProcessor {
         .replaceAll(RegExp(r'\s+'), '-');
   }
 }
-

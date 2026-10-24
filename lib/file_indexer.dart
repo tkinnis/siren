@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:path/path.dart' as path;
 
 class FilterRule {
@@ -41,15 +42,20 @@ class FileIndexer {
     if (!dir.existsSync()) return [];
 
     List<FilterRule> parsePatterns(List<String> patterns) {
-      return patterns.map((p) {
-        try {
-          final matchPath = p.startsWith('p:');
-          final pattern = (p.startsWith('p:') || p.startsWith('n:')) ? p.substring(2) : p;
-          return FilterRule(RegExp(pattern), matchPath);
-        } catch (e) {
-          return null;
-        }
-      }).whereType<FilterRule>().toList();
+      return patterns
+          .map((p) {
+            try {
+              final matchPath = p.startsWith('p:');
+              final pattern = (p.startsWith('p:') || p.startsWith('n:'))
+                  ? p.substring(2)
+                  : p;
+              return FilterRule(RegExp(pattern), matchPath);
+            } catch (e) {
+              return null;
+            }
+          })
+          .whereType<FilterRule>()
+          .toList();
     }
 
     final includes = parsePatterns(includePatterns);
@@ -68,12 +74,13 @@ class FileIndexer {
   ) {
     try {
       final List<FileSystemEntity> entities = dir.listSync(followLinks: false);
-      
+
       for (final entity in entities) {
         final name = path.basename(entity.path);
-        
-        String? relativePath; 
-        String getRelativePath() => relativePath ??= path.relative(entity.path, from: rootPath);
+
+        String? relativePath;
+        String getRelativePath() =>
+            relativePath ??= path.relative(entity.path, from: rootPath);
 
         bool matchesRule(FilterRule rule) {
           if (rule.matchPath) {
@@ -82,7 +89,7 @@ class FileIndexer {
             return rule.regex.hasMatch(name);
           }
         }
-        
+
         // 1. Check User Excludes (Absolute Priority)
         bool isExcluded = false;
         for (final rule in excludes) {
@@ -114,7 +121,8 @@ class FileIndexer {
           shouldShow = true;
         } else if (isIncludedByPath) {
           // Broad path match -> Show unless it's system junk or common heavy dir
-          if (_systemJunk.contains(name) || _ignoredDirectories.contains(name)) {
+          if (_systemJunk.contains(name) ||
+              _ignoredDirectories.contains(name)) {
             shouldShow = false;
           } else {
             shouldShow = true;
@@ -132,9 +140,11 @@ class FileIndexer {
           _scanRecursive(entity, files, includes, excludes, rootPath);
         } else if (entity is File) {
           // Default file check: include if user rules matched OR if it's markdown
-          if (isIncludedByName || isIncludedByPath || 
-              (name.toLowerCase().endsWith('.md') || name.toLowerCase().endsWith('.markdown'))) {
-             files.add(entity.path);
+          if (isIncludedByName ||
+              isIncludedByPath ||
+              (name.toLowerCase().endsWith('.md') ||
+                  name.toLowerCase().endsWith('.markdown'))) {
+            files.add(entity.path);
           }
         }
       }
