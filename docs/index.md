@@ -30,6 +30,10 @@ When launching Siren, you can open any folder or Markdown file:
 ### Quick Open (Fuzzy Finder)
 - Press `Cmd+P` anywhere in Siren to open the fuzzy file finder. Type any part of a filename or path to jump directly to that document.
 
+### Scaling Text & Inspecting Mermaid Diagrams
+- Use the toolbar **`+` / `-`** buttons (or `Cmd+=`, `Cmd+-`, `Cmd+0`) to scale document typography and Mermaid vector diagrams proportionally.
+- Click any rendered **Mermaid diagram** (or its hover **Zoom** button) to open the interactive **Diagram Viewer** modal with drag-to-pan, pinch/scroll zoom, and Fit-to-View controls.
+
 ---
 
 ## Next Steps

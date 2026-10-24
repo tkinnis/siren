@@ -14,7 +14,7 @@ This document provides operational context, architectural invariants, and workfl
 * **Search Architecture**: 
   * Full-text search: Embedded `rg` (ripgrep) binary (`assets/bin/rg`) executed via `Process.start`.
   * Fuzzy file finding: Background Dart isolate (`quick_open.dart`) for asynchronous search without UI stutter.
-* **Markdown Rendering**: CommonMark compliant with custom extensions for GitHub Alerts, LaTeX math typography, Mermaid diagrams, and code syntax highlighting.
+* **Markdown Rendering**: CommonMark compliant with custom extensions for GitHub Alerts, LaTeX math typography, offline vector Mermaid diagrams (`vector_graphics` with proportional font scaling and interactive zoom/pan modal), and code syntax highlighting.
 
 ---
 
@@ -23,18 +23,22 @@ This document provides operational context, architectural invariants, and workfl
 ```text
 siren/
 ├── lib/               # Application source code
-│   ├── main.dart             # Application entrypoint & multi-window handling
-│   ├── home_screen.dart      # Main window shell, title bar, tabs, and menus
-│   ├── app_state.dart        # Central ChangeNotifier state manager
-│   ├── markdown_view.dart    # Dual-mode viewer (Rendered & Raw source)
-│   ├── outline_view.dart     # Heading hierarchy extractor & navigator
-│   ├── file_explorer.dart    # File tree viewer with hidden file support
-│   ├── search_view.dart      # Ripgrep global workspace search
-│   ├── quick_open.dart       # Isolate-based fuzzy file finder
-│   ├── settings_dialog.dart  # Desktop settings (themes, regex index patterns)
-│   └── about_dialog.dart     # Native macOS About & open-source licenses dialog
+│   ├── main.dart                  # Application entrypoint & multi-window handling
+│   ├── home_screen.dart           # Main window shell, title bar, tabs, and menus
+│   ├── app_state.dart             # Central ChangeNotifier state manager
+│   ├── rendered_view.dart         # Formatted Markdown preview
+│   ├── raw_view.dart              # Raw Markdown source view with line gutter
+│   ├── mermaid_diagram.dart       # Scaled Mermaid vector diagram widget
+│   ├── mermaid_render_service.dart# Offscreen SVG/vector compilation engine
+│   ├── mermaid_zoom_dialog.dart   # Interactive zoom & pan diagram modal
+│   ├── outline_view.dart          # Heading hierarchy extractor & navigator
+│   ├── file_explorer.dart         # File tree viewer with hidden file support
+│   ├── global_search_view.dart    # Ripgrep global workspace search
+│   ├── file_search_modal.dart     # Isolate-based Quick Open fuzzy file finder
+│   ├── settings_dialog.dart       # Desktop settings (themes, regex index patterns)
+│   └── about_dialog.dart          # Native macOS About & open-source licenses dialog
 ├── test/              # Unit, widget, and specification tests
-├── assets/            # Bundled runtime assets ONLY (images, ripgrep binary)
+├── assets/            # Bundled runtime assets ONLY (images, ripgrep binary, mermaid scripts)
 ├── docs/              # User documentation and markdown guides
 │   └── screenshots/   # Verification screenshots (NEVER bundled into app assets)
 └── tool/              # Native helper utilities and developer automation tools
