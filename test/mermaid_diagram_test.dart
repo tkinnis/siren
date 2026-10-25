@@ -12,6 +12,7 @@ import 'package:siren/mermaid_zoom_dialog.dart';
 import 'package:siren/rendered_view.dart';
 import 'package:siren/theme.dart';
 import 'package:vector_graphics/vector_graphics.dart';
+import 'package:vector_graphics_compiler/vector_graphics_compiler.dart' as vg;
 
 const String _sampleSvg = '''
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 120" width="240" height="120">
@@ -117,6 +118,27 @@ void main() {
     test('compileMermaidSvg encodes valid SVG into binary vector_graphics', () {
       expect(compiledSampleBytes, isNotEmpty);
     });
+
+    test(
+      'normalized neo stroke-dasharray preserves straight LineToCommand paths',
+      () {
+        const normalizedArrowSvg = '''
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="200" height="100">
+  <path d="M 100 20 L 100 60" stroke="rgb(51,51,51)" stroke-width="1" fill="none" stroke-dasharray="36,4" />
+  <path d="M 100 60 L 100 95" stroke="rgb(51,51,51)" stroke-width="1" fill="none" stroke-dasharray="0.01,4,27,4" />
+</svg>
+''';
+        final instructions = vg.parseWithoutOptimizers(normalizedArrowSvg);
+        expect(instructions.paths, hasLength(2));
+        for (final path in instructions.paths) {
+          expect(
+            path.commands.whereType<vg.LineToCommand>(),
+            isNotEmpty,
+            reason: 'Straight edges must retain LineToCommand segments',
+          );
+        }
+      },
+    );
 
     test(
       'MermaidRenderService caches results by diagram source and theme',

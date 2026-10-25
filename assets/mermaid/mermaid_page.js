@@ -258,8 +258,27 @@
   function dashPattern(style) {
     const text = style.strokeDasharray;
     if (!text || text === 'none') return null;
-    const list = numberList(text.replace(/px/g, '').replace(/%/g, ''));
+    let list = numberList(text.replace(/px/g, '').replace(/%/g, ''));
     if (list.some((n) => n < 0)) throw unflattenable('negative dash');
+    while (list.length >= 2 && list[0] === 0 && list[1] === 0) {
+      list.splice(0, 2);
+    }
+    while (list.length >= 2 &&
+        list[list.length - 2] === 0 &&
+        list[list.length - 1] === 0) {
+      list.splice(list.length - 2, 2);
+    }
+    if (list.length > 2 && list.length % 2 === 1 &&
+        list[list.length - 1] === 0) {
+      list.pop();
+    }
+    if (list.length === 2 && list[1] === 0) return null;
+    if ((list.length >= 3 && list.slice(0, -1).every((n) => n === 2)) ||
+        (list.length >= 5 && list[0] === 0 &&
+          list.slice(2, -1).every((n) => n === 2))) {
+      list = [2, 2];
+    }
+    list = list.map((n) => (n === 0 ? 0.01 : n));
     if (list.length > LIMITS.maxDashEntries) {
       throw unflattenable('more than ' + LIMITS.maxDashEntries + ' dashes');
     }
