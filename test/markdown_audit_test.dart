@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:provider/provider.dart';
 import 'package:siren/app_state.dart';
+import 'package:siren/image_zoom_dialog.dart';
 import 'package:siren/rendered_view.dart';
 import 'package:siren/theme.dart';
 
@@ -192,6 +194,90 @@ void main() {
     expect(find.textContaining('Alice', findRichText: true), findsOneWidget);
     expect(find.textContaining('Dev', findRichText: true), findsOneWidget);
     expect(find.textContaining('NY', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('RenderedView renders YAML frontmatter card and GFM footnotes', (
+    WidgetTester tester,
+  ) async {
+    const markdownData = '''---
+title: Architecture Spec
+author: Siren Team
+tags: [flutter, markdown]
+---
+
+# Overview
+
+Siren supports native footnotes[^1].
+
+[^1]: Footnote explanation text.
+''';
+
+    final appState = TestAppState()..currentContent = markdownData;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: SirenTheme.light,
+        home: ChangeNotifierProvider<AppState>.value(
+          value: appState,
+          child: const Scaffold(body: RenderedView(filePath: 'spec.md')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('yaml_frontmatter_card')), findsOneWidget);
+    expect(find.text('FRONTMATTER'), findsOneWidget);
+    expect(
+      find.textContaining('Architecture Spec', findRichText: true),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Footnote explanation text.', findRichText: true),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('ImageZoomDialog supports zoom in, zoom out, reset, and close', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final pngBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: SirenTheme.light,
+        home: Scaffold(
+          body: ImageZoomDialog(
+            imageProvider: MemoryImage(pngBytes),
+            title: 'sample.png',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('sample.png'), findsOneWidget);
+    expect(find.text('100%'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('image_zoom_in_button')));
+    await tester.pumpAndSettle();
+    expect(find.text('125%'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('image_zoom_out_button')));
+    await tester.pumpAndSettle();
+    expect(find.text('100%'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('image_zoom_in_button')));
+    await tester.pumpAndSettle();
+    expect(find.text('125%'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('image_zoom_reset_pill')));
+    await tester.pumpAndSettle();
+    expect(find.text('100%'), findsOneWidget);
   });
 }
 

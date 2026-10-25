@@ -1,3 +1,10 @@
+---
+title: Markdown Syntax Guide
+category: User Manual
+version: 0.3.0
+tags: [commonmark, gfm, latex, mermaid, frontmatter, footnotes]
+---
+
 # Markdown Syntax Guide
 
 This guide details all standard and extended Markdown syntax supported by **Siren**.
@@ -76,10 +83,11 @@ $$
 
 ## 3. Mermaid Diagrams
 
-Siren renders Mermaid diagrams offline using an offscreen vector compilation pipeline (`vector_graphics`) with fenced code blocks labeled `mermaid`.
+Siren renders all 20 Mermaid v11 diagram categories offline using an offscreen vector compilation pipeline (`vector_graphics`) powered by the **ELK** layout engine (`layout: 'elk'`) and **`neo`** look with fenced code blocks labeled `mermaid`.
 
 - **Proportional Scaling**: Increasing or decreasing the document font size via the `+` / `-` toolbar buttons (`Cmd+=` / `Cmd+-` / `Cmd+0`) scales Mermaid diagrams proportionally while remaining crisp at any resolution.
-- **Interactive Zoom & Pan Viewer**: Click any rendered diagram (or the hover **Zoom** button) to open it in a dedicated modal viewer supporting up to `800%` magnification, drag-to-pan, trackpad pinch-to-zoom, Fit-to-Window, and 100% reset.
+- **Interactive Zoom, Pan & Export Viewer**: Click any rendered diagram (or the hover **Zoom** button) to open it in a dedicated modal viewer supporting up to `1000%` magnification, drag-to-pan, trackpad pinch-to-zoom, Fit-to-Window, **Copy Diagram Image (PNG)** to the macOS clipboard, **Export Diagram (SVG / PNG)** to disk, and **Copy Mermaid Source**.
+- **Comprehensive Examples**: Browse the **[Mermaid Diagram Examples Gallery](mermaid-examples.md)** for 52 examples across flowcharts, sequence, class, state, ER, user journey, Gantt, pie, quadrant, requirement, GitGraph, C4, mindmap, timeline, ZenUML, Sankey, XY chart, block, packet, kanban, architecture, and radar diagrams.
 
 ### Flowcharts
 ```mermaid
@@ -105,7 +113,45 @@ sequenceDiagram
 
 ---
 
-## 4. Text Formatting & Extensions
+## 4. YAML Frontmatter & Footnotes
+
+### YAML Frontmatter
+Documents starting with a `---` YAML frontmatter block are automatically parsed and displayed as a structured **Frontmatter** metadata card in Preview mode (also visible at the very top of this guide):
+
+```markdown
+---
+title: Architecture Specification
+author: Platform Team
+status: Approved
+tags: [macos, flutter, markdown]
+---
+```
+
+---
+title: Architecture Specification
+author: Platform Team
+status: Approved
+tags: [macos, flutter, markdown]
+---
+
+### Footnotes
+Siren supports GitHub Flavored Markdown footnotes using `[^id]` inline references and `[^id]: ...` definitions:
+
+```markdown
+Siren compiles Mermaid diagrams into native vector bytecode[^1] and supports named references[^note].
+
+[^1]: Powered by `vector_graphics_compiler` and offline ELK layout.
+[^note]: Footnote definitions are collected and numbered at the bottom of the rendered document.
+```
+
+Siren compiles Mermaid diagrams into native vector bytecode[^1] and supports named references[^note].
+
+[^1]: Powered by `vector_graphics_compiler` and offline ELK layout.
+[^note]: Footnote definitions are collected and numbered at the bottom of the rendered document.
+
+---
+
+## 5. Text Formatting & Extensions
 
 ### Highlighting
 Wrap text in double equals signs to highlight:
@@ -126,7 +172,7 @@ In accordance with the CommonMark specification:
 
 ---
 
-## 5. Standard Markdown
+## 6. Standard Markdown
 
 ### Headings
 ```markdown
@@ -145,6 +191,9 @@ In accordance with the CommonMark specification:
 - Another item
   - Indented sub-item
 ```
+- Bullet point item
+- Another item
+  - Indented sub-item
 
 #### Ordered Lists
 ```markdown
@@ -153,6 +202,10 @@ In accordance with the CommonMark specification:
    1. Sub-step A
    2. Sub-step B
 ```
+1. First step
+2. Second step
+   1. Sub-step A
+   2. Sub-step B
 
 #### Task Lists
 ```markdown
@@ -160,6 +213,9 @@ In accordance with the CommonMark specification:
 - [x] Implement outline view
 - [ ] Write integration test
 ```
+- [x] Initial design review
+- [x] Implement outline view
+- [ ] Write integration test
 
 ### Tables
 ```markdown
@@ -170,8 +226,14 @@ In accordance with the CommonMark specification:
 | Global Search | `Cmd+Shift+F` | Full-text search across workspace |
 ```
 
+| Command | Shortcut | Description |
+| :--- | :---: | :--- |
+| Quick Open | `Cmd+P` | Fuzzy search files |
+| Find in File | `Cmd+F` | Search current document |
+| Global Search | `Cmd+Shift+F` | Full-text search across workspace |
+
 ### Code Blocks
-Fenced code blocks support syntax highlighting with language identifiers:
+Fenced code blocks support syntax highlighting with language identifiers and a one-click **Copy** button:
 
 ```dart
 void main() {
@@ -180,9 +242,20 @@ void main() {
 }
 ```
 
+### Images & Click-to-Zoom Lightbox
+Local and network Markdown images (`![alt](path/to/image.png)`) render inline and can be clicked to open in an interactive **Image Viewer** lightbox with pan and zoom controls (click the image below to try it):
+
+```markdown
+![Siren Rendered View](screenshots/siren_comprehensive_rendered.png)
+```
+
+![Siren Rendered View](screenshots/siren_comprehensive_rendered.png)
+
 ### Relative Document Links
 Relative Markdown links automatically open target documents in Siren:
 ```markdown
 Check out the [Features Guide](features.md) or [Keyboard Shortcuts](shortcuts.md).
 ```
+Check out the [Features Guide](features.md) or [Keyboard Shortcuts](shortcuts.md).
+
 If the target document is already open in a tab, Siren switches directly to that tab.

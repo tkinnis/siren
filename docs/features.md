@@ -1,3 +1,10 @@
+---
+title: Siren Features Overview
+category: User Manual
+version: 0.3.0
+tags: [features, preview, mermaid, search, navigation]
+---
+
 # Siren Features Overview
 
 This guide provides a detailed walkthrough of all the features and capabilities offered by **Siren**.
@@ -10,34 +17,37 @@ This guide provides a detailed walkthrough of all the features and capabilities 
 | :--- | :--- | :--- | :--- |
 | **Rendering** | **GitHub Alerts** | 5 color-coded alert levels (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) with custom icons | Automatic |
 | | **LaTeX Mathematics** | Typeset inline formulas (`$E = mc^2$`) and block equations (`$$\sum x_i$$`) | CommonMark math blocks |
-| | **Mermaid Diagrams** | Offline SVG vector diagrams (flowcharts, sequence, state, class) with proportional font scaling and click-to-zoom/pan viewer | ````mermaid```` code fences / Click diagram |
-| | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting | Fenced code blocks |
+| | **Mermaid Diagrams** | Offline ELK + `neo` vector diagrams across all 20 Mermaid v11 categories with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
+| | **YAML Frontmatter & Footnotes** | Structured metadata table for leading `---` YAML frontmatter and GitHub Flavored Markdown footnotes (`[^1]`) | Automatic |
+| | **Image Lightbox** | Click any local or network Markdown image to inspect in an interactive zoom & pan lightbox | Click image |
+| | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting and one-click copy | Fenced code blocks |
 | | **Extended Formatting** | Text highlighting (`==text==`), subscript (`~sub~`), superscript (`^sup^`), tables, task lists | Extended syntax |
-| **Viewer Modes** | **Rendered Preview** | Rich typography, interactive task lists, and diagram rendering | `Cmd + E` (Toggle) |
+| **Viewer Modes** | **Rendered Preview** | Rich typography, interactive links, and diagram rendering | `Cmd + E` (Toggle) |
 | | **Raw Source View** | Monospace raw Markdown inspection with aligned line number gutter | `Cmd + E` (Toggle) |
-| **Navigation** | **Document Outline** | Auto-extracted heading hierarchy (`#` through `######`) with instant section jump | Sidebar tab / `Cmd + Shift + O` |
-| | **File Explorer** | Tree browsing with full support for hidden directories (`.github`, `.docs`) and hidden files | Sidebar tab |
-| | **Multi-Tab Workspace** | Drag-and-drop tab reordering, strict single-tab invariant, and closed tab restoration | Tabs / `Cmd + Shift + T` |
-| | **Navigation History** | Back and Forward history traversal with disabled bound indicators | Toolbar / `Cmd + [` / `Cmd + ]` |
+| **Navigation** | **Document Outline** | Auto-extracted heading hierarchy (`#` through `######`) with instant section jump | Sidebar tab / `Cmd + Ctrl + O` |
+| | **File Explorer** | Tree browsing with full support for hidden directories (`.github`, `.docs`) and hidden files | Sidebar tab / `Cmd + Shift + E` |
+| | **Multi-Tab Workspace** | Drag-and-drop tab reordering, tab context menus, strict single-tab invariant, and closed tab restoration | Tabs / `Cmd + Shift + T` |
+| | **Navigation History** | Back and Forward history traversal with disabled bound indicators and `File > Open Recent` menu | Toolbar / `Cmd + [` / `Cmd + ]` |
 | **Search** | **Workspace Ripgrep** | Embedded binary full-text search across thousands of files with match counts | `Cmd + Shift + F` |
 | | **Quick Open** | Background isolate fuzzy finder for instant file switching | `Cmd + P` |
-| | **In-File Find** | Active document search with regex support, match counter, and next/prev jumps | `Cmd + F` |
+| | **In-File Find** | Active document search with regex support, match counter, and next/prev jumps | `Cmd + F` / `Cmd + G` |
 | **Appearance** | **Light & Dark Themes** | Seamless toggling between System, Light, and Dark themes with tailored typography and syntax highlighting | Toolbar icon / `Cmd + Shift + D` |
 | | **Settings Configuration** | Modal dialog (`Cmd + ,`) to set default theme mode and customize regex file indexing patterns | `Cmd + ,` |
-| **Desktop Integration** | **Live File Watching** | Monitors open documents on disk and auto-reloads upon external edits | Automatic |
+| **Desktop Integration** | **Live File Watching** | Monitors open documents on disk and auto-reloads upon external edits | Automatic / `Cmd + R` |
 | | **Finder Drag & Drop** | Drag files or folders directly into the window to open immediately | Drag & drop |
 | | **Desktop About & Licenses** | Native modal dialog with Siren branding and aligned 2-column license browser | App menu > About Siren |
 
 ---
 
-## 1. Dual-Mode Markdown Viewer & Editor
+## 1. Dual-Mode Markdown Viewer
 
-Siren lets you work with Markdown files in two distinct modes, toggleable at any time via `Cmd+E` or the toolbar toggle button:
+Siren lets you inspect Markdown files in two distinct modes, toggleable at any time via `Cmd+E` or the toolbar toggle button:
 
 ### Rendered Mode
 - Clean, typography-focused Markdown rendering compliant with CommonMark.
-- Extended Markdown syntax support including **GitHub Alerts**, **LaTeX Math**, and **Mermaid Diagrams**.
-- **Offscreen Vector Mermaid Diagrams**: Diagrams are compiled offscreen into native Flutter vector graphics (`vector_graphics`), scaling proportionally with document font zoom (`+` / `-`, `Cmd+=` / `Cmd+-` / `Cmd+0`) and supporting an interactive **Zoom & Pan Inspector** when clicked.
+- Extended Markdown syntax support including **GitHub Alerts**, **LaTeX Math**, **YAML Frontmatter**, **Footnotes (`[^1]`)**, and **Mermaid Diagrams**.
+- **Offscreen Vector Mermaid Diagrams**: Diagrams are laid out offline with the **ELK** layout engine (`look: 'neo'`) and compiled into native Flutter vector graphics (`vector_graphics`), scaling proportionally with document font zoom (`+` / `-`, `Cmd+=` / `Cmd+-` / `Cmd+0`) and supporting an interactive **Zoom & Pan Inspector** with **Copy Image (PNG)** and **Export (SVG / PNG)** when clicked.
+- **Image Lightbox**: Click any rendered local or network image to open it in an interactive zoom and pan lightbox modal.
 - Full support for interactive clickable relative links, images, tables, and task lists.
 - Smooth anchor navigation when clicking heading links.
 
@@ -54,21 +64,21 @@ Siren lets you work with Markdown files in two distinct modes, toggleable at any
 
 ## 2. Document Outline & Sidebar Navigation
 
-The collapsible sidebar (`Cmd+B` to toggle) provides two views accessible via a tab bar:
+The collapsible sidebar (`Cmd+B` to toggle) provides three views accessible via a tab bar (`Cmd+Shift+E` for Explorer, `Cmd+Ctrl+O` for Outline, `Cmd+Shift+F` for Search):
 
 ### Outline View
-- Automatically parses the heading structure (`#` H1 through `######` H6) of the currently active document.
+- Automatically parses the heading structure (`#` H1 through `######` H6) of the currently active document (ignoring headings inside code fences or YAML frontmatter).
 - Renders an interactive tree with heading levels, font weights, and indentations.
 - Clicking any heading instantly scrolls the document directly to that section.
 
 ![Siren Outline View](screenshots/siren_outline_view.png)
 
 ### File Explorer
-- Displays a folder tree of the currently opened workspace root directory.
+- Displays a folder tree of the currently opened workspace root directory (`Cmd+L` to focus with keyboard arrows).
 - Lists all folders and Markdown files (`.md`, `.markdown`).
 - **Hidden Files & Folders**: Supports viewing and browsing hidden directories (e.g. `.github`, `.notes`) and hidden markdown files (files starting with `.`).
-- **Context Menus**: Right-click to create new files, create new folders, rename, delete, or reveal files in macOS Finder.
-- **Drag & Drop**: Drag files and folders directly from Finder into Siren to open them.
+- **Context Menus**: Right-click any item to **Show in Finder**, **Copy Path**, or **Copy Relative Path**.
+- **Drag & Drop**: Drag files or folders directly from Finder into Siren to open them or switch the workspace root.
 
 ---
 
@@ -76,16 +86,18 @@ The collapsible sidebar (`Cmd+B` to toggle) provides two views accessible via a 
 
 Siren features a multi-tab document workspace designed for fluid multitasking:
 
-### Tab Reordering
+### Tab Reordering & Context Menus
 - Drag and drop tabs horizontally to reorder them to your preferred arrangement.
+- Right-click any tab to **Close**, **Close Others** (`Cmd+Option+W`), **Close All** (`Cmd+Shift+W`), **Show in Finder**, **Copy Path**, or **Copy Relative Path**.
 
 ### Strict Single-Tab Invariant
 - A file is never opened more than once. Whether opening a file from the File Explorer, following a link, using Quick Open, or navigating history, Siren always focuses the existing tab rather than creating duplicates.
 
-### History Back / Forward Navigation
-- Dedicated **Back** and **Forward** toolbar buttons (and keyboard shortcuts) track your navigation trajectory.
+### History Back / Forward & Open Recent
+- Dedicated **Back** and **Forward** toolbar buttons (`Cmd+[` / `Cmd+]`) track your navigation trajectory.
 - **Boundary Indication**: The Back and Forward buttons visually dim with reduced opacity and a basic mouse cursor when you have reached the start or end of history.
 - **Smart History Pruning**: When you close a tab, it is removed from history so that navigating back never re-opens closed files unexpectedly.
+- **Open Recent Menu**: Access recently opened Markdown files and workspace directories directly from **File > Open Recent**.
 
 ### Reopening Closed Tabs
 - Press `Cmd+Shift+T` to instantly restore recently closed tabs in reverse order.

@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:vector_graphics/vector_graphics.dart';
 
@@ -102,10 +106,13 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
   final TransformationController _transformationController =
       TransformationController();
   final GlobalKey _viewportKey = GlobalKey();
+  final GlobalKey _graphicBoundaryKey = GlobalKey();
   double _currentScale = 1.0;
   bool _isDragging = false;
   bool _copied = false;
+  bool _copiedImage = false;
   Timer? _copiedResetTimer;
+  Timer? _copiedImageResetTimer;
 
   Size get _logicalSize => switch (widget.result) {
     MermaidSvgRender(:final logicalSize) => logicalSize,
@@ -122,6 +129,7 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
   @override
   void dispose() {
     _copiedResetTimer?.cancel();
+    _copiedImageResetTimer?.cancel();
     _transformationController.removeListener(_onTransformChanged);
     _transformationController.dispose();
     super.dispose();
@@ -195,6 +203,96 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
         });
       }
     });
+  }
+
+  Future<Uint8List?> _capturePngBytes() async {
+    if (widget.result case MermaidRasterRender(:final pngBytes)) {
+      return pngBytes;
+    }
+    try {
+      final boundary = _graphicBoundaryKey.currentContext?.findRenderObject();
+      if (boundary is RenderRepaintBoundary) {
+        final image = await boundary.toImage(pixelRatio: 3.0);
+        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+        image.dispose();
+        if (byteData != null) {
+          return byteData.buffer.asUint8List();
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to capture Mermaid PNG bytes: $e');
+    }
+    return null;
+  }
+
+  Future<void> _copyImage() async {
+    final pngBytes = await _capturePngBytes();
+    if (pngBytes == null) return;
+
+    try {
+      if (Platform.isMacOS) {
+        final tempFile = File(
+          '${Directory.systemTemp.path}/siren_mermaid_clipboard_${DateTime.now().millisecondsSinceEpoch}.png',
+        );
+        await tempFile.writeAsBytes(pngBytes, flush: true);
+        try {
+          await Process.run('osascript', [
+            '-e',
+            'set the clipboard to (read (POSIX file "${tempFile.path}") as «class PNGf»)',
+          ]);
+        } finally {
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+          }
+        }
+      }
+      _copiedImageResetTimer?.cancel();
+      if (mounted) {
+        setState(() {
+          _copiedImage = true;
+        });
+      }
+      _copiedImageResetTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _copiedImage = false;
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Failed to copy image to clipboard: $e');
+    }
+  }
+
+  Future<void> _exportDiagram() async {
+    final hasSvg = widget.result is MermaidSvgRender;
+    final typeGroups = <XTypeGroup>[
+      const XTypeGroup(label: 'PNG Image', extensions: <String>['png']),
+      if (hasSvg)
+        const XTypeGroup(label: 'SVG Vector', extensions: <String>['svg']),
+    ];
+
+    final saveLocation = await getSaveLocation(
+      suggestedName: hasSvg ? 'mermaid-diagram.svg' : 'mermaid-diagram.png',
+      acceptedTypeGroups: typeGroups,
+    );
+    if (saveLocation == null) return;
+
+    try {
+      final targetPath = saveLocation.path;
+      if (targetPath.toLowerCase().endsWith('.svg') &&
+          widget.result is MermaidSvgRender) {
+        final svgContent = (widget.result as MermaidSvgRender).svg;
+        await File(targetPath).writeAsString(svgContent, flush: true);
+      } else {
+        final pngBytes = await _capturePngBytes();
+        if (pngBytes != null) {
+          await File(targetPath).writeAsBytes(pngBytes, flush: true);
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to export Mermaid diagram: $e');
+    }
   }
 
   @override
@@ -356,6 +454,36 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
                         const SizedBox(width: 4),
                         Container(width: 1, height: 20, color: borderColor),
                         const SizedBox(width: 4),
+                        // Copy diagram image button
+                        IconButton(
+                          key: const Key('mermaid_zoom_copy_image_button'),
+                          icon: Icon(
+                            _copiedImage
+                                ? Icons.check_rounded
+                                : Icons.image_outlined,
+                            size: 16,
+                            color: _copiedImage
+                                ? theme.colorScheme.primary
+                                : sirenColors.iconColor,
+                          ),
+                          tooltip: _copiedImage
+                              ? 'Image Copied!'
+                              : 'Copy Diagram Image (PNG)',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: _copyImage,
+                        ),
+                        // Export diagram (SVG/PNG) button
+                        IconButton(
+                          key: const Key('mermaid_zoom_export_button'),
+                          icon: Icon(
+                            Icons.download_rounded,
+                            size: 17,
+                            color: sirenColors.iconColor,
+                          ),
+                          tooltip: 'Export Diagram (SVG / PNG)...',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: _exportDiagram,
+                        ),
                         // Copy source button
                         IconButton(
                           key: const Key('mermaid_zoom_copy_button'),
@@ -415,11 +543,14 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
                               padding: const EdgeInsets.all(32.0),
                               child: FittedBox(
                                 fit: BoxFit.contain,
-                                child: SizedBox.fromSize(
-                                  size: _logicalSize,
-                                  child: MermaidGraphic(
-                                    result: widget.result,
+                                child: RepaintBoundary(
+                                  key: _graphicBoundaryKey,
+                                  child: SizedBox.fromSize(
                                     size: _logicalSize,
+                                    child: MermaidGraphic(
+                                      result: widget.result,
+                                      size: _logicalSize,
+                                    ),
                                   ),
                                 ),
                               ),

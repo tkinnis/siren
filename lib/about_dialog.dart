@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 
 class _PackageLicenses {
   final String packageName;
@@ -21,9 +24,42 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
   List<_PackageLicenses>? _allPackages;
   String _filterQuery = '';
   int _selectedIndex = 0;
+  late final String _appVersion = _resolveAppVersion();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _packageListController = ScrollController();
   final ScrollController _licenseTextController = ScrollController();
+
+  static String _resolveAppVersion() {
+    const envVersion = String.fromEnvironment('FLUTTER_BUILD_NAME');
+    if (envVersion.isNotEmpty) return envVersion;
+
+    try {
+      final contentsDir = p.dirname(p.dirname(Platform.resolvedExecutable));
+      final infoPlist = File(p.join(contentsDir, 'Info.plist'));
+      if (infoPlist.existsSync()) {
+        final xml = infoPlist.readAsStringSync();
+        final match = RegExp(
+          r'<key>CFBundleShortVersionString</key>\s*<string>([^<$]+)</string>',
+        ).firstMatch(xml);
+        if (match != null && match.group(1)!.trim().isNotEmpty) {
+          return match.group(1)!.trim();
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final pubspec = File('pubspec.yaml');
+      if (pubspec.existsSync()) {
+        final match = RegExp(
+          r'^version:\s*([^\s+#]+)',
+          multiLine: true,
+        ).firstMatch(pubspec.readAsStringSync());
+        if (match != null) return match.group(1)!.trim();
+      }
+    } catch (_) {}
+
+    return '';
+  }
 
   @override
   void initState() {
@@ -170,7 +206,9 @@ class _AboutSirenDialogState extends State<AboutSirenDialog> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Version 0.2.0',
+                  _appVersion.isNotEmpty
+                      ? 'Version $_appVersion'
+                      : 'Desktop Edition',
                   style: TextStyle(
                     fontSize: 13,
                     color: isDark ? Colors.white60 : Colors.black54,

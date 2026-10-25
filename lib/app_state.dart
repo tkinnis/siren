@@ -12,6 +12,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'watcher_service.dart';
 import 'markdown_processor.dart';
+import 'mermaid_render_service.dart';
 import 'file_indexer.dart';
 
 class _PersistenceKeys {
@@ -26,12 +27,15 @@ class _PersistenceKeys {
   static const themeMode = 'theme_mode';
   static const includePatterns = 'include_patterns';
   static const excludePatterns = 'exclude_patterns';
+  static const recentFiles = 'recent_files';
+  static const recentDirectories = 'recent_directories';
 }
 
 class _Constants {
   static const Duration atomicSaveDelay = Duration(milliseconds: 200);
   static const Duration indexingDebounce = Duration(seconds: 2);
   static const int closedTabHistoryLimit = 20;
+  static const int recentItemsLimit = 10;
 }
 
 class AppState extends ChangeNotifier {
@@ -52,6 +56,8 @@ class AppState extends ChangeNotifier {
   final Map<String, String> _fileContents = {};
   final Map<String, String> _processedContents = {};
   final Map<String, double> _scrollOffsets = {};
+  int _reloadRevision = 0;
+  int get reloadRevision => _reloadRevision;
 
   late final WatcherService _watcherService;
 
@@ -60,6 +66,8 @@ class AppState extends ChangeNotifier {
   List<String> _knownFiles = []; // Persistent index for Cmd+P
   List<String> _includePatterns = [];
   List<String> _excludePatterns = [];
+  final List<String> _recentFiles = [];
+  final List<String> _recentDirectories = [];
 
   // View Settings
   bool _isRenderedView = true;
@@ -117,6 +125,8 @@ class AppState extends ChangeNotifier {
   List<String> get knownFiles => List.unmodifiable(_knownFiles);
   List<String> get includePatterns => List.unmodifiable(_includePatterns);
   List<String> get excludePatterns => List.unmodifiable(_excludePatterns);
+  List<String> get recentFiles => List.unmodifiable(_recentFiles);
+  List<String> get recentDirectories => List.unmodifiable(_recentDirectories);
   bool get isRenderedView => _isRenderedView;
   double get fontSize => _fontSize;
   bool get isLoading => _isLoading;
@@ -395,6 +405,21 @@ class AppState extends ChangeNotifier {
     _excludePatterns =
         _prefs.getStringList(_PersistenceKeys.excludePatterns) ?? [];
 
+    final savedRecentFiles =
+        _prefs.getStringList(_PersistenceKeys.recentFiles) ?? [];
+    _recentFiles
+      ..clear()
+      ..addAll(savedRecentFiles);
+
+    final savedRecentDirs =
+        _prefs.getStringList(_PersistenceKeys.recentDirectories) ?? [];
+    _recentDirectories
+      ..clear()
+      ..addAll(savedRecentDirs);
+    if (_explorerRootPath != null) {
+      _addRecentDirectory(_explorerRootPath!);
+    }
+
     final themeIndex = _prefs.getInt(_PersistenceKeys.themeMode);
     if (themeIndex != null &&
         themeIndex >= 0 &&
@@ -567,6 +592,42 @@ class AppState extends ChangeNotifier {
       _PersistenceKeys.excludePatterns,
       _excludePatterns,
     );
+    await _prefs.setStringList(_PersistenceKeys.recentFiles, _recentFiles);
+    await _prefs.setStringList(
+      _PersistenceKeys.recentDirectories,
+      _recentDirectories,
+    );
+  }
+
+  void _addRecentFile(String filePath) {
+    final canonical = path.canonicalize(filePath);
+    _recentFiles.removeWhere((p) => path.canonicalize(p) == canonical);
+    _recentFiles.insert(0, canonical);
+    if (_recentFiles.length > _Constants.recentItemsLimit) {
+      _recentFiles.removeRange(
+        _Constants.recentItemsLimit,
+        _recentFiles.length,
+      );
+    }
+  }
+
+  void _addRecentDirectory(String dirPath) {
+    final canonical = path.canonicalize(dirPath);
+    _recentDirectories.removeWhere((p) => path.canonicalize(p) == canonical);
+    _recentDirectories.insert(0, canonical);
+    if (_recentDirectories.length > _Constants.recentItemsLimit) {
+      _recentDirectories.removeRange(
+        _Constants.recentItemsLimit,
+        _recentDirectories.length,
+      );
+    }
+  }
+
+  void clearRecentItems() {
+    _recentFiles.clear();
+    _recentDirectories.clear();
+    notifyListeners();
+    _persistState();
   }
 
   void setWindowBounds(Rect bounds) {
@@ -609,9 +670,7 @@ class AppState extends ChangeNotifier {
     _watcherService.unwatchDirectory(path);
   }
 
-  Future<void> _onFileModified(String path) async {
-    // Debounce or just reload?
-    // For now, simple reload.
+  Future<void> _onFileModified(String path, {bool forceNotify = false}) async {
     try {
       final file = File(path);
       if (await file.exists()) {
@@ -621,10 +680,27 @@ class AppState extends ChangeNotifier {
         // Process in background to avoid jank
         final processed = await _runInjectAnchorsInIsolate(content);
 
-        // Only notify if content actually changed to avoid spurious rebuilds
-        if (_fileContents[path] != content) {
+        // Only notify if content actually changed or forced reload
+        if (forceNotify || _fileContents[path] != content) {
           _fileContents[path] = content;
           _processedContents[path] = processed;
+          if (_isFindInFileVisible &&
+              _findInFileQuery.isNotEmpty &&
+              path == currentFilePath) {
+            _findInFileMatchOffsets = findMatchOffsets(
+              content,
+              _findInFileQuery,
+              useRegex: _findInFileUseRegex,
+            );
+            if (_findInFileMatchOffsets.isEmpty) {
+              _findInFileActiveMatchIndex = -1;
+            } else {
+              _findInFileActiveMatchIndex = _findInFileActiveMatchIndex.clamp(
+                0,
+                _findInFileMatchOffsets.length - 1,
+              );
+            }
+          }
           notifyListeners();
         }
       }
@@ -632,6 +708,20 @@ class AppState extends ChangeNotifier {
       // File was deleted or moved during file watcher event
     } catch (e) {
       debugPrint('Error reloading modified file $path: $e');
+    }
+  }
+
+  Future<void> reloadCurrentFile() async {
+    final activePath = currentFilePath;
+    if (activePath != null) {
+      try {
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+      } catch (_) {}
+      MermaidRenderService.instance.clearCache();
+      _startWatching(activePath);
+      _reloadRevision++;
+      await _onFileModified(activePath, forceNotify: true);
     }
   }
 
@@ -646,14 +736,21 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  Future<void> setExplorerRootPath(String directoryPath) async {
+    final canonicalDir = path.canonicalize(directoryPath);
+    if (!Directory(canonicalDir).existsSync()) return;
+    _explorerRootPath = canonicalDir;
+    _addRecentDirectory(canonicalDir);
+    _startIndexing(canonicalDir);
+    notifyListeners();
+    await _persistState();
+  }
+
   Future<void> openDirectory() async {
     try {
       final String? directoryPath = await getDirectoryPath();
       if (directoryPath != null) {
-        _explorerRootPath = directoryPath;
-        _startIndexing(directoryPath);
-        notifyListeners();
-        _persistState();
+        await setExplorerRootPath(directoryPath);
       }
     } catch (e) {
       debugPrint('Error opening directory: $e');
@@ -662,10 +759,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> openFileAndSetDirectory(String filePath) async {
     await openFile(filePath);
-    _explorerRootPath = path.dirname(filePath);
-    _startIndexing(_explorerRootPath!);
-    notifyListeners();
-    _persistState();
+    await setExplorerRootPath(path.dirname(filePath));
   }
 
   Future<void> openFile(String filePath, {bool inNewTab = true}) async {
@@ -676,6 +770,7 @@ class AppState extends ChangeNotifier {
       (p) => path.canonicalize(p) == canonicalPath,
     );
     if (existingIndex != -1) {
+      _addRecentFile(canonicalPath);
       setActiveTab(existingIndex);
       _revealInExplorer(canonicalPath);
       return;
@@ -693,6 +788,7 @@ class AppState extends ChangeNotifier {
 
         _fileContents[canonicalPath] = content;
         _processedContents[canonicalPath] = processed;
+        _addRecentFile(canonicalPath);
 
         // Stop watching previous active file
         if (_activeTabIndex >= 0 && _activeTabIndex < _openFilePaths.length) {
@@ -837,14 +933,20 @@ class AppState extends ChangeNotifier {
     _persistState();
   }
 
+  void closeOtherFilesFor(String targetPath) {
+    final canonicalTarget = path.canonicalize(targetPath);
+    final toClose = _openFilePaths
+        .where((p) => path.canonicalize(p) != canonicalTarget)
+        .toList();
+    for (final p in toClose) {
+      closeFile(p);
+    }
+  }
+
   void closeOtherFiles() {
     final activePath = currentFilePath;
     if (activePath == null) return;
-
-    final toClose = _openFilePaths.where((p) => p != activePath).toList();
-    for (final path in toClose) {
-      closeFile(path); // This handles history and cleanup
-    }
+    closeOtherFilesFor(activePath);
   }
 
   void reopenClosedTab() {

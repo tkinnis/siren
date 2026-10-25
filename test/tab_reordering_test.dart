@@ -87,5 +87,36 @@ void main() {
 
       expect(appState.openFilePaths, [fileA, fileB]);
     });
+
+    test(
+      'tracks recentFiles, recentDirectories, and supports clearRecentItems',
+      () async {
+        await appState.openFile(fileA);
+        await appState.openFile(fileB);
+        expect(appState.recentFiles.take(2).toList(), [fileB, fileA]);
+
+        appState.setExplorerRootPath(tempDir.path);
+        expect(appState.explorerRootPath, tempDir.path);
+        expect(appState.recentDirectories.first, tempDir.path);
+
+        appState.clearRecentItems();
+        expect(appState.recentFiles, isEmpty);
+        expect(appState.recentDirectories, isEmpty);
+      },
+    );
+
+    test('reloadCurrentFile re-reads modified disk content and closeOtherFilesFor keeps only target', () async {
+      await appState.openFile(fileA);
+      await appState.openFile(fileB);
+      await appState.openFile(fileC);
+
+      File(fileC).writeAsStringSync('# Updated File C');
+      await appState.reloadCurrentFile();
+      expect(appState.currentContent, '# Updated File C');
+
+      appState.closeOtherFilesFor(fileB);
+      expect(appState.openFilePaths, [fileB]);
+      expect(appState.currentFilePath, fileB);
+    });
   });
 }

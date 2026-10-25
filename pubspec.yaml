@@ -1,7 +1,7 @@
 name: siren
 description: "A sleek, native desktop Markdown viewer with real-time preview, LaTeX, Mermaid, and fast workspace navigation."
 publish_to: 'none'
-version: 0.2.0
+version: 0.3.0
 
 environment:
   sdk: ^3.13.0

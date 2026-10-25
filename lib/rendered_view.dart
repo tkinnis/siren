@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 
 import 'app_state.dart';
+import 'image_zoom_dialog.dart';
 import 'mermaid_diagram.dart';
 import 'markdown_extensions.dart';
 import 'markdown_processor.dart';
@@ -190,19 +191,35 @@ class _RenderedViewState extends State<RenderedView> {
             onTapLink: onTapLink,
             // ignore: deprecated_member_use
             imageBuilder: (uri, title, alt) {
+              final label = (alt != null && alt.trim().isNotEmpty)
+                  ? alt.trim()
+                  : (title != null && title.trim().isNotEmpty
+                        ? title.trim()
+                        : p.basename(uri.path));
               if (uri.hasScheme &&
                   (uri.scheme == 'http' || uri.scheme == 'https')) {
-                return Image.network(
-                  uri.toString(),
-                  semanticLabel: alt,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Semantics(
-                      label: alt != null && alt.isNotEmpty
-                          ? 'Image failed to load: $alt'
-                          : 'Image failed to load',
-                      child: const Icon(Icons.broken_image, size: 24),
-                    );
-                  },
+                final urlStr = uri.toString();
+                return MouseRegion(
+                  cursor: SystemMouseCursors.zoomIn,
+                  child: GestureDetector(
+                    onTap: () => ImageZoomDialog.showNetwork(
+                      context,
+                      url: urlStr,
+                      title: label,
+                    ),
+                    child: Image.network(
+                      urlStr,
+                      semanticLabel: alt,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Semantics(
+                          label: alt != null && alt.isNotEmpty
+                              ? 'Image failed to load: $alt'
+                              : 'Image failed to load',
+                          child: const Icon(Icons.broken_image, size: 24),
+                        );
+                      },
+                    ),
+                  ),
                 );
               } else {
                 // Local image
@@ -211,7 +228,17 @@ class _RenderedViewState extends State<RenderedView> {
                 fullPath = p.normalize(fullPath);
                 final file = File(fullPath);
                 if (file.existsSync()) {
-                  return Image.file(file, semanticLabel: alt);
+                  return MouseRegion(
+                    cursor: SystemMouseCursors.zoomIn,
+                    child: GestureDetector(
+                      onTap: () => ImageZoomDialog.showFile(
+                        context,
+                        file: file,
+                        title: label,
+                      ),
+                      child: Image.file(file, semanticLabel: alt),
+                    ),
+                  );
                 }
                 return Semantics(
                   label: alt != null && alt.isNotEmpty
@@ -223,6 +250,7 @@ class _RenderedViewState extends State<RenderedView> {
             },
             extensionSet: md.ExtensionSet(
               [
+                const YamlFrontmatterBlockSyntax(),
                 const AlertBlockSyntax(),
                 ...md.ExtensionSet.gitHubFlavored.blockSyntaxes,
               ],

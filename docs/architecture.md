@@ -1,3 +1,10 @@
+---
+title: Siren Architecture & Development
+category: Engineering Guide
+version: 0.3.0
+tags: [architecture, flutter, isolates, ripgrep, mermaid]
+---
+
 # Siren Architecture & Development
 
 This document describes the architectural design and implementation patterns used in **Siren**.
@@ -40,9 +47,9 @@ graph TD
 - Employs debounce timers and delay strategies to handle macOS atomic saves (where editors write to a temporary file, delete the original, and rename).
 
 ### Offscreen Mermaid Vector Engine (`lib/mermaid_render_service.dart`)
-- Uses a single shared headless `WebViewController` loaded with offline `mermaid.min.js` and `mermaid_page.js` assets.
-- Flattens computed SVG styles, markers, and `<foreignObject>` labels into standalone SVG XML and compiles them into binary `vector_graphics` bytecode (`VectorGraphic`), with automatic high-DPI PNG fallback.
-- Caches compiled diagrams in an LRU memory cache (`(code, isDarkMode)`) for instant scrolling, font scaling, and interactive zoom/pan inspection (`lib/mermaid_zoom_dialog.dart`).
+- Uses a single shared headless `WebViewController` loaded with offline `mermaid.min.js`, `mermaid-layout-elk.min.js` (`@mermaid-js/layout-elk` with `look: 'neo'`), and `mermaid_page.js` assets.
+- Flattens computed SVG styles, markers, normalized `stroke-dasharray` patterns, and `<foreignObject>` labels into standalone SVG XML and compiles them into binary `vector_graphics` bytecode (`VectorGraphic`), with automatic high-DPI PNG fallback.
+- Caches compiled diagrams in an LRU memory cache (`(code, isDarkMode)`) for instant scrolling, proportional font scaling, interactive zoom/pan inspection, macOS clipboard PNG copy, and SVG/PNG file export (`lib/mermaid_zoom_dialog.dart`).
 
 ---
 
@@ -50,22 +57,23 @@ graph TD
 
 ```text
 siren/
-├── assets/             # Bundled application assets (images, ripgrep, mermaid)
+├── assets/             # Bundled application assets (images, ripgrep, mermaid + ELK)
 ├── docs/               # User and developer documentation
 ├── lib/                # Flutter Dart source code
-│   ├── app_state.dart             # Core application state
-│   ├── editor_tabs.dart           # Workspace tab bar with drag-and-drop
+│   ├── app_state.dart             # Core application state & recent items persistence
+│   ├── editor_tabs.dart           # Workspace tab bar with drag-and-drop & context menus
 │   ├── file_explorer.dart         # Directory tree view
 │   ├── file_search_modal.dart     # Quick Open (Cmd+P) dialog
 │   ├── find_in_file_bar.dart      # In-document search bar
 │   ├── global_search_view.dart    # Workspace full-text search
-│   ├── home_screen.dart           # Main window scaffold & toolbar
-│   ├── markdown_extensions.dart   # GitHub alerts, math, & syntax parsers
+│   ├── home_screen.dart           # Main window scaffold, menus & shortcuts
+│   ├── image_zoom_dialog.dart     # Interactive image lightbox viewer
+│   ├── markdown_extensions.dart   # YAML frontmatter, GitHub alerts, math, & syntax parsers
 │   ├── mermaid_diagram.dart       # Scaled Mermaid vector diagram widget
-│   ├── mermaid_render_service.dart# Offscreen SVG/vector compilation engine
-│   ├── mermaid_zoom_dialog.dart   # Interactive zoom & pan diagram modal
+│   ├── mermaid_render_service.dart# Offscreen ELK SVG/vector compilation engine
+│   ├── mermaid_zoom_dialog.dart   # Interactive zoom, pan & export diagram modal
 │   ├── outline_view.dart          # Heading hierarchy tree
-│   ├── raw_view.dart              # Raw Markdown editor with line gutter
+│   ├── raw_view.dart              # Raw Markdown source view with line gutter
 │   ├── rendered_view.dart         # Formatted Markdown view
 │   └── theme.dart                 # Light & dark theme extensions
 ├── macos/              # macOS native Runner project
@@ -77,7 +85,7 @@ siren/
 ## 4. Development & Testing
 
 ### Prerequisites
-- Flutter SDK `^3.13.0` (Dart `^3.13.0`)
+- Flutter SDK `^3.47.0` (Dart `^3.13.0`)
 - macOS 12.0 or newer
 - Xcode and Command Line Tools
 

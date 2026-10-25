@@ -1,13 +1,27 @@
 class MarkdownProcessor {
   static String injectAnchors(String markdown) {
     final buffer = StringBuffer();
-    // Using simple split might be memory intensive for huge files but efficient enough for logic
-    // A LineSplitter might be better but split('\n') is standard.
     final lines = markdown.split('\n');
     bool inCodeBlock = false;
+    bool inFrontmatter = false;
 
-    for (final line in lines) {
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
       final trimmed = line.trim();
+
+      if (i == 0 && trimmed == '---') {
+        inFrontmatter = true;
+        buffer.writeln(line);
+        continue;
+      }
+      if (inFrontmatter) {
+        buffer.writeln(line);
+        if (trimmed == '---' || trimmed == '...') {
+          inFrontmatter = false;
+        }
+        continue;
+      }
+
       if (trimmed.startsWith('```')) {
         inCodeBlock = !inCodeBlock;
       }

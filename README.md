@@ -33,21 +33,23 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | :--- | :--- | :--- | :--- |
 | **Rendering** | **GitHub Alerts** | 5 color-coded alert levels (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) with custom icons | Automatic |
 | | **LaTeX Mathematics** | Typeset inline formulas (`$E = mc^2$`) and block equations (`$$\sum x_i$$`) | CommonMark math blocks |
-| | **Mermaid Diagrams** | Offline SVG vector diagrams with proportional font scaling and click-to-zoom/pan viewer | ````mermaid```` code fences / Click diagram |
-| | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting | Fenced code blocks |
-| | **Extended Formatting** | Text highlighting (`==text==`), subscript (`~sub~`), superscript (`^sup^`), tables, task lists | Extended syntax |
-| **Viewer Modes** | **Rendered Preview** | Rich typography, interactive task lists, and diagram rendering | `Cmd + E` (Toggle) |
+| | **Mermaid Diagrams** | Offline ELK + `neo` vector diagrams across all 20 Mermaid v11 categories with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
+| | **YAML Frontmatter & Footnotes** | Structured metadata table for leading `---` YAML frontmatter and GitHub Flavored Markdown footnotes (`[^1]`) | Automatic |
+| | **Image Lightbox** | Click any local or network Markdown image to inspect in an interactive zoom & pan lightbox | Click image |
+| | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting and one-click copy | Fenced code blocks |
+| | **Extended Formatting** | Text highlighting (`==text==`), subscript (`~sub~`), superscript (`^sup~`), tables, task lists | Extended syntax |
+| **Viewer Modes** | **Rendered Preview** | Rich typography, interactive links, and diagram rendering | `Cmd + E` (Toggle) |
 | | **Raw Source View** | Monospace raw Markdown inspection with aligned line number gutter | `Cmd + E` (Toggle) |
-| **Navigation** | **Document Outline** | Auto-extracted heading hierarchy (`#` through `######`) with instant section jump | Sidebar tab / `Cmd + Shift + O` |
-| | **File Explorer** | Tree browsing with full support for hidden directories (`.github`, `.docs`) and hidden files | Sidebar tab |
-| | **Multi-Tab Workspace** | Drag-and-drop tab reordering, strict single-tab invariant, and closed tab restoration | Tabs / `Cmd + Shift + T` |
-| | **Navigation History** | Back and Forward history traversal with disabled bound indicators | Toolbar / `Cmd + [` / `Cmd + ]` |
+| **Navigation** | **Document Outline** | Auto-extracted heading hierarchy (`#` through `######`) with instant section jump | Sidebar tab / `Cmd + Ctrl + O` |
+| | **File Explorer** | Tree browsing with full support for hidden directories (`.github`, `.docs`) and hidden files | Sidebar tab / `Cmd + Shift + E` |
+| | **Multi-Tab Workspace** | Drag-and-drop tab reordering, tab context menus, strict single-tab invariant, and closed tab restoration | Tabs / `Cmd + Shift + T` |
+| | **Navigation History** | Back and Forward history traversal with disabled bound indicators and `File > Open Recent` menu | Toolbar / `Cmd + [` / `Cmd + ]` |
 | **Search** | **Workspace Ripgrep** | Embedded binary full-text search across thousands of files with match counts | `Cmd + Shift + F` |
 | | **Quick Open** | Background isolate fuzzy finder for instant file switching | `Cmd + P` |
-| | **In-File Find** | Active document search with regex support, match counter, and next/prev jumps | `Cmd + F` |
+| | **In-File Find** | Active document search with regex support, match counter, and next/prev jumps | `Cmd + F` / `Cmd + G` |
 | **Appearance** | **Light & Dark Themes** | Seamless toggling between System, Light, and Dark themes with tailored typography and syntax highlighting | Toolbar icon / `Cmd + Shift + D` |
 | | **Settings Configuration** | Modal dialog (`Cmd + ,`) to set default theme mode and customize regex file indexing patterns | `Cmd + ,` |
-| **Desktop Integration** | **Live File Watching** | Monitors open documents on disk and auto-reloads upon external edits | Automatic |
+| **Desktop Integration** | **Live File Watching** | Monitors open documents on disk and auto-reloads upon external edits | Automatic / `Cmd + R` |
 | | **Finder Drag & Drop** | Drag files or folders directly into the window to open immediately | Drag & drop |
 | | **Desktop About & Licenses** | Native modal dialog with Siren branding and aligned 2-column license browser | App menu > About Siren |
 
@@ -90,16 +92,21 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | `Cmd + Shift + W` | Close All Tabs |
 | `Cmd + Shift + T` | Reopen Recently Closed Tab |
 | `Cmd + E` | Toggle Preview / Raw View |
+| `Cmd + B` | Toggle Sidebar |
+| `Cmd + Shift + E` | Show Explorer in Sidebar |
+| `Cmd + Ctrl + O` | Show Document Outline in Sidebar |
 | `Cmd + Shift + D` | Toggle Dark / Light Theme |
 | `Cmd + ,` | Open Settings |
 | `Cmd + F` | Find in Active File |
+| `Cmd + G` / `Cmd + Shift + G` | Find Next / Find Previous Match |
 | `Cmd + Shift + F` | Global Search (Ripgrep) |
 | `Cmd + P` | Quick Open (Fuzzy Finder) |
-| `Cmd + ]` / `Cmd + Shift + ]` | Next Tab |
-| `Cmd + [` / `Cmd + Shift + [` | Previous Tab |
-| `Cmd + +` / `Cmd + =` | Increase Font Size |
-| `Cmd + -` | Decrease Font Size |
-| `Cmd + 0` | Reset Font Size |
+| `Cmd + Shift + ]` | Next Tab |
+| `Cmd + Shift + [` | Previous Tab |
+| `Cmd + [` / `Cmd + ]` | Back / Forward in Navigation History |
+| `Cmd + +` / `Cmd + =` | Increase Font & Diagram Scale |
+| `Cmd + -` | Decrease Font & Diagram Scale |
+| `Cmd + 0` | Reset Font & Diagram Scale |
 | `Cmd + R` | Reload Current File |
 
 For the complete list of shortcuts, see [docs/shortcuts.md](docs/shortcuts.md).
@@ -112,9 +119,10 @@ Comprehensive guides and architectural notes are available in the [`docs/`](docs
 
 - [Documentation Portal](docs/index.md) — Index and overview of all guides.
 - [Feature Walkthrough](docs/features.md) — In-depth guide to viewer modes, navigation, and workspace management.
-- [Markdown & Syntax Guide](docs/markdown-guide.md) — Complete syntax reference for GitHub alerts, math, diagrams, and formatting.
+- [Markdown & Syntax Guide](docs/markdown-guide.md) — Complete syntax reference for GitHub alerts, math, diagrams, YAML frontmatter, footnotes, and formatting.
+- [Mermaid Diagram Examples Gallery](docs/mermaid-examples.md) — 52 examples across all 20 Mermaid v11 diagram categories.
 - [Keyboard Shortcuts](docs/shortcuts.md) — Exhaustive keyboard shortcut reference.
-- [Architecture & Internals](docs/architecture.md) — Technical overview of isolates, ripgrep bundling, and state management.
+- [Architecture & Internals](docs/architecture.md) — Technical overview of isolates, ripgrep bundling, offline ELK vector Mermaid engine, and state management.
 
 ---
 
@@ -124,7 +132,7 @@ Comprehensive guides and architectural notes are available in the [`docs/`](docs
 
 Download the latest universal macOS release from [**GitHub Releases**](https://github.com/tkinnis/siren/releases/latest):
 
-1. Download **`Siren-v0.2.0-macos.zip`**.
+1. Download **`Siren-v0.3.0-macos.zip`**.
 2. Double-click to extract **`Siren.app`**.
 3. Drag **`Siren.app`** into your **`/Applications`** folder and launch.
 

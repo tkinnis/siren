@@ -414,6 +414,14 @@ void main() {
       expect(find.byType(MermaidZoomDialog), findsOneWidget);
       expect(find.byType(InteractiveViewer), findsOneWidget);
       expect(find.text('100%'), findsOneWidget);
+      expect(
+        find.byKey(const Key('mermaid_zoom_copy_image_button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('mermaid_zoom_export_button')),
+        findsOneWidget,
+      );
 
       // Click Zoom In (+)
       await tester.tap(find.byKey(const Key('mermaid_zoom_in_button')));

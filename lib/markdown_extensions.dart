@@ -6,6 +6,131 @@ import 'package:markdown/markdown.dart' as md;
 
 import 'theme.dart';
 
+// --- YAML Frontmatter ---
+
+class YamlFrontmatterBlockSyntax extends md.BlockSyntax {
+  @override
+  RegExp get pattern => RegExp(r'^---\s*$');
+
+  const YamlFrontmatterBlockSyntax();
+
+  @override
+  bool canParse(md.BlockParser parser) {
+    if (!pattern.hasMatch(parser.current.content)) return false;
+
+    final firstInner = parser.peek(1);
+    if (firstInner == null) return false;
+    final firstTrimmed = firstInner.content.trim();
+    if (firstTrimmed.isEmpty) return false;
+
+    // Look ahead for a closing '---' or '...' fence where lines are valid YAML
+    // frontmatter entries (key: value, list items, or comments).
+    bool hasKeyValue = false;
+    final keyPattern = RegExp(r'^[A-Za-z0-9_.-]+\s*:');
+    final listItemPattern = RegExp(r'^\s*-\s+.+');
+    for (int i = 1; i < 40; i++) {
+      final peeked = parser.peek(i);
+      if (peeked == null) return false;
+      final rawLine = peeked.content;
+      final line = rawLine.trim();
+      if (line == '---' || line == '...') {
+        return hasKeyValue && i > 1;
+      }
+      if (line.isEmpty || line.startsWith('#')) {
+        continue;
+      }
+      if (keyPattern.hasMatch(rawLine)) {
+        hasKeyValue = true;
+      } else if (!listItemPattern.hasMatch(rawLine)) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  @override
+  md.Node parse(md.BlockParser parser) {
+    // Consume opening '---'
+    parser.advance();
+
+    final yamlLines = <String>[];
+    while (!parser.isDone) {
+      final line = parser.current.content;
+      final trimmed = line.trim();
+      parser.advance();
+      if (trimmed == '---' || trimmed == '...') {
+        break;
+      }
+      yamlLines.add(line);
+    }
+
+    final element = md.Element('blockquote', []);
+    element.attributes['class'] = 'frontmatter';
+    element.attributes['_raw'] = yamlLines.join('\n');
+    return element;
+  }
+
+  /// Parses simple YAML frontmatter lines into key-value pairs.
+  static List<({String key, String value})> parseEntries(String rawYaml) {
+    final entries = <({String key, String value})>[];
+    final lines = rawYaml.split('\n');
+    String? currentKey;
+    final currentValues = <String>[];
+    final keyValRegex = RegExp(r'^([A-Za-z0-9_.-]+)\s*:\s*(.*)$');
+
+    void flushCurrent() {
+      if (currentKey != null) {
+        entries.add((key: currentKey!, value: currentValues.join(', ')));
+        currentKey = null;
+        currentValues.clear();
+      }
+    }
+
+    for (final rawLine in lines) {
+      final trimmed = rawLine.trim();
+      if (trimmed.isEmpty || trimmed.startsWith('#')) continue;
+
+      if ((rawLine.startsWith(' ') || rawLine.startsWith('\t')) &&
+          currentKey != null &&
+          trimmed.startsWith('- ')) {
+        currentValues.add(_stripQuotes(trimmed.substring(2).trim()));
+        continue;
+      }
+
+      final match = keyValRegex.firstMatch(rawLine);
+      if (match != null) {
+        flushCurrent();
+        currentKey = match.group(1)!.trim();
+        final rawVal = match.group(2)!.trim();
+        if (rawVal.isNotEmpty) {
+          if (rawVal.startsWith('[') && rawVal.endsWith(']')) {
+            final inner = rawVal.substring(1, rawVal.length - 1).trim();
+            if (inner.isNotEmpty) {
+              currentValues.addAll(
+                inner.split(',').map((s) => _stripQuotes(s.trim())),
+              );
+            }
+          } else {
+            currentValues.add(_stripQuotes(rawVal));
+          }
+        }
+      }
+    }
+    flushCurrent();
+    return entries;
+  }
+
+  static String _stripQuotes(String value) {
+    if (value.length >= 2) {
+      if ((value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))) {
+        return value.substring(1, value.length - 1);
+      }
+    }
+    return value;
+  }
+}
+
 // --- GitHub Alerts ---
 
 class AlertBlockSyntax extends md.BlockSyntax {
@@ -38,9 +163,6 @@ class AlertBlockSyntax extends md.BlockSyntax {
       if (!trimmed.startsWith('>')) {
         break;
       }
-      // Strip the '>' and leading space. We use regex on the trimmed line or full line?
-      // Standard blockquote allows 0-3 spaces before '>'.
-      // stripping `^ {0,3}>\s?` from the original line is safer.
       childLines.add(line.replaceFirst(RegExp(r'^\s{0,3}>\s?'), ''));
       parser.advance();
     }
@@ -63,7 +185,14 @@ class AlertBuilder extends MarkdownElementBuilder {
 
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
-    if (element.attributes['class'] != 'alert') {
+    final elementClass = element.attributes['class'];
+    if (elementClass == 'frontmatter') {
+      return _buildFrontmatter(
+        element.attributes['_raw'] ?? '',
+        preferredStyle,
+      );
+    }
+    if (elementClass != 'alert') {
       return null;
     }
 
@@ -107,17 +236,9 @@ class AlertBuilder extends MarkdownElementBuilder {
             ],
           ),
           const SizedBox(height: 8),
-          // Use MarkdownBody to render rich text content inside the alert.
-          // We don't have access to the parent context's theme easily here
-          // (unless we pass it or reuse 'preferredStyle' carefully),
-          // so we rely on default styles.
           MarkdownBody(
             data: rawContent,
-            selectable: false, // Prevent crash with nested SelectionArea
-            // The AlertBuilder itself handles the 'blockquote' tag with 'alert' class.
-            // The inner MarkdownBody should not re-register the AlertBuilder for 'blockquote'
-            // as that would lead to infinite recursion if the rawContent contained another alert.
-            // Instead, it should just use the default styling for blockquotes or other elements.
+            selectable: false,
             styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
                 .copyWith(
                   p: preferredStyle,
@@ -127,6 +248,112 @@ class AlertBuilder extends MarkdownElementBuilder {
                         ?.codeBg,
                   ),
                 ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFrontmatter(String rawYaml, TextStyle? preferredStyle) {
+    final theme = Theme.of(context);
+    final sirenColors = theme.extension<SirenColors>()!;
+    final entries = YamlFrontmatterBlockSyntax.parseEntries(rawYaml);
+    final baseFontSize = preferredStyle?.fontSize ?? 14.0;
+
+    return Container(
+      key: const Key('yaml_frontmatter_card'),
+      margin: const EdgeInsets.only(bottom: 16.0),
+      decoration: BoxDecoration(
+        color: sirenColors.codeBlockBg ?? sirenColors.sidebarBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: sirenColors.divider ?? theme.colorScheme.outlineVariant,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: sirenColors.codeBlockHeaderBg ?? sirenColors.sidebarBg,
+              border: Border(
+                bottom: BorderSide(
+                  color:
+                      sirenColors.divider ?? theme.colorScheme.outlineVariant,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.tune_rounded,
+                  size: 14,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'FRONTMATTER',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: entries.isEmpty
+                ? Text(
+                    rawYaml,
+                    style: GoogleFonts.firaCode(
+                      fontSize: baseFontSize * 0.85,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  )
+                : Table(
+                    columnWidths: const {
+                      0: IntrinsicColumnWidth(),
+                      1: FlexColumnWidth(),
+                    },
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    children: [
+                      for (final entry in entries)
+                        TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                right: 16,
+                                top: 3,
+                                bottom: 3,
+                              ),
+                              child: Text(
+                                entry.key,
+                                style: GoogleFonts.firaCode(
+                                  fontSize: baseFontSize * 0.85,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 3),
+                              child: Text(
+                                entry.value,
+                                style: TextStyle(
+                                  fontSize: baseFontSize * 0.9,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -239,7 +466,7 @@ class SubscriptSyntax extends md.InlineSyntax {
 }
 
 class SuperscriptSyntax extends md.InlineSyntax {
-  SuperscriptSyntax() : super(r'\^([^^]+)\^');
+  SuperscriptSyntax() : super(r'\^([^^\s\]]+)\^');
 
   @override
   bool onMatch(md.InlineParser parser, Match match) {
@@ -257,18 +484,21 @@ class SubSupBuilder extends MarkdownElementBuilder {
 
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
-    // We use a WidgetSpan approach normally, but here we return a Widget.
-    // To align properly to text, RichText with WidgetSpan is best, but
-    // MarkdownElementBuilder returns a Widget which breaks the paragraph flow if not careful.
-    //
-    // Best effort for inline widget: Transform.translate
+    final isFootnoteRef = element.attributes['class'] == 'footnote-ref';
+    final displayText = isFootnoteRef
+        ? '[${element.textContent}]'
+        : element.textContent;
 
     return Transform.translate(
       offset: Offset(0, isSup ? -4.0 : 4.0),
       child: Text(
-        element.textContent,
+        displayText,
         style: preferredStyle?.copyWith(
-          fontSize: (preferredStyle.fontSize ?? 14) * 0.7,
+          fontSize: (preferredStyle.fontSize ?? 14) * 0.75,
+          color: isFootnoteRef ? Colors.blue : preferredStyle.color,
+          fontWeight: isFootnoteRef
+              ? FontWeight.w600
+              : preferredStyle.fontWeight,
         ),
       ),
     );

@@ -14,7 +14,7 @@ This document provides operational context, architectural invariants, and workfl
 * **Search Architecture**: 
   * Full-text search: Embedded `rg` (ripgrep) binary (`assets/bin/rg`) executed via `Process.start`.
   * Fuzzy file finding: Background Dart isolate (`quick_open.dart`) for asynchronous search without UI stutter.
-* **Markdown Rendering**: CommonMark compliant with custom extensions for GitHub Alerts, LaTeX math typography, offline vector Mermaid diagrams (`vector_graphics` with proportional font scaling and interactive zoom/pan modal), and code syntax highlighting.
+* **Markdown Rendering**: CommonMark and GitHub Flavored Markdown (GFM) compliant with custom extensions for YAML Frontmatter cards, footnotes, GitHub Alerts, LaTeX math typography, interactive image lightbox, offline vector Mermaid diagrams (`vector_graphics` with proportional font scaling and interactive zoom/pan/export modal), and code syntax highlighting.
 
 ---
 
@@ -26,11 +26,15 @@ siren/
 │   ├── main.dart                  # Application entrypoint & multi-window handling
 │   ├── home_screen.dart           # Main window shell, title bar, tabs, and menus
 │   ├── app_state.dart             # Central ChangeNotifier state manager
+│   ├── editor_tabs.dart           # Reorderable tab bar with right-click context menu
 │   ├── rendered_view.dart         # Formatted Markdown preview
 │   ├── raw_view.dart              # Raw Markdown source view with line gutter
+│   ├── markdown_processor.dart    # Markdown preprocessing & extension pipeline
+│   ├── markdown_extensions.dart   # Custom syntax parsers & builders (alerts, frontmatter, footnotes)
+│   ├── image_zoom_dialog.dart     # Interactive zoom & pan image lightbox modal
 │   ├── mermaid_diagram.dart       # Scaled Mermaid vector diagram widget
 │   ├── mermaid_render_service.dart# Offscreen SVG/vector compilation engine
-│   ├── mermaid_zoom_dialog.dart   # Interactive zoom & pan diagram modal
+│   ├── mermaid_zoom_dialog.dart   # Interactive zoom, pan & export diagram modal
 │   ├── outline_view.dart          # Heading hierarchy extractor & navigator
 │   ├── file_explorer.dart         # File tree viewer with hidden file support
 │   ├── global_search_view.dart    # Ripgrep global workspace search

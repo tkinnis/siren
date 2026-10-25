@@ -131,7 +131,6 @@ class MermaidRenderService {
   }
 
   /// Clears the in-memory diagram cache.
-  @visibleForTesting
   void clearCache() {
     _cache.clear();
   }

@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
         PlatformMenu(
           label: 'Siren',
           menus: [
-            if (Platform.isMacOS)
+            if (Platform.isMacOS) ...[
               PlatformMenuItemGroup(
                 members: [
                   PlatformMenuItem(
@@ -59,6 +59,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
+                ],
+              ),
+              PlatformMenuItemGroup(
+                members: [
                   PlatformMenuItem(
                     label: 'Settings...',
                     shortcut: const SingleActivator(
@@ -74,7 +78,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-            if (Platform.isMacOS)
+              const PlatformMenuItemGroup(
+                members: [
+                  PlatformProvidedMenuItem(
+                    type: PlatformProvidedMenuItemType.servicesSubmenu,
+                  ),
+                ],
+              ),
+              const PlatformMenuItemGroup(
+                members: [
+                  PlatformProvidedMenuItem(
+                    type: PlatformProvidedMenuItemType.hide,
+                  ),
+                  PlatformProvidedMenuItem(
+                    type: PlatformProvidedMenuItemType.hideOtherApplications,
+                  ),
+                  PlatformProvidedMenuItem(
+                    type: PlatformProvidedMenuItemType.showAllApplications,
+                  ),
+                ],
+              ),
               PlatformMenuItemGroup(
                 members: [
                   PlatformMenuItem(
@@ -89,358 +112,528 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+            ],
           ],
         ),
         PlatformMenu(
           label: 'File',
           menus: [
-            PlatformMenuItem(
-              label: 'Open...',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyO,
-                meta: true,
-              ),
-              onSelected: () async {
-                const XTypeGroup typeGroup = XTypeGroup(
-                  label: 'Markdown',
-                  extensions: <String>['md', 'markdown'],
-                );
-                final XFile? file = await openFile(
-                  acceptedTypeGroups: <XTypeGroup>[typeGroup],
-                );
-                if (file == null || !mounted) return;
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Open...',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyO,
+                    meta: true,
+                  ),
+                  onSelected: () async {
+                    const XTypeGroup typeGroup = XTypeGroup(
+                      label: 'Markdown',
+                      extensions: <String>['md', 'markdown'],
+                    );
+                    final XFile? file = await openFile(
+                      acceptedTypeGroups: <XTypeGroup>[typeGroup],
+                    );
+                    if (file == null || !mounted) return;
 
-                // Open file AND set explorer root to parent
-                // ignore: use_build_context_synchronously
-                context.read<AppState>().openFileAndSetDirectory(file.path);
-              },
+                    // Open file AND set explorer root to parent
+                    // ignore: use_build_context_synchronously
+                    context.read<AppState>().openFileAndSetDirectory(file.path);
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Open Folder...',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyO,
+                    meta: true,
+                    shift: true,
+                  ),
+                  onSelected: () async {
+                    if (mounted) {
+                      context.read<AppState>().openDirectory();
+                    }
+                  },
+                ),
+                PlatformMenu(
+                  label: 'Open Recent',
+                  menus: [
+                    if (appState.recentFiles.isEmpty &&
+                        appState.recentDirectories.isEmpty)
+                      const PlatformMenuItem(label: 'No Recent Items')
+                    else ...[
+                      if (appState.recentFiles.isNotEmpty)
+                        PlatformMenuItemGroup(
+                          members: [
+                            for (final recentFile in appState.recentFiles)
+                              PlatformMenuItem(
+                                label: path.basename(recentFile),
+                                onSelected: () {
+                                  if (mounted) {
+                                    context.read<AppState>().openFile(
+                                      recentFile,
+                                    );
+                                  }
+                                },
+                              ),
+                          ],
+                        ),
+                      if (appState.recentDirectories.isNotEmpty)
+                        PlatformMenuItemGroup(
+                          members: [
+                            for (final recentDir in appState.recentDirectories)
+                              PlatformMenuItem(
+                                label: 'Folder: ${path.basename(recentDir)}',
+                                onSelected: () {
+                                  if (mounted) {
+                                    context
+                                        .read<AppState>()
+                                        .setExplorerRootPath(recentDir);
+                                  }
+                                },
+                              ),
+                          ],
+                        ),
+                      PlatformMenuItemGroup(
+                        members: [
+                          PlatformMenuItem(
+                            label: 'Clear Recent',
+                            onSelected: () {
+                              if (mounted) {
+                                context.read<AppState>().clearRecentItems();
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
-            PlatformMenuItem(
-              label: 'Open Folder...',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyO,
-                meta: true,
-                shift: true,
-              ),
-              onSelected: () async {
-                if (mounted) {
-                  context.read<AppState>().openDirectory();
-                }
-              },
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Go to File...',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyP,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const FileSearchModal(),
+                    );
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Reload File',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyR,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().reloadCurrentFile();
+                    }
+                  },
+                ),
+              ],
             ),
-            PlatformMenuItem(
-              label: 'Go to File...',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyP,
-                meta: true,
-              ),
-              onSelected: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => const FileSearchModal(),
-                );
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Close Tab',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyW,
-                meta: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().closeCurrentFile();
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Close All Tabs',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyW,
-                meta: true,
-                shift: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().closeAllFiles();
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Reopen Closed Tab',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyT,
-                meta: true,
-                shift: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().reopenClosedTab();
-                }
-              },
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Close Tab',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyW,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().closeCurrentFile();
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Close Other Tabs',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyW,
+                    meta: true,
+                    alt: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().closeOtherFiles();
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Close All Tabs',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyW,
+                    meta: true,
+                    shift: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().closeAllFiles();
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Reopen Closed Tab',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyT,
+                    meta: true,
+                    shift: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().reopenClosedTab();
+                    }
+                  },
+                ),
+              ],
             ),
           ],
         ),
         PlatformMenu(
           label: 'Edit',
           menus: [
-            PlatformMenuItem(
-              label: 'Find...',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyF,
-                meta: true,
-              ),
-              onSelected: () {
-                if (mounted &&
-                    context.read<AppState>().currentFilePath != null) {
-                  context.read<AppState>().showFindInFile();
-                }
-              },
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Find...',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyF,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    if (mounted &&
+                        context.read<AppState>().currentFilePath != null) {
+                      context.read<AppState>().showFindInFile();
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Find Next',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyG,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().nextFindMatch();
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Find Previous',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyG,
+                    meta: true,
+                    shift: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().prevFindMatch();
+                    }
+                  },
+                ),
+              ],
             ),
-            PlatformMenuItem(
-              label: 'Find Next',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyG,
-                meta: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().nextFindMatch();
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Find Previous',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyG,
-                meta: true,
-                shift: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().prevFindMatch();
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Find in Folder...',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyF,
-                meta: true,
-                shift: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  final appState = context.read<AppState>();
-                  appState.setSidebarTabIndex(2);
-                  if (!appState.isExplorerVisible) {
-                    appState.toggleExplorerVisibility();
-                  }
-                }
-              },
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Find in Folder...',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyF,
+                    meta: true,
+                    shift: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      final appState = context.read<AppState>();
+                      appState.setSidebarTabIndex(2);
+                      if (!appState.isExplorerVisible) {
+                        appState.toggleExplorerVisibility();
+                      }
+                    }
+                  },
+                ),
+              ],
             ),
           ],
         ),
         PlatformMenu(
           label: 'View',
           menus: [
-            PlatformMenuItem(
-              label: 'Back',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.bracketLeft,
-                meta: true,
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Toggle Preview / Raw View',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyE,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().toggleViewMode();
+                    }
+                  },
+                ),
+              ],
+            ),
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: appState.isExplorerVisible
+                      ? 'Hide Sidebar'
+                      : 'Show Sidebar',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyB,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().toggleExplorerVisibility();
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Show Explorer',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyE,
+                    meta: true,
+                    shift: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      final appState = context.read<AppState>();
+                      appState.setSidebarTabIndex(0);
+                      if (!appState.isExplorerVisible) {
+                        appState.toggleExplorerVisibility();
+                      }
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Show Outline',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyO,
+                    meta: true,
+                    control: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      final appState = context.read<AppState>();
+                      appState.setSidebarTabIndex(1);
+                      if (!appState.isExplorerVisible) {
+                        appState.toggleExplorerVisibility();
+                      }
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Show Search',
+                  onSelected: () {
+                    if (mounted) {
+                      final appState = context.read<AppState>();
+                      appState.setSidebarTabIndex(2);
+                      if (!appState.isExplorerVisible) {
+                        appState.toggleExplorerVisibility();
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Zoom In',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.equal,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().increaseFontSize();
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Zoom Out',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.minus,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().decreaseFontSize();
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Reset Zoom',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.digit0,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().resetFontSize();
+                    }
+                  },
+                ),
+              ],
+            ),
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Toggle Dark/Light Mode',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.keyD,
+                    meta: true,
+                    shift: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      final appState = context.read<AppState>();
+                      final isDark =
+                          Theme.of(context).brightness == Brightness.dark;
+                      appState.setThemeMode(
+                        isDark ? ThemeMode.light : ThemeMode.dark,
+                      );
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Use Light Theme',
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().setThemeMode(ThemeMode.light);
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Use Dark Theme',
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().setThemeMode(ThemeMode.dark);
+                    }
+                  },
+                ),
+              ],
+            ),
+            if (Platform.isMacOS)
+              const PlatformMenuItemGroup(
+                members: [
+                  PlatformProvidedMenuItem(
+                    type: PlatformProvidedMenuItemType.toggleFullScreen,
+                  ),
+                ],
               ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().goBack();
-                }
-              },
+          ],
+        ),
+        PlatformMenu(
+          label: 'History',
+          menus: [
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Back',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.bracketLeft,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().goBack();
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Forward',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.bracketRight,
+                    meta: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      context.read<AppState>().goForward();
+                    }
+                  },
+                ),
+              ],
             ),
-            PlatformMenuItem(
-              label: 'Forward',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.bracketRight,
-                meta: true,
+          ],
+        ),
+        PlatformMenu(
+          label: 'Window',
+          menus: [
+            if (Platform.isMacOS)
+              const PlatformMenuItemGroup(
+                members: [
+                  PlatformProvidedMenuItem(
+                    type: PlatformProvidedMenuItemType.minimizeWindow,
+                  ),
+                  PlatformProvidedMenuItem(
+                    type: PlatformProvidedMenuItemType.zoomWindow,
+                  ),
+                ],
               ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().goForward();
-                }
-              },
+            PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'Show Previous Tab',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.bracketLeft,
+                    meta: true,
+                    shift: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      final appState = context.read<AppState>();
+                      if (appState.openFilePaths.length > 1) {
+                        final newIndex =
+                            (appState.activeTabIndex -
+                                1 +
+                                appState.openFilePaths.length) %
+                            appState.openFilePaths.length;
+                        appState.setActiveTab(newIndex);
+                      }
+                    }
+                  },
+                ),
+                PlatformMenuItem(
+                  label: 'Show Next Tab',
+                  shortcut: const SingleActivator(
+                    LogicalKeyboardKey.bracketRight,
+                    meta: true,
+                    shift: true,
+                  ),
+                  onSelected: () {
+                    if (mounted) {
+                      final appState = context.read<AppState>();
+                      if (appState.openFilePaths.length > 1) {
+                        final newIndex =
+                            (appState.activeTabIndex + 1) %
+                            appState.openFilePaths.length;
+                        appState.setActiveTab(newIndex);
+                      }
+                    }
+                  },
+                ),
+              ],
             ),
-            PlatformMenuItem(
-              label: appState.isExplorerVisible
-                  ? 'Hide Sidebar'
-                  : 'Show Sidebar',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyB,
-                meta: true,
+            if (Platform.isMacOS)
+              const PlatformMenuItemGroup(
+                members: [
+                  PlatformProvidedMenuItem(
+                    type: PlatformProvidedMenuItemType.arrangeWindowsInFront,
+                  ),
+                ],
               ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().toggleExplorerVisibility();
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Previous Tab',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.bracketLeft,
-                meta: true,
-                shift: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  final appState = context.read<AppState>();
-                  if (appState.openFilePaths.length > 1) {
-                    final newIndex =
-                        (appState.activeTabIndex -
-                            1 +
-                            appState.openFilePaths.length) %
-                        appState.openFilePaths.length;
-                    appState.setActiveTab(newIndex);
-                  }
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Next Tab',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.bracketRight,
-                meta: true,
-                shift: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  final appState = context.read<AppState>();
-                  if (appState.openFilePaths.length > 1) {
-                    final newIndex =
-                        (appState.activeTabIndex + 1) %
-                        appState.openFilePaths.length;
-                    appState.setActiveTab(newIndex);
-                  }
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Toggle Preview',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyP,
-                meta: true,
-                shift: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().toggleViewMode();
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Show Explorer',
-              onSelected: () {
-                if (mounted) {
-                  final appState = context.read<AppState>();
-                  appState.setSidebarTabIndex(0);
-                  if (!appState.isExplorerVisible) {
-                    appState.toggleExplorerVisibility();
-                  }
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Show Outline',
-              onSelected: () {
-                if (mounted) {
-                  final appState = context.read<AppState>();
-                  appState.setSidebarTabIndex(1);
-                  if (!appState.isExplorerVisible) {
-                    appState.toggleExplorerVisibility();
-                  }
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Show Search',
-              onSelected: () {
-                if (mounted) {
-                  final appState = context.read<AppState>();
-                  appState.setSidebarTabIndex(2);
-                  if (!appState.isExplorerVisible) {
-                    appState.toggleExplorerVisibility();
-                  }
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Toggle Dark/Light Mode',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.keyD,
-                meta: true,
-                shift: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  final appState = context.read<AppState>();
-                  final isDark =
-                      Theme.of(context).brightness == Brightness.dark;
-                  appState.setThemeMode(
-                    isDark ? ThemeMode.light : ThemeMode.dark,
-                  );
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Use Light Theme',
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().setThemeMode(ThemeMode.light);
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Use Dark Theme',
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().setThemeMode(ThemeMode.dark);
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Zoom In',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.equal,
-                meta: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().increaseFontSize();
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Zoom Out',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.minus,
-                meta: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().decreaseFontSize();
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Reset Zoom',
-              shortcut: const SingleActivator(
-                LogicalKeyboardKey.digit0,
-                meta: true,
-              ),
-              onSelected: () {
-                if (mounted) {
-                  context.read<AppState>().resetFontSize();
-                }
-              },
-            ),
           ],
         ),
       ],
@@ -455,8 +648,28 @@ class _HomeScreenState extends State<HomeScreen> {
           const SingleActivator(LogicalKeyboardKey.digit0, meta: true): () {
             appState.resetFontSize();
           },
+          const SingleActivator(LogicalKeyboardKey.keyE, meta: true): () {
+            appState.toggleViewMode();
+          },
+          const SingleActivator(
+            LogicalKeyboardKey.keyP,
+            meta: true,
+            shift: true,
+          ): () {
+            appState.toggleViewMode();
+          },
+          const SingleActivator(LogicalKeyboardKey.keyR, meta: true): () {
+            appState.reloadCurrentFile();
+          },
           const SingleActivator(LogicalKeyboardKey.keyW, meta: true): () {
             appState.closeCurrentFile();
+          },
+          const SingleActivator(
+            LogicalKeyboardKey.keyW,
+            meta: true,
+            alt: true,
+          ): () {
+            appState.closeOtherFiles();
           },
           const SingleActivator(
             LogicalKeyboardKey.keyW,
@@ -490,6 +703,26 @@ class _HomeScreenState extends State<HomeScreen> {
             shift: true,
           ): () {
             appState.openDirectory();
+          },
+          const SingleActivator(
+            LogicalKeyboardKey.keyE,
+            meta: true,
+            shift: true,
+          ): () {
+            appState.setSidebarTabIndex(0);
+            if (!appState.isExplorerVisible) {
+              appState.toggleExplorerVisibility();
+            }
+          },
+          const SingleActivator(
+            LogicalKeyboardKey.keyO,
+            meta: true,
+            control: true,
+          ): () {
+            appState.setSidebarTabIndex(1);
+            if (!appState.isExplorerVisible) {
+              appState.toggleExplorerVisibility();
+            }
           },
           const SingleActivator(
             LogicalKeyboardKey.bracketLeft,
@@ -591,8 +824,10 @@ class _HomeScreenState extends State<HomeScreen> {
             onDragDone: (detail) {
               if (detail.files.isNotEmpty) {
                 for (final file in detail.files) {
-                  if (file.path.endsWith('.md') ||
-                      file.path.endsWith('.markdown')) {
+                  if (Directory(file.path).existsSync()) {
+                    appState.setExplorerRootPath(file.path);
+                  } else if (file.path.toLowerCase().endsWith('.md') ||
+                      file.path.toLowerCase().endsWith('.markdown')) {
                     appState.openFile(file.path);
                   }
                 }
@@ -734,6 +969,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.arrow_forward,
                   tooltip: 'Go Forward (Cmd+])',
                   onPressed: appState.canGoForward ? appState.goForward : null,
+                ),
+                _DesktopIconButton(
+                  icon: Icons.refresh,
+                  tooltip: 'Reload File (Cmd+R)',
+                  onPressed: appState.currentFilePath != null
+                      ? appState.reloadCurrentFile
+                      : null,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -925,12 +1167,17 @@ class _TabContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-
-    // Actually, IndexedStack children order matters.
+    final rev = appState.reloadRevision;
 
     return appState.isRenderedView
-        ? RenderedView(key: ValueKey('rendered_$filePath'), filePath: filePath)
-        : MarkdownRawView(key: ValueKey('raw_$filePath'), filePath: filePath);
+        ? RenderedView(
+            key: ValueKey('rendered_${filePath}_$rev'),
+            filePath: filePath,
+          )
+        : MarkdownRawView(
+            key: ValueKey('raw_${filePath}_$rev'),
+            filePath: filePath,
+          );
   }
 }
 

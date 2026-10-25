@@ -22,8 +22,27 @@ class OutlineView extends StatelessWidget {
     final List<OutlineItem> items = [];
     final lines = content.split('\n');
     final regex = RegExp(r'^(#{1,6})\s+(.*)');
+    bool inCodeBlock = false;
+    bool inFrontmatter = false;
 
     for (int i = 0; i < lines.length; i++) {
+      final trimmed = lines[i].trim();
+      if (i == 0 && trimmed == '---') {
+        inFrontmatter = true;
+        continue;
+      }
+      if (inFrontmatter) {
+        if (trimmed == '---' || trimmed == '...') {
+          inFrontmatter = false;
+        }
+        continue;
+      }
+      if (trimmed.startsWith('```')) {
+        inCodeBlock = !inCodeBlock;
+        continue;
+      }
+      if (inCodeBlock) continue;
+
       final match = regex.firstMatch(lines[i]);
       if (match != null) {
         items.add(

@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
@@ -40,6 +43,145 @@ class _EditorTabsState extends State<EditorTabs> {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
     );
+  }
+
+  Future<void> _revealInSystem(String filePath) async {
+    try {
+      if (Platform.isMacOS) {
+        await Process.run('open', ['-R', filePath]);
+      } else if (Platform.isWindows) {
+        await Process.run('explorer', ['/select,', filePath]);
+      } else if (Platform.isLinux) {
+        await Process.run('xdg-open', [path.dirname(filePath)]);
+      }
+    } catch (e) {
+      debugPrint('Failed to reveal file: $e');
+    }
+  }
+
+  void _showTabContextMenu(
+    BuildContext context,
+    Offset position,
+    String filePath,
+    AppState appState,
+  ) {
+    final overlay = Overlay.of(context);
+    final screenSize = MediaQuery.of(context).size;
+    late OverlayEntry overlayEntry;
+
+    const double menuWidth = 210.0;
+    const double menuHeight = 200.0;
+
+    double dx = position.dx;
+    double dy = position.dy;
+
+    if (dx + menuWidth > screenSize.width) {
+      dx = screenSize.width - menuWidth - 8;
+    }
+    if (dy + menuHeight > screenSize.height) {
+      dy = screenSize.height - menuHeight - 8;
+    }
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => overlayEntry.remove(),
+              onSecondaryTapDown: (_) => overlayEntry.remove(),
+            ),
+          ),
+          Positioned(
+            left: dx,
+            top: dy,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: menuWidth,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline
+                        .withValues(alpha: 0.2),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _TabMenuItem(
+                      label: 'Close',
+                      onTap: () {
+                        overlayEntry.remove();
+                        appState.closeFile(filePath);
+                      },
+                    ),
+                    _TabMenuItem(
+                      label: 'Close Others',
+                      onTap: () {
+                        overlayEntry.remove();
+                        appState.closeOtherFilesFor(filePath);
+                      },
+                    ),
+                    _TabMenuItem(
+                      label: 'Close All',
+                      onTap: () {
+                        overlayEntry.remove();
+                        appState.closeAllFiles();
+                      },
+                    ),
+                    const Divider(height: 1, thickness: 1),
+                    _TabMenuItem(
+                      label: Platform.isMacOS
+                          ? 'Show in Finder'
+                          : 'Show in File Manager',
+                      onTap: () {
+                        overlayEntry.remove();
+                        _revealInSystem(filePath);
+                      },
+                    ),
+                    _TabMenuItem(
+                      label: 'Copy Path',
+                      onTap: () {
+                        overlayEntry.remove();
+                        Clipboard.setData(ClipboardData(text: filePath));
+                      },
+                    ),
+                    if (appState.explorerRootPath != null)
+                      _TabMenuItem(
+                        label: 'Copy Relative Path',
+                        onTap: () {
+                          overlayEntry.remove();
+                          Clipboard.setData(
+                            ClipboardData(
+                              text: path.relative(
+                                filePath,
+                                from: appState.explorerRootPath!,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(overlayEntry);
   }
 
   @override
@@ -101,6 +243,12 @@ class _EditorTabsState extends State<EditorTabs> {
               label: '$fileName tab${isActive ? ", active" : ""}',
               child: GestureDetector(
                 onTap: () => appState.setActiveTab(index),
+                onSecondaryTapUp: (details) => _showTabContextMenu(
+                  context,
+                  details.globalPosition,
+                  filePath,
+                  appState,
+                ),
                 child: Container(
                   constraints: const BoxConstraints(
                     minWidth: 100,
@@ -157,6 +305,39 @@ class _EditorTabsState extends State<EditorTabs> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _TabMenuItem extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _TabMenuItem({required this.label, required this.onTap});
+
+  @override
+  State<_TabMenuItem> createState() => _TabMenuItemState();
+}
+
+class _TabMenuItemState extends State<_TabMenuItem> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          color: _isHovering
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+              : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Text(widget.label, style: const TextStyle(fontSize: 13)),
+        ),
       ),
     );
   }
