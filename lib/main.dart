@@ -18,21 +18,14 @@ void main(List<String> args) async {
   // we'll keep it here but we've optimized its internal file loading.
   final appState = await AppState.create();
 
-  if (args.isNotEmpty) {
-    final candidate = p.canonicalize(args.first);
+  for (final arg in args.where((a) => !a.startsWith('--'))) {
+    final candidate = p.canonicalize(arg);
     if (File(candidate).existsSync()) {
       await appState.openFileAndSetDirectory(candidate);
     }
-  } else if (appState.openFilePaths.isEmpty) {
-    final comp = p.canonicalize('comprehensive.md');
-    if (File(comp).existsSync()) {
-      await appState.openFileAndSetDirectory(comp);
-    }
   }
 
-  final isStandardWindow = args.any(
-    (a) => a.startsWith('--screenshot') || a == '--standard-window',
-  );
+  final isStandardWindow = args.contains('--standard-window');
 
   runApp(MainApp(appState: appState));
 

@@ -165,6 +165,9 @@ class _RenderedViewState extends State<RenderedView> {
     final fontSize = context.select<AppState, double>(
       (state) => state.fontSize,
     );
+    final showFrontmatter = context.select<AppState, bool>(
+      (state) => state.showFrontmatter,
+    );
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -186,6 +189,7 @@ class _RenderedViewState extends State<RenderedView> {
         padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
         child: SelectionArea(
           child: MarkdownBody(
+            key: ValueKey<bool>(showFrontmatter),
             data: content,
             softLineBreak: false,
             onTapLink: onTapLink,
@@ -250,7 +254,7 @@ class _RenderedViewState extends State<RenderedView> {
             },
             extensionSet: md.ExtensionSet(
               [
-                const YamlFrontmatterBlockSyntax(),
+                YamlFrontmatterBlockSyntax(enabled: showFrontmatter),
                 const AlertBlockSyntax(),
                 ...md.ExtensionSet.gitHubFlavored.blockSyntaxes,
               ],
@@ -388,15 +392,32 @@ class _RenderedViewState extends State<RenderedView> {
               // Note: header background support in style sheet is limited, might need custom builder or just Accept basic style
             ),
             builders: {
-              'blockquote': AlertBuilder(context),
+              'frontmatter': FrontmatterBuilder(
+                context,
+                showFrontmatter: showFrontmatter,
+              ),
+              'blockquote': AlertBuilder(
+                context,
+                showFrontmatter: showFrontmatter,
+              ),
               'latex': LatexBuilder(
                 textStyle: theme.textTheme.bodyMedium?.copyWith(
                   fontSize: fontSize,
                 ),
               ),
               'highlight': HighlightBuilder(context),
-              'sub': SubSupBuilder(false),
-              'sup': SubSupBuilder(true),
+              'sub': SubSupBuilder(false, baseFontSize: fontSize),
+              'sup': SubSupBuilder(
+                true,
+                baseFontSize: fontSize,
+                anchorKeys: _anchorKeys,
+                onTapLink: onTapLink,
+              ),
+              'section': FootnoteSectionBuilder(
+                anchorKeys: _anchorKeys,
+                fontSize: fontSize,
+                onTapLink: onTapLink,
+              ),
               'anchor': AnchorBuilder(_anchorKeys),
               'code': CodeElementBuilder(
                 isDark: isDark,
@@ -451,7 +472,12 @@ class AnchorBuilder extends MarkdownElementBuilder {
     if (slug != null) {
       final key = GlobalKey(debugLabel: slug);
       anchorKeys[slug] = key;
-      return SizedBox(key: key, width: 0, height: 0);
+      return Baseline(
+        key: key,
+        baseline: 0,
+        baselineType: TextBaseline.alphabetic,
+        child: const SizedBox.shrink(),
+      );
     }
     return null;
   }

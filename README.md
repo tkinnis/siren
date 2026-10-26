@@ -34,7 +34,7 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | **Rendering** | **GitHub Alerts** | 5 color-coded alert levels (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) with custom icons | Automatic |
 | | **LaTeX Mathematics** | Typeset inline formulas (`$E = mc^2$`) and block equations (`$$\sum x_i$$`) | CommonMark math blocks |
 | | **Mermaid Diagrams** | Offline ELK + `neo` vector diagrams across all 20 Mermaid v11 categories with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
-| | **YAML Frontmatter & Footnotes** | Structured metadata table for leading `---` YAML frontmatter and GitHub Flavored Markdown footnotes (`[^1]`) | Automatic |
+| | **YAML Frontmatter & Footnotes** | Structured metadata card with pill badges for leading `---` YAML frontmatter (toggleable in Settings) and GitHub-styled hyperlinked footnotes (`[^1]`) | Automatic / `Cmd + ,` |
 | | **Image Lightbox** | Click any local or network Markdown image to inspect in an interactive zoom & pan lightbox | Click image |
 | | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting and one-click copy | Fenced code blocks |
 | | **Extended Formatting** | Text highlighting (`==text==`), subscript (`~sub~`), superscript (`^sup~`), tables, task lists | Extended syntax |
@@ -48,7 +48,7 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | | **Quick Open** | Background isolate fuzzy finder for instant file switching | `Cmd + P` |
 | | **In-File Find** | Active document search with regex support, match counter, and next/prev jumps | `Cmd + F` / `Cmd + G` |
 | **Appearance** | **Light & Dark Themes** | Seamless toggling between System, Light, and Dark themes with tailored typography and syntax highlighting | Toolbar icon / `Cmd + Shift + D` |
-| | **Settings Configuration** | Modal dialog (`Cmd + ,`) to set default theme mode and customize regex file indexing patterns | `Cmd + ,` |
+| | **Settings Configuration** | Modal dialog (`Cmd + ,`) to set default theme mode, toggle YAML frontmatter visibility, and customize regex file indexing patterns | `Cmd + ,` |
 | **Desktop Integration** | **Live File Watching** | Monitors open documents on disk and auto-reloads upon external edits | Automatic / `Cmd + R` |
 | | **Finder Drag & Drop** | Drag files or folders directly into the window to open immediately | Drag & drop |
 | | **Desktop About & Licenses** | Native modal dialog with Siren branding and aligned 2-column license browser | App menu > About Siren |
@@ -78,6 +78,10 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | Light & Dark Theme Support | Integrated Licenses Viewer |
 | :---: | :---: |
 | ![Light and Dark Themes](docs/screenshots/siren_theme_split.png) | ![Siren Licenses Viewer](docs/screenshots/siren_licenses_view.png) |
+
+### Interactive Vector Mermaid Inspector
+
+![Siren Mermaid Viewer](docs/screenshots/siren_mermaid_viewer.png)
 
 ---
 

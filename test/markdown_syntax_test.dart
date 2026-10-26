@@ -74,7 +74,7 @@ tags:
       expect(nodes.length, greaterThanOrEqualTo(3));
 
       final frontmatter = nodes.first as md.Element;
-      expect(frontmatter.tag, 'blockquote');
+      expect(frontmatter.tag, 'frontmatter');
       expect(frontmatter.attributes['class'], 'frontmatter');
 
       final entries = YamlFrontmatterBlockSyntax.parseEntries(
@@ -103,6 +103,32 @@ title: Doc
       final processed = MarkdownProcessor.injectAnchors(markdown);
       expect(processed, isNot(contains('not-a-heading')));
       expect(processed, contains('[[@anchor:real-heading]]\n\n# Real Heading'));
+    });
+
+    test('does not parse YAML frontmatter in the middle of a document', () {
+      const markdown = '''# Document Title
+
+Some introductory paragraph.
+
+---
+title: Mid-document block
+author: Should Not Be Frontmatter
+---
+''';
+
+      final document = md.Document(
+        extensionSet: md.ExtensionSet([
+          const YamlFrontmatterBlockSyntax(),
+          ...md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+        ], md.ExtensionSet.gitHubFlavored.inlineSyntaxes),
+      );
+
+      final nodes = document.parseLines(markdown.split('\n'));
+      for (final node in nodes) {
+        if (node is md.Element) {
+          expect(node.attributes['class'], isNot('frontmatter'));
+        }
+      }
     });
   });
 

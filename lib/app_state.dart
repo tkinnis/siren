@@ -29,6 +29,7 @@ class _PersistenceKeys {
   static const excludePatterns = 'exclude_patterns';
   static const recentFiles = 'recent_files';
   static const recentDirectories = 'recent_directories';
+  static const showFrontmatter = 'show_frontmatter';
 }
 
 class _Constants {
@@ -71,6 +72,7 @@ class AppState extends ChangeNotifier {
 
   // View Settings
   bool _isRenderedView = true;
+  bool _showFrontmatter = true;
   double _fontSize = 14.0;
   bool _isLoading = false;
 
@@ -128,6 +130,7 @@ class AppState extends ChangeNotifier {
   List<String> get recentFiles => List.unmodifiable(_recentFiles);
   List<String> get recentDirectories => List.unmodifiable(_recentDirectories);
   bool get isRenderedView => _isRenderedView;
+  bool get showFrontmatter => _showFrontmatter;
   double get fontSize => _fontSize;
   bool get isLoading => _isLoading;
   double get sidebarWidth => _sidebarWidth;
@@ -396,6 +399,7 @@ class AppState extends ChangeNotifier {
 
     _fontSize = _prefs.getDouble(_PersistenceKeys.fontSize) ?? 14.0;
     _isRenderedView = _prefs.getBool(_PersistenceKeys.isRenderedView) ?? true;
+    _showFrontmatter = _prefs.getBool(_PersistenceKeys.showFrontmatter) ?? true;
     _sidebarWidth = _prefs.getDouble(_PersistenceKeys.sidebarWidth) ?? 250.0;
     _isExplorerVisible =
         _prefs.getBool(_PersistenceKeys.isExplorerVisible) ?? true;
@@ -579,6 +583,7 @@ class AppState extends ChangeNotifier {
     await _prefs.setInt(_PersistenceKeys.activeTabIndex, _activeTabIndex);
     await _prefs.setDouble(_PersistenceKeys.fontSize, _fontSize);
     await _prefs.setBool(_PersistenceKeys.isRenderedView, _isRenderedView);
+    await _prefs.setBool(_PersistenceKeys.showFrontmatter, _showFrontmatter);
     await _prefs.setDouble(_PersistenceKeys.sidebarWidth, _sidebarWidth);
     await _prefs.setBool(
       _PersistenceKeys.isExplorerVisible,
@@ -644,6 +649,14 @@ class AppState extends ChangeNotifier {
     _themeMode = mode;
     _prefs.setInt(_PersistenceKeys.themeMode, mode.index);
     notifyListeners();
+  }
+
+  void setShowFrontmatter(bool show) {
+    if (_showFrontmatter != show) {
+      _showFrontmatter = show;
+      _prefs.setBool(_PersistenceKeys.showFrontmatter, show);
+      notifyListeners();
+    }
   }
 
   void setExplorerRevealCallback(Function(String path)? callback) {

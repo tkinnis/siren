@@ -18,7 +18,7 @@ This guide provides a detailed walkthrough of all the features and capabilities 
 | **Rendering** | **GitHub Alerts** | 5 color-coded alert levels (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) with custom icons | Automatic |
 | | **LaTeX Mathematics** | Typeset inline formulas (`$E = mc^2$`) and block equations (`$$\sum x_i$$`) | CommonMark math blocks |
 | | **Mermaid Diagrams** | Offline ELK + `neo` vector diagrams across all 20 Mermaid v11 categories with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
-| | **YAML Frontmatter & Footnotes** | Structured metadata table for leading `---` YAML frontmatter and GitHub Flavored Markdown footnotes (`[^1]`) | Automatic |
+| | **YAML Frontmatter & Footnotes** | Structured metadata card with pill badges for leading `---` YAML frontmatter (toggleable in Settings) and GitHub-styled hyperlinked footnotes (`[^1]`) | Automatic / `Cmd + ,` |
 | | **Image Lightbox** | Click any local or network Markdown image to inspect in an interactive zoom & pan lightbox | Click image |
 | | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting and one-click copy | Fenced code blocks |
 | | **Extended Formatting** | Text highlighting (`==text==`), subscript (`~sub~`), superscript (`^sup^`), tables, task lists | Extended syntax |
@@ -32,7 +32,7 @@ This guide provides a detailed walkthrough of all the features and capabilities 
 | | **Quick Open** | Background isolate fuzzy finder for instant file switching | `Cmd + P` |
 | | **In-File Find** | Active document search with regex support, match counter, and next/prev jumps | `Cmd + F` / `Cmd + G` |
 | **Appearance** | **Light & Dark Themes** | Seamless toggling between System, Light, and Dark themes with tailored typography and syntax highlighting | Toolbar icon / `Cmd + Shift + D` |
-| | **Settings Configuration** | Modal dialog (`Cmd + ,`) to set default theme mode and customize regex file indexing patterns | `Cmd + ,` |
+| | **Settings Configuration** | Modal dialog (`Cmd + ,`) to set default theme mode, toggle YAML frontmatter visibility, and customize regex file indexing patterns | `Cmd + ,` |
 | **Desktop Integration** | **Live File Watching** | Monitors open documents on disk and auto-reloads upon external edits | Automatic / `Cmd + R` |
 | | **Finder Drag & Drop** | Drag files or folders directly into the window to open immediately | Drag & drop |
 | | **Desktop About & Licenses** | Native modal dialog with Siren branding and aligned 2-column license browser | App menu > About Siren |
@@ -52,6 +52,8 @@ Siren lets you inspect Markdown files in two distinct modes, toggleable at any t
 - Smooth anchor navigation when clicking heading links.
 
 ![Siren Rendered View](screenshots/siren_comprehensive_rendered.png)
+
+![Siren Mermaid Inspector](screenshots/siren_mermaid_viewer.png)
 
 ### Raw Mode
 - Full raw Markdown source view with a dedicated, aligned **line number gutter**.
@@ -156,6 +158,7 @@ Siren natively supports **System**, **Light**, and **Dark** themes. Easily toggl
 
 The Settings dialog provides user configuration:
 - **Appearance (Theme Mode)**: Choose between System (automatic adaptation to macOS settings), Light, or Dark.
+- **Show YAML Frontmatter in Preview**: Toggle whether leading `---` YAML frontmatter blocks are displayed as a structured metadata card in Preview mode (enabled by default).
 - **File Indexing Patterns (Regex)**: Customize which files and directories are indexed for Quick Open and Workspace Search. Add regular expressions targeting file names or entire paths to explicitly include or exclude patterns (e.g. `^node_modules$`, `build/`).
 
 | Desktop Settings Dialog | Desktop About Siren Dialog |

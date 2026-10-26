@@ -64,9 +64,9 @@ Siren renders mathematical formulas using KaTeX.
 ### Inline Math
 Enclose formulas in single dollar signs:
 ```markdown
-Euler's formula states that $e^{i\pi} + 1 = 0$.
+Euler's formula states that $e^{i\pi} + 1 = 0$, and mass-energy equivalence is $E = mc^2$ where $c \approx 3 \times 10^8 \text{ m/s}$.
 ```
-Euler's formula states that $e^{i\pi} + 1 = 0$.
+Euler's formula states that $e^{i\pi} + 1 = 0$, and mass-energy equivalence is $E = mc^2$ where $c \approx 3 \times 10^8 \text{ m/s}$.
 
 ### Display / Block Math
 Enclose formulas in double dollar signs on their own lines:
@@ -116,7 +116,7 @@ sequenceDiagram
 ## 4. YAML Frontmatter & Footnotes
 
 ### YAML Frontmatter
-Documents starting with a `---` YAML frontmatter block are automatically parsed and displayed as a structured **Frontmatter** metadata card in Preview mode (also visible at the very top of this guide):
+Documents starting on line 1 with a `---` YAML frontmatter block are automatically parsed and displayed as a structured **Frontmatter** metadata card at the top of Preview mode (as seen at the very top of this guide), with list/array entries rendered as pill badges. You can toggle frontmatter visibility at any time in **Settings (`Cmd+,` → Show YAML Frontmatter in Preview)**.
 
 ```markdown
 ---
@@ -127,15 +127,8 @@ tags: [macos, flutter, markdown]
 ---
 ```
 
----
-title: Architecture Specification
-author: Platform Team
-status: Approved
-tags: [macos, flutter, markdown]
----
-
 ### Footnotes
-Siren supports GitHub Flavored Markdown footnotes using `[^id]` inline references and `[^id]: ...` definitions:
+Siren supports GitHub Flavored Markdown footnotes using `[^id]` inline references and `[^id]: ...` definitions. Inline citations (`[1]`) are hyperlinked to jump directly to the GitHub-style separated footnotes section at the bottom of the page, and each footnote's `↩︎` return link jumps back to its citation:
 
 ```markdown
 Siren compiles Mermaid diagrams into native vector bytecode[^1] and supports named references[^note].
@@ -161,9 +154,9 @@ Wrap text in double equals signs to highlight:
 ==Highlighted text== for emphasizing critical terms.
 
 ### Subscript & Superscript
-- Subscript: `H~2~O` produces H~2~O
-- Superscript: `E = mc^2^` produces E = mc^2^
-- Combined: `X^2^~i~` produces X^2^~i~
+- Subscript (chemical formulas): `H~2~O, C~6~H~12~O~6~` produces H~2~O, C~6~H~12~O~6~
+- Superscript (exponents): `E = mc^2^, 2^10^ = 1024` produces E = mc^2^, 2^10^ = 1024
+- Combined notation: `X^2^~i~` produces X^2^~i~
 
 ### CommonMark Line Breaks
 In accordance with the CommonMark specification:
@@ -173,6 +166,13 @@ In accordance with the CommonMark specification:
 ---
 
 ## 6. Standard Markdown
+
+### Typography
+- **Bold text** with asterisks or underscores (`**Bold text**`).
+- *Italic text* for emphasis (`*Italic text*`).
+- ***Bold and italic combined*** (`***Bold and italic combined***`).
+- ~~Strikethrough~~ for deprecated content (`~~Strikethrough~~`).
+- `Inline code snippet` for functions and identifiers.
 
 ### Headings
 ```markdown

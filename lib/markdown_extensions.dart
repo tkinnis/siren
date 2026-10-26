@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
@@ -9,13 +10,20 @@ import 'theme.dart';
 // --- YAML Frontmatter ---
 
 class YamlFrontmatterBlockSyntax extends md.BlockSyntax {
+  final bool enabled;
+
   @override
   RegExp get pattern => RegExp(r'^---\s*$');
 
-  const YamlFrontmatterBlockSyntax();
+  const YamlFrontmatterBlockSyntax({this.enabled = true});
 
   @override
   bool canParse(md.BlockParser parser) {
+    // YAML frontmatter is only valid at the very beginning of a document.
+    if (parser.lines.isEmpty ||
+        !identical(parser.current, parser.lines.first)) {
+      return false;
+    }
     if (!pattern.hasMatch(parser.current.content)) return false;
 
     final firstInner = parser.peek(1);
@@ -64,25 +72,39 @@ class YamlFrontmatterBlockSyntax extends md.BlockSyntax {
       yamlLines.add(line);
     }
 
-    final element = md.Element('blockquote', []);
+    if (!enabled) {
+      // Returning an empty root-level Text node causes flutter_markdown to
+      // skip emitting any block widget, decoration, or blockSpacing.
+      return md.Text('');
+    }
+
+    final element = md.Element('frontmatter', []);
     element.attributes['class'] = 'frontmatter';
     element.attributes['_raw'] = yamlLines.join('\n');
     return element;
   }
 
-  /// Parses simple YAML frontmatter lines into key-value pairs.
-  static List<({String key, String value})> parseEntries(String rawYaml) {
-    final entries = <({String key, String value})>[];
+  /// Parses simple YAML frontmatter lines into structured entries preserving
+  /// whether the value is a YAML list (`[a, b]` or `- item`) vs. a scalar.
+  static List<({String key, List<String> values, bool isList})>
+  parseStructuredEntries(String rawYaml) {
+    final entries = <({String key, List<String> values, bool isList})>[];
     final lines = rawYaml.split('\n');
     String? currentKey;
     final currentValues = <String>[];
+    bool currentIsList = false;
     final keyValRegex = RegExp(r'^([A-Za-z0-9_.-]+)\s*:\s*(.*)$');
 
     void flushCurrent() {
       if (currentKey != null) {
-        entries.add((key: currentKey!, value: currentValues.join(', ')));
+        entries.add((
+          key: currentKey!,
+          values: List.unmodifiable(currentValues),
+          isList: currentIsList,
+        ));
         currentKey = null;
         currentValues.clear();
+        currentIsList = false;
       }
     }
 
@@ -93,6 +115,7 @@ class YamlFrontmatterBlockSyntax extends md.BlockSyntax {
       if ((rawLine.startsWith(' ') || rawLine.startsWith('\t')) &&
           currentKey != null &&
           trimmed.startsWith('- ')) {
+        currentIsList = true;
         currentValues.add(_stripQuotes(trimmed.substring(2).trim()));
         continue;
       }
@@ -104,10 +127,14 @@ class YamlFrontmatterBlockSyntax extends md.BlockSyntax {
         final rawVal = match.group(2)!.trim();
         if (rawVal.isNotEmpty) {
           if (rawVal.startsWith('[') && rawVal.endsWith(']')) {
+            currentIsList = true;
             final inner = rawVal.substring(1, rawVal.length - 1).trim();
             if (inner.isNotEmpty) {
               currentValues.addAll(
-                inner.split(',').map((s) => _stripQuotes(s.trim())),
+                inner
+                    .split(',')
+                    .map((s) => _stripQuotes(s.trim()))
+                    .where((s) => s.isNotEmpty),
               );
             }
           } else {
@@ -118,6 +145,13 @@ class YamlFrontmatterBlockSyntax extends md.BlockSyntax {
     }
     flushCurrent();
     return entries;
+  }
+
+  /// Parses simple YAML frontmatter lines into flat key-value pairs.
+  static List<({String key, String value})> parseEntries(String rawYaml) {
+    return parseStructuredEntries(rawYaml)
+        .map((e) => (key: e.key, value: e.values.join(', ')))
+        .toList();
   }
 
   static String _stripQuotes(String value) {
@@ -178,15 +212,40 @@ class AlertBlockSyntax extends md.BlockSyntax {
   }
 }
 
+class FrontmatterBuilder extends MarkdownElementBuilder {
+  final BuildContext context;
+  final bool showFrontmatter;
+
+  FrontmatterBuilder(this.context, {this.showFrontmatter = true});
+
+  @override
+  bool isBlockElement() => true;
+
+  @override
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    if (!showFrontmatter) {
+      return const SizedBox.shrink();
+    }
+    return AlertBuilder(
+      context,
+      showFrontmatter: showFrontmatter,
+    )._buildFrontmatter(element.attributes['_raw'] ?? '', preferredStyle);
+  }
+}
+
 class AlertBuilder extends MarkdownElementBuilder {
   final BuildContext context;
+  final bool showFrontmatter;
 
-  AlertBuilder(this.context);
+  AlertBuilder(this.context, {this.showFrontmatter = true});
 
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
     final elementClass = element.attributes['class'];
     if (elementClass == 'frontmatter') {
+      if (!showFrontmatter) {
+        return const SizedBox.shrink();
+      }
       return _buildFrontmatter(
         element.attributes['_raw'] ?? '',
         preferredStyle,
@@ -256,19 +315,21 @@ class AlertBuilder extends MarkdownElementBuilder {
 
   Widget _buildFrontmatter(String rawYaml, TextStyle? preferredStyle) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final sirenColors = theme.extension<SirenColors>()!;
-    final entries = YamlFrontmatterBlockSyntax.parseEntries(rawYaml);
+    final entries = YamlFrontmatterBlockSyntax.parseStructuredEntries(rawYaml);
     final baseFontSize = preferredStyle?.fontSize ?? 14.0;
+    final dividerColor =
+        sirenColors.divider ?? theme.colorScheme.outlineVariant;
 
     return Container(
       key: const Key('yaml_frontmatter_card'),
+      width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16.0),
       decoration: BoxDecoration(
         color: sirenColors.codeBlockBg ?? sirenColors.sidebarBg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: sirenColors.divider ?? theme.colorScheme.outlineVariant,
-        ),
+        border: Border.all(color: dividerColor),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -278,12 +339,7 @@ class AlertBuilder extends MarkdownElementBuilder {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: sirenColors.codeBlockHeaderBg ?? sirenColors.sidebarBg,
-              border: Border(
-                bottom: BorderSide(
-                  color:
-                      sirenColors.divider ?? theme.colorScheme.outlineVariant,
-                ),
-              ),
+              border: Border(bottom: BorderSide(color: dividerColor)),
             ),
             child: Row(
               children: [
@@ -306,7 +362,7 @@ class AlertBuilder extends MarkdownElementBuilder {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             child: entries.isEmpty
                 ? Text(
                     rawYaml,
@@ -321,33 +377,43 @@ class AlertBuilder extends MarkdownElementBuilder {
                       1: FlexColumnWidth(),
                     },
                     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    border: TableBorder(
+                      horizontalInside: BorderSide(
+                        color: dividerColor.withValues(alpha: 0.45),
+                        width: 1,
+                      ),
+                    ),
                     children: [
                       for (final entry in entries)
                         TableRow(
                           children: [
                             Padding(
                               padding: const EdgeInsets.only(
-                                right: 16,
-                                top: 3,
-                                bottom: 3,
+                                right: 20,
+                                top: 6,
+                                bottom: 6,
                               ),
-                              child: Text(
-                                entry.key,
-                                style: GoogleFonts.firaCode(
-                                  fontSize: baseFontSize * 0.85,
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.primary,
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(minWidth: 96),
+                                child: Text(
+                                  entry.key,
+                                  softWrap: false,
+                                  style: GoogleFonts.firaCode(
+                                    fontSize: baseFontSize * 0.84,
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
                                 ),
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 3),
-                              child: Text(
-                                entry.value,
-                                style: TextStyle(
-                                  fontSize: baseFontSize * 0.9,
-                                  color: theme.colorScheme.onSurface,
-                                ),
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: _buildFrontmatterValue(
+                                entry,
+                                theme: theme,
+                                isDark: isDark,
+                                sirenColors: sirenColors,
+                                baseFontSize: baseFontSize,
                               ),
                             ),
                           ],
@@ -356,6 +422,75 @@ class AlertBuilder extends MarkdownElementBuilder {
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFrontmatterValue(
+    ({String key, List<String> values, bool isList}) entry, {
+    required ThemeData theme,
+    required bool isDark,
+    required SirenColors sirenColors,
+    required double baseFontSize,
+  }) {
+    if (entry.isList && entry.values.isNotEmpty) {
+      final primary = theme.colorScheme.primary;
+      return Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (final item in entry.values)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: isDark ? 0.16 : 0.10),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: primary.withValues(alpha: isDark ? 0.35 : 0.25),
+                ),
+              ),
+              child: Text(
+                item,
+                style: TextStyle(
+                  fontSize: baseFontSize * 0.82,
+                  fontWeight: FontWeight.w500,
+                  color: primary,
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+
+    final scalar = entry.values.join(', ');
+    final lower = scalar.toLowerCase();
+    if (lower == 'true' || lower == 'false') {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          decoration: BoxDecoration(
+            color: sirenColors.codeBg,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            scalar,
+            style: GoogleFonts.firaCode(
+              fontSize: baseFontSize * 0.82,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Text(
+      scalar,
+      style: TextStyle(
+        fontSize: baseFontSize * 0.9,
+        fontWeight: entry.key == 'title' ? FontWeight.w600 : FontWeight.w400,
+        color: theme.colorScheme.onSurface,
       ),
     );
   }
@@ -479,28 +614,347 @@ class SuperscriptSyntax extends md.InlineSyntax {
 
 class SubSupBuilder extends MarkdownElementBuilder {
   final bool isSup;
+  final double? baseFontSize;
+  final Map<String, GlobalKey>? anchorKeys;
+  final void Function(String text, String? href, String title)? onTapLink;
 
-  SubSupBuilder(this.isSup);
+  SubSupBuilder(
+    this.isSup, {
+    this.baseFontSize,
+    this.anchorKeys,
+    this.onTapLink,
+  });
 
   @override
-  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final theme = Theme.of(context);
     final isFootnoteRef = element.attributes['class'] == 'footnote-ref';
     final displayText = isFootnoteRef
         ? '[${element.textContent}]'
         : element.textContent;
 
-    return Transform.translate(
+    String? href;
+    String? anchorId;
+    if (isFootnoteRef && element.children != null) {
+      for (final child in element.children!) {
+        if (child is md.Element && child.tag == 'a') {
+          href = child.attributes['href'];
+          anchorId = child.attributes['id'];
+          break;
+        }
+      }
+    }
+
+    GlobalKey? key;
+    if (anchorId != null && anchorKeys != null) {
+      key = GlobalKey(debugLabel: anchorId);
+      anchorKeys![anchorId] = key;
+    }
+
+    final effectiveBaseStyle =
+        preferredStyle ??
+        parentStyle ??
+        theme.textTheme.bodyMedium ??
+        const TextStyle(fontSize: 14);
+    final resolvedBaseSize =
+        baseFontSize ?? effectiveBaseStyle.fontSize ?? 14.0;
+    final linkColor = theme.colorScheme.primary;
+
+    final textStyle = effectiveBaseStyle.copyWith(
+      fontSize: resolvedBaseSize * (isFootnoteRef ? 0.78 : 0.75),
+      color: isFootnoteRef ? linkColor : effectiveBaseStyle.color,
+      fontWeight: isFootnoteRef
+          ? FontWeight.w600
+          : effectiveBaseStyle.fontWeight,
+      decoration: isFootnoteRef
+          ? TextDecoration.underline
+          : effectiveBaseStyle.decoration,
+      decorationColor: isFootnoteRef ? linkColor : null,
+    );
+
+    Widget badge = Transform.translate(
       offset: Offset(0, isSup ? -4.0 : 4.0),
-      child: Text(
-        displayText,
-        style: preferredStyle?.copyWith(
-          fontSize: (preferredStyle.fontSize ?? 14) * 0.75,
-          color: isFootnoteRef ? Colors.blue : preferredStyle.color,
-          fontWeight: isFootnoteRef
-              ? FontWeight.w600
-              : preferredStyle.fontWeight,
+      child: Text(displayText, style: textStyle),
+    );
+
+    if (isFootnoteRef && href != null && onTapLink != null) {
+      final targetHref = href;
+      badge = SelectionContainer.disabled(
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            key: key,
+            behavior: HitTestBehavior.opaque,
+            onTap: () => onTapLink!(displayText, targetHref, ''),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1.0),
+              child: badge,
+            ),
+          ),
         ),
+      );
+    } else if (key != null) {
+      badge = KeyedSubtree(key: key, child: badge);
+    }
+
+    return badge;
+  }
+}
+
+/// Renders `<section class="footnotes">` at the bottom of a document in a
+/// GitHub-style separated footnotes block with a top border, muted smaller
+/// typography, registered `fn-...` anchors, and non-emoji typographic backlinks.
+class FootnoteSectionBuilder extends MarkdownElementBuilder {
+  final Map<String, GlobalKey> anchorKeys;
+  final double fontSize;
+  final void Function(String text, String? href, String title) onTapLink;
+
+  FootnoteSectionBuilder({
+    required this.anchorKeys,
+    required this.fontSize,
+    required this.onTapLink,
+  });
+
+  @override
+  bool isBlockElement() => true;
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    if (element.attributes['class'] != 'footnotes') return null;
+    final children = element.children;
+    if (children == null || children.isEmpty) return null;
+
+    final theme = Theme.of(context);
+    final sirenColors = theme.extension<SirenColors>();
+    final dividerColor =
+        sirenColors?.divider ??
+        theme.colorScheme.outline.withValues(alpha: 0.3);
+    final mutedColor = theme.colorScheme.onSurfaceVariant;
+    final linkColor = theme.colorScheme.primary;
+    final codeBg = sirenColors?.codeBg;
+    final footnoteFontSize = fontSize * 0.875;
+
+    final baseStyle = TextStyle(
+      fontSize: footnoteFontSize,
+      height: 1.55,
+      color: mutedColor,
+    );
+
+    final itemWidgets = <Widget>[];
+    int itemIndex = 1;
+
+    for (final child in children) {
+      if (child is md.Element && child.tag == 'ol' && child.children != null) {
+        for (final li in child.children!) {
+          if (li is md.Element && li.tag == 'li') {
+            final fnId = li.attributes['id'];
+            GlobalKey? itemKey;
+            if (fnId != null && fnId.isNotEmpty) {
+              itemKey = GlobalKey(debugLabel: fnId);
+              anchorKeys[fnId] = itemKey;
+            }
+
+            final spans = _buildFootnoteItemSpans(
+              li.children,
+              baseStyle: baseStyle,
+              linkColor: linkColor,
+              codeBg: codeBg,
+              footnoteFontSize: footnoteFontSize,
+            );
+
+            itemWidgets.add(
+              Padding(
+                key: itemKey,
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    SizedBox(
+                      width: 28.0,
+                      child: Text(
+                        '$itemIndex.',
+                        textAlign: TextAlign.right,
+                        style: baseStyle.copyWith(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                    const SizedBox(width: 10.0),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(style: baseStyle, children: spans),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+            itemIndex++;
+          }
+        }
+      }
+    }
+
+    if (itemWidgets.isEmpty) return null;
+
+    return Container(
+      key: const Key('footnotes_section'),
+      margin: const EdgeInsets.only(top: 28.0),
+      padding: const EdgeInsets.only(top: 16.0),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: dividerColor, width: 1.0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: itemWidgets,
       ),
     );
+  }
+
+  List<InlineSpan> _buildFootnoteItemSpans(
+    List<md.Node>? nodes, {
+    required TextStyle baseStyle,
+    required Color linkColor,
+    required Color? codeBg,
+    required double footnoteFontSize,
+  }) {
+    if (nodes == null || nodes.isEmpty) return const [];
+    final spans = <InlineSpan>[];
+
+    for (final node in nodes) {
+      if (node is md.Text) {
+        final cleaned = node.text.replaceAll(RegExp(r'\s*\n\s*'), ' ');
+        if (cleaned.isNotEmpty) {
+          spans.add(TextSpan(text: cleaned));
+        }
+      } else if (node is md.Element) {
+        switch (node.tag) {
+          case 'p':
+            if (spans.isNotEmpty) {
+              spans.add(const TextSpan(text: ' '));
+            }
+            spans.addAll(
+              _buildFootnoteItemSpans(
+                node.children,
+                baseStyle: baseStyle,
+                linkColor: linkColor,
+                codeBg: codeBg,
+                footnoteFontSize: footnoteFontSize,
+              ),
+            );
+          case 'code':
+            spans.add(
+              TextSpan(
+                text: node.textContent,
+                style: GoogleFonts.firaCode(
+                  fontSize: footnoteFontSize * 0.92,
+                  backgroundColor: codeBg,
+                  color: baseStyle.color,
+                ),
+              ),
+            );
+          case 'strong':
+            spans.add(
+              TextSpan(
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                children: _buildFootnoteItemSpans(
+                  node.children,
+                  baseStyle: baseStyle,
+                  linkColor: linkColor,
+                  codeBg: codeBg,
+                  footnoteFontSize: footnoteFontSize,
+                ),
+              ),
+            );
+          case 'em':
+            spans.add(
+              TextSpan(
+                style: const TextStyle(fontStyle: FontStyle.italic),
+                children: _buildFootnoteItemSpans(
+                  node.children,
+                  baseStyle: baseStyle,
+                  linkColor: linkColor,
+                  codeBg: codeBg,
+                  footnoteFontSize: footnoteFontSize,
+                ),
+              ),
+            );
+          case 'del':
+            spans.add(
+              TextSpan(
+                style: const TextStyle(decoration: TextDecoration.lineThrough),
+                children: _buildFootnoteItemSpans(
+                  node.children,
+                  baseStyle: baseStyle,
+                  linkColor: linkColor,
+                  codeBg: codeBg,
+                  footnoteFontSize: footnoteFontSize,
+                ),
+              ),
+            );
+          case 'a':
+            final href = node.attributes['href'];
+            final title = node.attributes['title'] ?? '';
+            final isBackref = node.attributes['class'] == 'footnote-backref';
+            if (isBackref) {
+              // Replace '\u21a9' with '\u21a9\uFE0E' so macOS renders a crisp
+              // typographic return arrow instead of the 3D color emoji.
+              final rawLabel = node.textContent.replaceAll(
+                '\u21a9',
+                '\u21a9\uFE0E',
+              );
+              spans.add(
+                TextSpan(
+                  text: rawLabel,
+                  style: TextStyle(
+                    color: linkColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => onTapLink(rawLabel, href, title),
+                ),
+              );
+            } else {
+              final linkText = node.textContent;
+              spans.add(
+                TextSpan(
+                  text: linkText,
+                  style: TextStyle(
+                    color: linkColor,
+                    decoration: TextDecoration.underline,
+                    decorationColor: linkColor,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => onTapLink(linkText, href, title),
+                ),
+              );
+            }
+          default:
+            if (node.children != null && node.children!.isNotEmpty) {
+              spans.addAll(
+                _buildFootnoteItemSpans(
+                  node.children,
+                  baseStyle: baseStyle,
+                  linkColor: linkColor,
+                  codeBg: codeBg,
+                  footnoteFontSize: footnoteFontSize,
+                ),
+              );
+            } else if (node.textContent.isNotEmpty) {
+              spans.add(TextSpan(text: node.textContent));
+            }
+        }
+      }
+    }
+    return spans;
   }
 }

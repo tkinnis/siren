@@ -46,6 +46,8 @@ siren/
 ├── docs/              # User documentation and markdown guides
 │   └── screenshots/   # Verification screenshots (NEVER bundled into app assets)
 └── tool/              # Native helper utilities and developer automation tools
+    ├── SCREENSHOTS.md         # Release screenshot inventory & checklist
+    └── capture_screenshots.sh # Automated UI-driven screenshot capture script
 ```
 
 ---
@@ -96,6 +98,12 @@ Before completing any task or proposing changes, you must run and pass the follo
    dart format lib test
    ```
    Ensure all Dart code adheres to standard formatting.
+
+4. **Release Screenshots** (when cutting or updating a release):
+   ```bash
+   ./tool/capture_screenshots.sh
+   ```
+   See [`tool/SCREENSHOTS.md`](tool/SCREENSHOTS.md) for the complete inventory of screenshots in `docs/screenshots/`. If new visual features are added, add their capture steps to `tool/capture_screenshots.sh` and `tool/SCREENSHOTS.md` without adding screenshot-only flags to `lib/`.
 
 ---
 

@@ -231,10 +231,38 @@ Siren supports native footnotes[^1].
       find.textContaining('Architecture Spec', findRichText: true),
       findsOneWidget,
     );
+    // List tags render as individual pill badges
+    expect(find.text('flutter'), findsOneWidget);
+    expect(find.text('markdown'), findsOneWidget);
+    expect(find.text('[1]'), findsOneWidget);
+    final fnBadge = tester.widget<Text>(find.text('[1]'));
+    expect(fnBadge.style?.decoration, TextDecoration.underline);
+    expect(fnBadge.style?.color, SirenTheme.light.colorScheme.primary);
+    expect(find.byKey(const Key('footnotes_section')), findsOneWidget);
     expect(
       find.textContaining('Footnote explanation text.', findRichText: true),
       findsOneWidget,
     );
+    await tester.tap(find.text('[1]'));
+    await tester.pumpAndSettle();
+
+    // Toggling showFrontmatter off hides the frontmatter card without leaking raw YAML
+    appState.setShowFrontmatter(false);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('yaml_frontmatter_card')), findsNothing);
+    expect(find.text('FRONTMATTER'), findsNothing);
+    // Ensure no empty blockquote DecoratedBox stub is left behind
+    final blockquoteStubs = tester.widgetList<DecoratedBox>(
+      find.byWidgetPredicate((widget) {
+        if (widget is DecoratedBox && widget.decoration is BoxDecoration) {
+          final box = widget.decoration as BoxDecoration;
+          return box.border is Border &&
+              (box.border! as Border).left.width == 4.0;
+        }
+        return false;
+      }),
+    );
+    expect(blockquoteStubs, isEmpty);
   });
 
   testWidgets('ImageZoomDialog supports zoom in, zoom out, reset, and close', (
@@ -287,6 +315,15 @@ class TestAppState extends ChangeNotifier implements AppState {
 
   @override
   double fontSize = 14.0;
+
+  @override
+  bool showFrontmatter = true;
+
+  @override
+  void setShowFrontmatter(bool show) {
+    showFrontmatter = show;
+    notifyListeners();
+  }
 
   @override
   String? currentFilePath;

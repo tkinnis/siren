@@ -40,6 +40,9 @@ class _TestAppState extends ChangeNotifier implements AppState {
   double fontSize = 14.0;
 
   @override
+  bool showFrontmatter = true;
+
+  @override
   String? currentFilePath = 'test.md';
 
   @override

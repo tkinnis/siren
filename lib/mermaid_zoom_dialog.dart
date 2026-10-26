@@ -6,9 +6,8 @@ import 'dart:ui' as ui;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:vector_graphics/vector_graphics.dart';
+import 'package:vector_graphics/vector_graphics_compat.dart';
 
 import 'mermaid_render_service.dart';
 import 'theme.dart';
@@ -43,11 +42,12 @@ class MermaidGraphic extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (result) {
       MermaidSvgRender(:final compiledBytes, :final semanticsLabel) =>
-        VectorGraphic(
+        createCompatVectorGraphic(
           loader: CompiledMermaidBytesLoader(compiledBytes),
           width: size.width,
           height: size.height,
           fit: BoxFit.contain,
+          strategy: RenderingStrategy.picture,
           semanticsLabel: semanticsLabel ?? 'Mermaid diagram',
         ),
       MermaidRasterRender(:final pngBytes, :final semanticsLabel) =>
@@ -106,7 +106,6 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
   final TransformationController _transformationController =
       TransformationController();
   final GlobalKey _viewportKey = GlobalKey();
-  final GlobalKey _graphicBoundaryKey = GlobalKey();
   double _currentScale = 1.0;
   bool _isDragging = false;
   bool _copied = false;
@@ -209,18 +208,51 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
     if (widget.result case MermaidRasterRender(:final pngBytes)) {
       return pngBytes;
     }
-    try {
-      final boundary = _graphicBoundaryKey.currentContext?.findRenderObject();
-      if (boundary is RenderRepaintBoundary) {
-        final image = await boundary.toImage(pixelRatio: 3.0);
-        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-        image.dispose();
-        if (byteData != null) {
-          return byteData.buffer.asUint8List();
+    if (widget.result case MermaidSvgRender(:final compiledBytes)) {
+      try {
+        final pictureInfo = await vg.loadPicture(
+          CompiledMermaidBytesLoader(compiledBytes),
+          null,
+        );
+        try {
+          const double scaleFactor = 3.0;
+          final int targetWidth = math.max(
+            1,
+            (pictureInfo.size.width * scaleFactor).round(),
+          );
+          final int targetHeight = math.max(
+            1,
+            (pictureInfo.size.height * scaleFactor).round(),
+          );
+          final recorder = ui.PictureRecorder();
+          final canvas = ui.Canvas(recorder);
+          canvas.scale(scaleFactor);
+          canvas.drawPicture(pictureInfo.picture);
+          final scaledPicture = recorder.endRecording();
+          try {
+            final image = await scaledPicture.toImage(
+              targetWidth,
+              targetHeight,
+            );
+            try {
+              final byteData = await image.toByteData(
+                format: ui.ImageByteFormat.png,
+              );
+              if (byteData != null) {
+                return byteData.buffer.asUint8List();
+              }
+            } finally {
+              image.dispose();
+            }
+          } finally {
+            scaledPicture.dispose();
+          }
+        } finally {
+          pictureInfo.picture.dispose();
         }
+      } catch (e) {
+        debugPrint('Failed to capture Mermaid PNG bytes: $e');
       }
-    } catch (e) {
-      debugPrint('Failed to capture Mermaid PNG bytes: $e');
     }
     return null;
   }
@@ -543,14 +575,11 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
                               padding: const EdgeInsets.all(32.0),
                               child: FittedBox(
                                 fit: BoxFit.contain,
-                                child: RepaintBoundary(
-                                  key: _graphicBoundaryKey,
-                                  child: SizedBox.fromSize(
+                                child: SizedBox.fromSize(
+                                  size: _logicalSize,
+                                  child: MermaidGraphic(
+                                    result: widget.result,
                                     size: _logicalSize,
-                                    child: MermaidGraphic(
-                                      result: widget.result,
-                                      size: _logicalSize,
-                                    ),
                                   ),
                                 ),
                               ),

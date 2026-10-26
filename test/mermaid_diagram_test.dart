@@ -11,7 +11,7 @@ import 'package:siren/mermaid_render_service.dart';
 import 'package:siren/mermaid_zoom_dialog.dart';
 import 'package:siren/rendered_view.dart';
 import 'package:siren/theme.dart';
-import 'package:vector_graphics/vector_graphics.dart';
+import 'package:vector_graphics/vector_graphics_compat.dart';
 import 'package:vector_graphics_compiler/vector_graphics_compiler.dart' as vg;
 
 const String _sampleSvg = '''
@@ -33,6 +33,9 @@ class _FakeAppState extends ChangeNotifier implements AppState {
 
   @override
   double fontSize = 14.0;
+
+  @override
+  bool showFrontmatter = true;
 
   @override
   String? currentFilePath = 'diagram.md';
@@ -215,6 +218,10 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(VectorGraphic), findsOneWidget);
+        final vgWidget = tester.widget<VectorGraphic>(
+          find.byType(VectorGraphic),
+        );
+        expect(vgWidget.strategy, RenderingStrategy.picture);
 
         final scaledBox14 = tester.widget<SizedBox>(
           find.byKey(const Key('mermaid_scaled_box')),
