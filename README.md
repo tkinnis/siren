@@ -192,6 +192,9 @@ flutter analyze
 
 ---
 
-## License
+## Author & License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+Created and maintained by **[Tony Kinnis](https://github.com/tkinnis)** (`@tkinnis`).
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+

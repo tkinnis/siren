@@ -47,4 +47,9 @@ When launching Siren, you can open any folder or Markdown file:
 ---
 
 ## Next Steps
-Continue reading the **[Features Overview](features.md)** to learn more about Siren's capabilities.
+Continue reading the **[Features Overview](features.md)** to learn more about Siren's capabilities, or visit the **[Siren GitHub Repository](https://github.com/tkinnis/siren)** to download the latest macOS release.
+
+---
+
+*Siren is an open-source macOS Markdown viewer created by [Tony Kinnis](https://github.com/tkinnis).*
+

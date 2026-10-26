@@ -1,5 +1,7 @@
 name: siren
-description: "A sleek, native desktop Markdown viewer with real-time preview, LaTeX, Mermaid, and fast workspace navigation."
+description: "Siren — A sleek, native macOS desktop Markdown viewer by Tony Kinnis with real-time preview, LaTeX math, offline vector Mermaid diagrams, YAML frontmatter, and Ripgrep workspace search."
+homepage: https://tkinnis.github.io/siren/
+repository: https://github.com/tkinnis/siren
 publish_to: 'none'
 version: 0.3.0
 
