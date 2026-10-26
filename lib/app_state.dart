@@ -479,8 +479,15 @@ class AppState extends ChangeNotifier {
 
     if (savedPaths.isEmpty) {
       notifyListeners();
+      try {
+        await _channel.invokeMethod('flutterReady');
+      } catch (_) {}
       return;
     }
+
+    final hadExternallyOpenedFile =
+        _openFilePaths.isNotEmpty && _activeTabIndex >= 0;
+    final currentActivePath = currentFilePath;
 
     try {
       // Run file loading and decoding in a separate isolate.
@@ -491,10 +498,16 @@ class AppState extends ChangeNotifier {
       // Apply results to state on main thread
       for (final filePath in savedPaths) {
         if (loadedFiles.containsKey(filePath)) {
-          final data = loadedFiles[filePath]!;
-          _fileContents[filePath] = data.raw;
-          _processedContents[filePath] = data.processed;
-          _openFilePaths.add(filePath);
+          final canonical = path.canonicalize(filePath);
+          final alreadyOpen = _openFilePaths.any(
+            (p) => path.canonicalize(p) == canonical,
+          );
+          if (!alreadyOpen) {
+            final data = loadedFiles[filePath]!;
+            _fileContents[filePath] = data.raw;
+            _processedContents[filePath] = data.processed;
+            _openFilePaths.add(filePath);
+          }
         }
       }
 
@@ -513,8 +526,16 @@ class AppState extends ChangeNotifier {
       debugPrint('Error loading files in background: $e');
     }
 
-    // Restore active tab
-    if (savedActiveIndex >= 0 && savedActiveIndex < _openFilePaths.length) {
+    // Restore active tab unless an external file was already opened on launch
+    if (hadExternallyOpenedFile && currentActivePath != null) {
+      final idx = _openFilePaths.indexWhere(
+        (p) => path.canonicalize(p) == path.canonicalize(currentActivePath),
+      );
+      if (idx != -1) {
+        _activeTabIndex = idx;
+      }
+    } else if (savedActiveIndex >= 0 &&
+        savedActiveIndex < _openFilePaths.length) {
       _activeTabIndex = savedActiveIndex;
     } else if (_openFilePaths.isNotEmpty) {
       _activeTabIndex = 0;
@@ -528,6 +549,9 @@ class AppState extends ChangeNotifier {
     }
 
     notifyListeners();
+    try {
+      await _channel.invokeMethod('flutterReady');
+    } catch (_) {}
   }
 
   /// Static method to run in the isolate. Reads multiple files in parallel.
@@ -741,8 +765,12 @@ class AppState extends ChangeNotifier {
   void _initChannel() {
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'openFile') {
-        final String path = call.arguments as String;
-        await openFile(path);
+        final String targetPath = call.arguments as String;
+        if (Directory(targetPath).existsSync()) {
+          await setExplorerRootPath(targetPath);
+        } else {
+          await openFileAndSetDirectory(targetPath);
+        }
         await windowManager.show();
         await windowManager.focus();
       }
