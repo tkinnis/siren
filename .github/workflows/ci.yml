@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Prepare bundled ripgrep binary
+        run: dart run hook/build.dart
+
       - name: Verify code formatting
         run: dart format --output=none --set-exit-if-changed lib test
 
