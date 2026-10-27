@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a Security Vulnerability
+    url: https://github.com/tkinnis/siren/security/advisories/new
+    about: Please report security vulnerabilities privately rather than opening a public issue.
+  - name: Siren Documentation & Guides
+    url: https://github.com/tkinnis/siren/blob/main/docs/index.md
+    about: Browse user guides, keyboard shortcuts, and Markdown rendering documentation.

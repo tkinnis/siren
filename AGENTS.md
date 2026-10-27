@@ -107,8 +107,12 @@ Before completing any task or proposing changes, you must run and pass the follo
 
 ---
 
-## 5. Commit & Pull Request Guidelines
+## 5. Issue Tracking, Commit, Pull Request & Release Guidelines
 
+* **Issue-First Tracking Workflow**:
+  * All features, bug fixes, and architectural tasks must be tracked via [GitHub Issues](https://github.com/tkinnis/siren/issues) (`gh issue list`, `gh issue view <id>`, `gh issue create`).
+  * Before implementing a new feature or bug fix, check for an existing issue or create one with appropriate labels (`bug`, `enhancement`, `documentation`, `accessibility`, `security`, `performance`).
+  * Reference the issue in commit messages and pull requests using `Closes #<id>` or `Refs #<id>`.
 * Follow the **Conventional Commits** specification:
   * `feat(scope): ...` for new capabilities.
   * `fix(scope): ...` for bug fixes.
@@ -116,3 +120,8 @@ Before completing any task or proposing changes, you must run and pass the follo
   * `refactor(scope): ...` for code structural changes without behavioral changes.
   * `test(scope): ...` for adding or improving test coverage.
 * Write concise, descriptive commit messages describing the rationale and outcome.
+* **Release Naming Convention**:
+  * **Tag**: `v<version>` (e.g., `v0.4.0`).
+  * **GitHub Release Title**: `Siren v<version>` (e.g., `Siren v0.4.0`). Never omit `Siren` or append platform suffixes like `(macOS)` to the release title.
+  * **Release Asset Archive**: `Siren-v<version>-macos.zip` (e.g., `Siren-v0.4.0-macos.zip`).
+

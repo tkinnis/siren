@@ -25,7 +25,7 @@ If applicable, attach screenshots or paste the minimal Markdown snippet that tri
 **Desktop Environment:**
 - OS: macOS (e.g., macOS 15.0 Sequoia, macOS 14.5 Sonoma)
 - Architecture: Apple Silicon (M1/M2/M3/M4) or Intel
-- Siren Version: (e.g. v0.1.0)
+- Siren Version: (e.g. v0.4.0)
 
 **Additional Context**
 Add any other context about the problem here.
