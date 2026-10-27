@@ -33,8 +33,9 @@ All bug fixes, feature additions, and architectural improvements are tracked thr
 git clone https://github.com/tkinnis/siren.git
 cd siren
 
-# Fetch Dart/Flutter dependencies
+# Fetch Dart/Flutter dependencies and bundled ripgrep binary
 flutter pub get
+dart run hook/build.dart
 
 # Run Siren in debug mode on macOS
 flutter run -d macos
