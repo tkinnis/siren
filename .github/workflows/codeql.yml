@@ -32,8 +32,6 @@ jobs:
         include:
           - language: actions
             build-mode: none
-          - language: javascript-typescript
-            build-mode: none
 
     steps:
       - name: Checkout repository
@@ -44,9 +42,6 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          config: |
-            paths-ignore:
-              - assets/mermaid/**
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
