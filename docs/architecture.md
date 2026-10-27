@@ -1,7 +1,7 @@
 ---
 title: Siren Architecture & Development
 category: Engineering Guide
-version: 0.3.0
+version: 0.4.0
 tags: [architecture, flutter, isolates, ripgrep, mermaid]
 ---
 
@@ -46,10 +46,11 @@ graph TD
 - Monitors file system modification and removal events.
 - Employs debounce timers and delay strategies to handle macOS atomic saves (where editors write to a temporary file, delete the original, and rename).
 
-### Offscreen Mermaid Vector Engine (`lib/mermaid_render_service.dart`)
+### Offscreen Mermaid Vector & SVG Raster Engine (`lib/mermaid_render_service.dart`, `lib/markdown_extensions.dart`)
 - Uses a single shared headless `WebViewController` loaded with offline `mermaid.min.js`, `mermaid-layout-elk.min.js` (`@mermaid-js/layout-elk` with `look: 'neo'`), and `mermaid_page.js` assets.
 - Flattens computed SVG styles, markers, normalized `stroke-dasharray` patterns, and `<foreignObject>` labels into standalone SVG XML and compiles them into binary `vector_graphics` bytecode (`VectorGraphic`), with automatic high-DPI PNG fallback.
 - Caches compiled diagrams in an LRU memory cache (`(code, isDarkMode)`) for instant scrolling, proportional font scaling, interactive zoom/pan inspection, macOS clipboard PNG copy, and SVG/PNG file export (`lib/mermaid_zoom_dialog.dart`).
+- Renders complex SVG badges (`img.shields.io` with nested base64 `<image>` logos and `transform="scale(.1)"` typography) and local `.svg` images through an offscreen `3x` Retina WebKit canvas rasterizer with in-memory LRU caching.
 
 ---
 
@@ -68,7 +69,8 @@ siren/
 │   ├── global_search_view.dart    # Workspace full-text search
 │   ├── home_screen.dart           # Main window scaffold, menus & shortcuts
 │   ├── image_zoom_dialog.dart     # Interactive image lightbox viewer
-│   ├── markdown_extensions.dart   # YAML frontmatter, GitHub alerts, math, & syntax parsers
+│   ├── markdown_extensions.dart   # YAML frontmatter, GFM HTML, GitHub alerts, math & SVG rasterizer
+│   ├── markdown_processor.dart    # HTML comment stripping & background heading anchor injection
 │   ├── mermaid_diagram.dart       # Scaled Mermaid vector diagram widget
 │   ├── mermaid_render_service.dart# Offscreen ELK SVG/vector compilation engine
 │   ├── mermaid_zoom_dialog.dart   # Interactive zoom, pan & export diagram modal

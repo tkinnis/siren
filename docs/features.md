@@ -1,7 +1,7 @@
 ---
 title: Siren Features Overview
 category: User Manual
-version: 0.3.0
+version: 0.4.0
 tags: [features, preview, mermaid, search, navigation]
 ---
 
@@ -21,6 +21,7 @@ This guide provides a detailed walkthrough of all the features and capabilities 
 | | **YAML Frontmatter & Footnotes** | Structured metadata card with pill badges for leading `---` YAML frontmatter (toggleable in Settings) and GitHub-styled hyperlinked footnotes (`[^1]`) | Automatic / `Cmd + ,` |
 | | **Image Lightbox** | Click any local or network Markdown image to inspect in an interactive zoom & pan lightbox | Click image |
 | | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting and one-click copy | Fenced code blocks |
+| | **Embedded GFM HTML** | Native rendering for `<kbd>`, `<br>`, `<details>`/`<summary>`, `<table>`, `<ul>`/`<ol>`/`<dl>`, `<picture>` dark/light media, sized `<img>` & `3x` Retina SVG badges, `<a href>`, `<p align="center">`, `<sub>`/`<sup>`/`<mark>`/`<abbr>`, and hidden `<!-- comments -->` | Automatic |
 | | **Extended Formatting** | Text highlighting (`==text==`), subscript (`~sub~`), superscript (`^sup^`), tables, task lists | Extended syntax |
 | **Viewer Modes** | **Rendered Preview** | Rich typography, interactive links, and diagram rendering | `Cmd + E` (Toggle) |
 | | **Raw Source View** | Monospace raw Markdown inspection with aligned line number gutter | `Cmd + E` (Toggle) |
@@ -45,7 +46,7 @@ Siren lets you inspect Markdown files in two distinct modes, toggleable at any t
 
 ### Rendered Mode
 - Clean, typography-focused Markdown rendering compliant with CommonMark.
-- Extended Markdown syntax support including **GitHub Alerts**, **LaTeX Math**, **YAML Frontmatter**, **Footnotes (`[^1]`)**, and **Mermaid Diagrams**.
+- Extended Markdown syntax support including **GitHub Alerts**, **LaTeX Math**, **YAML Frontmatter**, **Footnotes (`[^1]`)**, **Embedded GFM HTML** (`<kbd>`, `<details>`/`<summary>`, `<table>`, `<dl>`, `<picture>` dark/light media, sized `<img>` & `3x` Retina SVG badges, `<p align="center">`, `<br>`), and **Mermaid Diagrams**.
 - **Offscreen Vector Mermaid Diagrams**: Diagrams are laid out offline with the **ELK** layout engine (`look: 'neo'`) and compiled into native Flutter vector graphics (`vector_graphics`), scaling proportionally with document font zoom (`+` / `-`, `Cmd+=` / `Cmd+-` / `Cmd+0`) and supporting an interactive **Zoom & Pan Inspector** with **Copy Image (PNG)** and **Export (SVG / PNG)** when clicked.
 - **Image Lightbox**: Click any rendered local or network image to open it in an interactive zoom and pan lightbox modal.
 - Full support for interactive clickable relative links, images, tables, and task lists.

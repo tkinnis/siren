@@ -3,7 +3,7 @@ description: "A sleek, native macOS desktop Markdown viewer with real-time previ
 homepage: https://tkinnis.github.io/siren/
 repository: https://github.com/tkinnis/siren
 publish_to: 'none'
-version: 0.3.0
+version: 0.4.0
 
 environment:
   sdk: ^3.13.0

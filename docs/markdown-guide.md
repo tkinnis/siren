@@ -1,8 +1,8 @@
 ---
 title: Markdown Syntax Guide
 category: User Manual
-version: 0.3.0
-tags: [commonmark, gfm, latex, mermaid, frontmatter, footnotes]
+version: 0.4.0
+tags: [commonmark, gfm, html, latex, mermaid, frontmatter, footnotes]
 ---
 
 # Markdown Syntax Guide
@@ -259,3 +259,172 @@ Check out the [Features Guide](features.md) or [Keyboard Shortcuts](shortcuts.md
 Check out the [Features Guide](features.md) or [Keyboard Shortcuts](shortcuts.md).
 
 If the target document is already open in a tab, Siren switches directly to that tab.
+
+---
+
+## 7. Embedded HTML (GFM)
+
+Siren natively parses and renders the full GitHub Flavored Markdown HTML tag set used in project `README.md` files and technical specifications.
+
+### Keyboard Keycaps (`<kbd>`)
+Render native keycap badges with `<kbd>`:
+```html
+Press <kbd>Cmd</kbd> + <kbd>P</kbd> for Quick Open, or <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd> for Workspace Search.
+```
+Press <kbd>Cmd</kbd> + <kbd>P</kbd> for Quick Open, or <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd> for Workspace Search.
+
+### Inline HTML Typography (`<sub>`, `<sup>`, `<mark>`, `<u>`, `<del>`, `<abbr>`, `<small>`, `<q>`, `<samp>`, `<var>`, `<br>`)
+```html
+Water is H<sub>2</sub>O, $2^{10}$ is 2<sup>10</sup> = 1024, <mark>highlighted terms</mark>, <u>underlined text</u>, <del>deprecated text</del>, <abbr title="GitHub Flavored Markdown">GFM</abbr>, <small>fine print</small>, <q>quoted text</q>, <samp>output</samp>, and <var>x</var>.
+```
+Water is H<sub>2</sub>O, $2^{10}$ is 2<sup>10</sup> = 1024, <mark>highlighted terms</mark>, <u>underlined text</u>, <del>deprecated text</del>, <abbr title="GitHub Flavored Markdown">GFM</abbr>, <small>fine print</small>, <q>quoted text</q>, <samp>output</samp>, and <var>x</var>.
+
+Use `<br>` inside Markdown table cells for multi-line entries:
+
+| Area | Shortcuts |
+| :--- | :--- |
+| **Navigation** | <kbd>Cmd</kbd> + <kbd>[</kbd> Back<br><kbd>Cmd</kbd> + <kbd>]</kbd> Forward |
+| **View Modes** | <kbd>Cmd</kbd> + <kbd>E</kbd> Toggle Preview / Raw<br><kbd>Cmd</kbd> + <kbd>B</kbd> Toggle Sidebar |
+
+### Centered Blocks, Sized `<img>`, SVG Badges, `<picture>` Theme Switching & `<a>` Links
+Align hero sections and size images using `<p align="center">`, `<div align="center">`, `<h1 align="center">`, `<img width="..." height="...">`, `<picture><source media="(prefers-color-scheme: dark)" ...>`, `<a href="...">`, and SVG badges (automatically detected via HTTP `Content-Type` / payload inspection and rendered at `3x` Retina resolution):
+
+```html
+<a href="https://flutter.dev/">
+  <h1 align="center">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://docs.flutter.dev/logo_dark.png">
+      <img alt="Flutter" src="https://docs.flutter.dev/logo.png">
+    </picture>
+  </h1>
+</a>
+
+<p align="center">
+  <img src="../assets/images/app_icon.png" alt="Siren Logo" width="72" height="72" />
+</p>
+
+<p align="center">
+  <strong>Centered HTML block with sized local assets, SVG badges, and clickable links.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Flutter-3.47+-02569B?logo=flutter&logoColor=white" alt="Flutter" />
+  <img src="https://img.shields.io/badge/Platform-macOS-000000?logo=apple&logoColor=white" alt="macOS" />
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
+</p>
+```
+
+<a href="https://flutter.dev/">
+  <h1 align="center">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://docs.flutter.dev/logo_dark.png">
+      <img alt="Flutter" src="https://docs.flutter.dev/logo.png">
+    </picture>
+  </h1>
+</a>
+
+<p align="center">
+  <img src="../assets/images/app_icon.png" alt="Siren Logo" width="72" height="72" />
+</p>
+
+<p align="center">
+  <strong>Centered HTML block with sized local assets, SVG badges, and clickable links.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Flutter-3.47+-02569B?logo=flutter&logoColor=white" alt="Flutter" />
+  <img src="https://img.shields.io/badge/Platform-macOS-000000?logo=apple&logoColor=white" alt="macOS" />
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
+</p>
+
+### HTML Tables (`<table>`), Lists (`<ul>`, `<ol>`), and Description Lists (`<dl>`)
+Raw HTML tables (`<table>`, `<thead>`, `<tbody>`, `<tr>`, `<th>`, `<td>`, `<caption>`) and description lists (`<dl>`, `<dt>`, `<dd>`) render natively alongside Markdown content:
+
+```html
+<table>
+  <tr>
+    <th>Element</th>
+    <th align="center">Category</th>
+    <th>Example</th>
+  </tr>
+  <tr>
+    <td><code>&lt;kbd&gt;</code></td>
+    <td align="center">Inline</td>
+    <td><kbd>Cmd</kbd> + <kbd>P</kbd></td>
+  </tr>
+  <tr>
+    <td><code>&lt;details&gt;</code></td>
+    <td align="center">Block</td>
+    <td>Collapsible disclosure card</td>
+  </tr>
+</table>
+
+<dl>
+  <dt>Single-Tab Invariant</dt>
+  <dd>Opening an already-open document focuses its existing tab instead of duplicating it.</dd>
+  <dt>Offscreen Vector Engine</dt>
+  <dd>Compiles Mermaid v11 diagrams and SVG badges at Retina resolution without blocking the UI isolate.</dd>
+</dl>
+```
+
+<table>
+  <tr>
+    <th>Element</th>
+    <th align="center">Category</th>
+    <th>Example</th>
+  </tr>
+  <tr>
+    <td><code>&lt;kbd&gt;</code></td>
+    <td align="center">Inline</td>
+    <td><kbd>Cmd</kbd> + <kbd>P</kbd></td>
+  </tr>
+  <tr>
+    <td><code>&lt;details&gt;</code></td>
+    <td align="center">Block</td>
+    <td>Collapsible disclosure card</td>
+  </tr>
+</table>
+
+<dl>
+  <dt>Single-Tab Invariant</dt>
+  <dd>Opening an already-open document focuses its existing tab instead of duplicating it.</dd>
+  <dt>Offscreen Vector Engine</dt>
+  <dd>Compiles Mermaid v11 diagrams and SVG badges at Retina resolution without blocking the UI isolate.</dd>
+</dl>
+
+### Collapsible Disclosure Sections (`<details>` & `<summary>`)
+Create interactive expandable sections using `<details>` and `<summary>` (add `open` to start expanded):
+
+```html
+<details open>
+  <summary>Expanded by Default (Click to Toggle)</summary>
+
+  Nested **Markdown**, `inline code`, and lists render inside `<details>`:
+  - Supports `open` attribute
+  - Renders nested Markdown blocks
+</details>
+
+<details>
+  <summary>Collapsed Troubleshooting Notes</summary>
+
+  Use `<details>` blocks to keep long logs or secondary notes tidy until needed.
+</details>
+```
+
+<details open>
+  <summary>Expanded by Default (Click to Toggle)</summary>
+
+  Nested **Markdown**, `inline code`, and lists render inside `<details>`:
+  - Supports `open` attribute
+  - Renders nested Markdown blocks
+</details>
+
+<details>
+  <summary>Collapsed Troubleshooting Notes</summary>
+
+  Use `<details>` blocks to keep long logs or secondary notes tidy until needed.
+</details>
+
+### HTML Comments (`<!-- ... -->`)
+HTML comments (`<!-- hidden note -->`) are automatically stripped in Rendered Preview while remaining visible in **Raw View** (<kbd>Cmd</kbd> + <kbd>E</kbd>) and inside fenced/inline code blocks.
+<!-- This HTML comment is hidden in Rendered View but visible in Raw View -->

@@ -13,7 +13,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 
 import 'app_state.dart';
-import 'image_zoom_dialog.dart';
 import 'mermaid_diagram.dart';
 import 'markdown_extensions.dart';
 import 'markdown_processor.dart';
@@ -173,9 +172,276 @@ class _RenderedViewState extends State<RenderedView> {
     final isDark = theme.brightness == Brightness.dark;
     final sirenColors = theme.extension<SirenColors>()!;
     final basePath = p.dirname(widget.filePath);
+    final explorerRootPath = context.select<AppState, String?>((state) {
+      try {
+        return state.explorerRootPath;
+      } on NoSuchMethodError {
+        return null;
+      }
+    });
 
     void onTapLink(String text, String? href, String title) =>
         _handleTapLink(text, href, title);
+
+    final htmlImageBuilder = HtmlImageBuilder(
+      basePath: basePath,
+      explorerRootPath: explorerRootPath,
+      onTapLink: onTapLink,
+    );
+
+    final extensionSet = md.ExtensionSet(
+      [
+        YamlFrontmatterBlockSyntax(enabled: showFrontmatter),
+        const AlertBlockSyntax(),
+        const HtmlCommentBlockSyntax(),
+        const HtmlHrBlockSyntax(),
+        const HtmlDetailsBlockSyntax(),
+        const HtmlTableBlockSyntax(),
+        const HtmlListBlockSyntax(),
+        const HtmlDlBlockSyntax(),
+        const HtmlContainerBlockSyntax(),
+        ...md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+      ],
+      [
+        HtmlCommentInlineSyntax(),
+        HtmlBrInlineSyntax(),
+        HtmlAnchorInlineSyntax(),
+        HtmlPictureInlineSyntax(),
+        HtmlImgInlineSyntax(),
+        HtmlInlineTagSyntax(),
+        ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
+        AnchorSyntax(),
+        LatexSyntax(),
+        HighlightSyntax(),
+        SubscriptSyntax(),
+        SuperscriptSyntax(),
+      ],
+    );
+
+    final styleSheet = MarkdownStyleSheet.fromTheme(theme).copyWith(
+      blockSpacing: 12.0, // --spacing-md
+      // Typography
+      p: TextStyle(
+        fontSize: fontSize,
+        height: 1.6,
+        color: theme.colorScheme.onSurface,
+      ),
+      code: GoogleFonts.firaCode(backgroundColor: sirenColors.codeBg),
+      strong: TextStyle(
+        fontSize: fontSize,
+        fontWeight: FontWeight.bold,
+        color: theme.colorScheme.onSurface,
+      ),
+      em: TextStyle(
+        fontSize: fontSize,
+        fontStyle: FontStyle.italic,
+        color: theme.colorScheme.onSurface,
+      ),
+      del: TextStyle(
+        fontSize: fontSize,
+        decoration: TextDecoration.lineThrough,
+        color: theme.colorScheme.onSurface,
+      ),
+      a: TextStyle(
+        fontSize: fontSize,
+        color: theme.colorScheme.primary, // CSS uses --color-primary (Green)
+        decoration: TextDecoration.underline,
+      ),
+
+      // Headings
+      // Workaround: flutter_markdown leaks the H1/H2 style to subsequent elements
+      // when a custom builder is used. We set the stylesheet style to match
+      // the body text (p) so that the leak is invisible. The actual styling
+      // is applied by the HeadingElementBuilder.
+      h1: TextStyle(
+        fontSize: fontSize, // Matching p style
+        height: 1.6,
+        color: theme.colorScheme.onSurface,
+      ),
+      h2: TextStyle(
+        fontSize: fontSize, // Matching p style
+        height: 1.6,
+        color: theme.colorScheme.onSurface,
+      ),
+      h3: TextStyle(
+        fontSize: fontSize * 1.5,
+        fontWeight: FontWeight.w600,
+        height: 1.25,
+        color: sirenColors.headingColor,
+      ),
+      h4: TextStyle(
+        fontSize: fontSize * 1.25,
+        fontWeight: FontWeight.w600,
+        height: 1.25,
+        color: sirenColors.headingColor,
+      ),
+      h5: TextStyle(
+        fontSize: fontSize * 1.0,
+        fontWeight: FontWeight.w600,
+        height: 1.25,
+        letterSpacing: 0.05,
+        color: sirenColors.headingColor, // Or uppercase logic if needed
+      ),
+      h6: TextStyle(
+        fontSize: fontSize * 0.875,
+        fontWeight: FontWeight.w600,
+        height: 1.25,
+        color: theme.colorScheme.onSurfaceVariant, // Muted
+      ),
+
+      // Blockquotes
+      blockquote: TextStyle(
+        fontSize: fontSize,
+        color: theme.colorScheme.onSurfaceVariant, // Muted
+      ),
+      blockquoteDecoration: BoxDecoration(
+        color: sirenColors.sidebarBg, // --bg-surface-container
+        border: Border(
+          left: BorderSide(
+            color:
+                sirenColors.quoteBorder ??
+                theme.colorScheme.primary, // --color-quote-border
+            width: 4.0,
+          ),
+        ),
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(4),
+          bottomRight: Radius.circular(4),
+        ),
+      ),
+      blockquotePadding: const EdgeInsets.symmetric(
+        vertical: 8.0,
+        horizontal: 16.0,
+      ),
+
+      // Code block decoration (wrapper around HighlightView)
+      // Disable default decoration as it is handled by the custom builder
+      codeblockDecoration: const BoxDecoration(color: Colors.transparent),
+
+      // Tables
+      tableBody: TextStyle(fontSize: fontSize),
+      tableHead: TextStyle(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w600,
+        color: sirenColors.headingColor,
+        backgroundColor:
+            sirenColors.sidebarBg, // Align with CSS --bg-surface-container
+      ),
+      tableBorder: TableBorder.all(color: sirenColors.divider!, width: 1),
+      tableHeadAlign: TextAlign.left,
+      tablePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+    );
+
+    Widget buildMarkdownBodyWidget(
+      BuildContext ctx,
+      String markdownData, {
+      Key? bodyKey,
+    }) {
+      Widget renderNested(BuildContext nestedCtx, String nestedMarkdown) =>
+          buildMarkdownBodyWidget(nestedCtx, nestedMarkdown);
+
+      late final Map<String, MarkdownElementBuilder> builders;
+      builders = {
+        'frontmatter': FrontmatterBuilder(
+          ctx,
+          showFrontmatter: showFrontmatter,
+        ),
+        'blockquote': AlertBuilder(ctx, showFrontmatter: showFrontmatter),
+        'latex': LatexBuilder(
+          textStyle: theme.textTheme.bodyMedium?.copyWith(fontSize: fontSize),
+        ),
+        'highlight': HighlightBuilder(ctx),
+        'kbd': KbdBuilder(baseFontSize: fontSize),
+        'u': UnderlineBuilder(),
+        'small': SmallTextBuilder(baseFontSize: fontSize),
+        'abbr': AbbrBuilder(),
+        'html_img': htmlImageBuilder,
+        'html_block': HtmlBlockBuilder(
+          fontSize: fontSize,
+          anchorKeys: _anchorKeys,
+          htmlImageBuilder: htmlImageBuilder,
+          onTapLink: onTapLink,
+          nestedMarkdownBuilder: renderNested,
+        ),
+        'html_table': HtmlTableBuilder(
+          fontSize: fontSize,
+          nestedMarkdownBuilder: renderNested,
+        ),
+        'html_list': HtmlListBuilder(
+          fontSize: fontSize,
+          nestedMarkdownBuilder: renderNested,
+        ),
+        'html_dl': HtmlDlBuilder(
+          fontSize: fontSize,
+          nestedMarkdownBuilder: renderNested,
+        ),
+        'html_figure': HtmlFigureBuilder(
+          fontSize: fontSize,
+          nestedMarkdownBuilder: renderNested,
+        ),
+        'details': DetailsElementBuilder(
+          fontSize: fontSize,
+          nestedMarkdownBuilder: renderNested,
+        ),
+        'sub': SubSupBuilder(false, baseFontSize: fontSize),
+        'sup': SubSupBuilder(
+          true,
+          baseFontSize: fontSize,
+          anchorKeys: _anchorKeys,
+          onTapLink: onTapLink,
+        ),
+        'section': FootnoteSectionBuilder(
+          anchorKeys: _anchorKeys,
+          fontSize: fontSize,
+          onTapLink: onTapLink,
+        ),
+        'anchor': AnchorBuilder(_anchorKeys),
+        'code': CodeElementBuilder(
+          isDark: isDark,
+          fontSize: fontSize,
+          sirenColors: sirenColors,
+        ),
+        // Custom heading builders for the bottom border
+        'h1': HeadingElementBuilder(
+          fontSize: fontSize * 2.25,
+          color: sirenColors.headingColor!,
+          dividerColor: sirenColors.divider!,
+          topMargin: 0, // H1 has top margin 0 in CSS
+          onTapLink: onTapLink,
+          codeBg: sirenColors.codeBg,
+          htmlImageBuilder: htmlImageBuilder,
+          anchorKeys: _anchorKeys,
+        ),
+        'h2': HeadingElementBuilder(
+          fontSize: fontSize * 1.75,
+          color: sirenColors.headingColor!,
+          dividerColor: sirenColors.divider!,
+          topMargin: 24, // H2 margin-top: 2em -> approx 32px, adjusted for flutter padding
+          onTapLink: onTapLink,
+          codeBg: sirenColors.codeBg,
+          htmlImageBuilder: htmlImageBuilder,
+          anchorKeys: _anchorKeys,
+        ),
+      };
+
+      return MarkdownBody(
+        key: bodyKey,
+        data: markdownData,
+        softLineBreak: false,
+        onTapLink: onTapLink,
+        // ignore: deprecated_member_use
+        imageBuilder: (uri, title, alt) {
+          return htmlImageBuilder.buildImageFromAttributes(ctx, {
+            'src': uri.toString(),
+            if (title != null && title.isNotEmpty) 'title': title,
+            if (alt != null && alt.isNotEmpty) 'alt': alt,
+          });
+        },
+        extensionSet: extensionSet,
+        styleSheet: styleSheet,
+        builders: builders,
+      );
+    }
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
@@ -188,260 +454,10 @@ class _RenderedViewState extends State<RenderedView> {
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
         child: SelectionArea(
-          child: MarkdownBody(
-            key: ValueKey<bool>(showFrontmatter),
-            data: content,
-            softLineBreak: false,
-            onTapLink: onTapLink,
-            // ignore: deprecated_member_use
-            imageBuilder: (uri, title, alt) {
-              final label = (alt != null && alt.trim().isNotEmpty)
-                  ? alt.trim()
-                  : (title != null && title.trim().isNotEmpty
-                        ? title.trim()
-                        : p.basename(uri.path));
-              if (uri.hasScheme &&
-                  (uri.scheme == 'http' || uri.scheme == 'https')) {
-                final urlStr = uri.toString();
-                return MouseRegion(
-                  cursor: SystemMouseCursors.zoomIn,
-                  child: GestureDetector(
-                    onTap: () => ImageZoomDialog.showNetwork(
-                      context,
-                      url: urlStr,
-                      title: label,
-                    ),
-                    child: Image.network(
-                      urlStr,
-                      semanticLabel: alt,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Semantics(
-                          label: alt != null && alt.isNotEmpty
-                              ? 'Image failed to load: $alt'
-                              : 'Image failed to load',
-                          child: const Icon(Icons.broken_image, size: 24),
-                        );
-                      },
-                    ),
-                  ),
-                );
-              } else {
-                // Local image
-                String localPath = uri.path;
-                var fullPath = p.join(basePath, localPath);
-                fullPath = p.normalize(fullPath);
-                final file = File(fullPath);
-                if (file.existsSync()) {
-                  return MouseRegion(
-                    cursor: SystemMouseCursors.zoomIn,
-                    child: GestureDetector(
-                      onTap: () => ImageZoomDialog.showFile(
-                        context,
-                        file: file,
-                        title: label,
-                      ),
-                      child: Image.file(file, semanticLabel: alt),
-                    ),
-                  );
-                }
-                return Semantics(
-                  label: alt != null && alt.isNotEmpty
-                      ? 'Image not found: $alt'
-                      : 'Image not found',
-                  child: const Icon(Icons.broken_image, size: 24),
-                );
-              }
-            },
-            extensionSet: md.ExtensionSet(
-              [
-                YamlFrontmatterBlockSyntax(enabled: showFrontmatter),
-                const AlertBlockSyntax(),
-                ...md.ExtensionSet.gitHubFlavored.blockSyntaxes,
-              ],
-              [
-                ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
-                AnchorSyntax(),
-                LatexSyntax(),
-                HighlightSyntax(),
-                SubscriptSyntax(),
-                SuperscriptSyntax(),
-              ],
-            ),
-            styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-              blockSpacing: 12.0, // --spacing-md
-              // Typography
-              p: TextStyle(
-                fontSize: fontSize,
-                height: 1.6,
-                color: theme.colorScheme.onSurface,
-              ),
-              code: GoogleFonts.firaCode(backgroundColor: sirenColors.codeBg),
-              strong: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
-              ),
-              em: TextStyle(
-                fontSize: fontSize,
-                fontStyle: FontStyle.italic,
-                color: theme.colorScheme.onSurface,
-              ),
-              del: TextStyle(
-                fontSize: fontSize,
-                decoration: TextDecoration.lineThrough,
-                color: theme.colorScheme.onSurface,
-              ),
-              a: TextStyle(
-                fontSize: fontSize,
-                color: theme
-                    .colorScheme
-                    .primary, // CSS uses --color-primary (Green)
-                decoration: TextDecoration.underline,
-              ),
-
-              // Headings
-              // Workaround: flutter_markdown leaks the H1/H2 style to subsequent elements
-              // when a custom builder is used. We set the stylesheet style to match
-              // the body text (p) so that the leak is invisible. The actual styling
-              // is applied by the HeadingElementBuilder.
-              h1: TextStyle(
-                fontSize: fontSize, // Matching p style
-                height: 1.6,
-                color: theme.colorScheme.onSurface,
-              ),
-              h2: TextStyle(
-                fontSize: fontSize, // Matching p style
-                height: 1.6,
-                color: theme.colorScheme.onSurface,
-              ),
-              h3: TextStyle(
-                fontSize: fontSize * 1.5,
-                fontWeight: FontWeight.w600,
-                height: 1.25,
-                color: sirenColors.headingColor,
-              ),
-              h4: TextStyle(
-                fontSize: fontSize * 1.25,
-                fontWeight: FontWeight.w600,
-                height: 1.25,
-                color: sirenColors.headingColor,
-              ),
-              h5: TextStyle(
-                fontSize: fontSize * 1.0,
-                fontWeight: FontWeight.w600,
-                height: 1.25,
-                letterSpacing: 0.05,
-                color: sirenColors.headingColor, // Or uppercase logic if needed
-              ),
-              h6: TextStyle(
-                fontSize: fontSize * 0.875,
-                fontWeight: FontWeight.w600,
-                height: 1.25,
-                color: theme.colorScheme.onSurfaceVariant, // Muted
-              ),
-
-              // Blockquotes
-              blockquote: TextStyle(
-                fontSize: fontSize,
-                color: theme.colorScheme.onSurfaceVariant, // Muted
-              ),
-              blockquoteDecoration: BoxDecoration(
-                color: sirenColors.sidebarBg, // --bg-surface-container
-                border: Border(
-                  left: BorderSide(
-                    color:
-                        sirenColors.quoteBorder ??
-                        theme.colorScheme.primary, // --color-quote-border
-                    width: 4.0,
-                  ),
-                ),
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(4),
-                  bottomRight: Radius.circular(4),
-                ),
-              ),
-              blockquotePadding: const EdgeInsets.symmetric(
-                vertical: 8.0,
-                horizontal: 16.0,
-              ),
-
-              // Code block decoration (wrapper around HighlightView)
-              // Disable default decoration as it is handled by the custom builder
-              codeblockDecoration: const BoxDecoration(
-                color: Colors.transparent,
-              ),
-
-              // Tables
-              tableBody: TextStyle(fontSize: fontSize),
-              tableHead: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w600,
-                color: sirenColors.headingColor,
-                backgroundColor: sirenColors
-                    .sidebarBg, // Align with CSS --bg-surface-container
-              ),
-              tableBorder: TableBorder.all(
-                color: sirenColors.divider!,
-                width: 1,
-              ),
-              tableHeadAlign: TextAlign.left,
-              tablePadding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ),
-              // Note: header background support in style sheet is limited, might need custom builder or just Accept basic style
-            ),
-            builders: {
-              'frontmatter': FrontmatterBuilder(
-                context,
-                showFrontmatter: showFrontmatter,
-              ),
-              'blockquote': AlertBuilder(
-                context,
-                showFrontmatter: showFrontmatter,
-              ),
-              'latex': LatexBuilder(
-                textStyle: theme.textTheme.bodyMedium?.copyWith(
-                  fontSize: fontSize,
-                ),
-              ),
-              'highlight': HighlightBuilder(context),
-              'sub': SubSupBuilder(false, baseFontSize: fontSize),
-              'sup': SubSupBuilder(
-                true,
-                baseFontSize: fontSize,
-                anchorKeys: _anchorKeys,
-                onTapLink: onTapLink,
-              ),
-              'section': FootnoteSectionBuilder(
-                anchorKeys: _anchorKeys,
-                fontSize: fontSize,
-                onTapLink: onTapLink,
-              ),
-              'anchor': AnchorBuilder(_anchorKeys),
-              'code': CodeElementBuilder(
-                isDark: isDark,
-                fontSize: fontSize,
-                sirenColors: sirenColors,
-              ),
-              // Custom heading builders for the bottom border
-              'h1': HeadingElementBuilder(
-                fontSize: fontSize * 2.25,
-                color: sirenColors.headingColor!,
-                dividerColor: sirenColors.divider!,
-                topMargin: 0, // H1 has top margin 0 in CSS
-                onTapLink: onTapLink,
-                codeBg: sirenColors.codeBg,
-              ),
-              'h2': HeadingElementBuilder(
-                fontSize: fontSize * 1.75,
-                color: sirenColors.headingColor!,
-                dividerColor: sirenColors.divider!,
-                topMargin: 24, // H2 margin-top: 2em -> approx 32px, adjusted for flutter padding
-                onTapLink: onTapLink,
-                codeBg: sirenColors.codeBg,
-              ),
-            },
+          child: buildMarkdownBodyWidget(
+            context,
+            content,
+            bodyKey: ValueKey<bool>(showFrontmatter),
           ),
         ),
       ),
@@ -487,6 +503,8 @@ List<InlineSpan>? _parseInlineChildren(
   List<md.Node>? nodes,
   void Function(String, String?, String)? onTapLink, [
   Color? codeBg,
+  BuildContext? context,
+  HtmlImageBuilder? htmlImageBuilder,
 ]) {
   if (nodes == null) return null;
   final List<InlineSpan> spans = [];
@@ -500,9 +518,30 @@ List<InlineSpan>? _parseInlineChildren(
         :final attributes,
         :final textContent,
       ):
+        if (tag == 'anchor') {
+          continue;
+        }
+        if (tag == 'br') {
+          spans.add(const TextSpan(text: '\n'));
+          continue;
+        }
+        if (tag == 'html_img' && context != null && htmlImageBuilder != null) {
+          spans.add(
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: htmlImageBuilder.buildImageFromAttributes(
+                context,
+                attributes,
+              ),
+            ),
+          );
+          continue;
+        }
         final style = switch (tag) {
           'strong' => const TextStyle(fontWeight: FontWeight.bold),
           'em' => const TextStyle(fontStyle: FontStyle.italic),
+          'del' => const TextStyle(decoration: TextDecoration.lineThrough),
+          'u' => const TextStyle(decoration: TextDecoration.underline),
           'code' => GoogleFonts.firaCode(backgroundColor: codeBg),
           'a' => const TextStyle(
             color: Colors.blue,
@@ -521,7 +560,13 @@ List<InlineSpan>? _parseInlineChildren(
 
         spans.add(
           TextSpan(
-            children: _parseInlineChildren(children, onTapLink, codeBg),
+            children: _parseInlineChildren(
+              children,
+              onTapLink,
+              codeBg,
+              context,
+              htmlImageBuilder,
+            ),
             style: style,
             recognizer: recognizer,
           ),
@@ -538,6 +583,8 @@ class HeadingElementBuilder extends MarkdownElementBuilder {
   final double topMargin;
   final void Function(String, String?, String) onTapLink;
   final Color? codeBg;
+  final HtmlImageBuilder? htmlImageBuilder;
+  final Map<String, GlobalKey>? anchorKeys;
 
   HeadingElementBuilder({
     required this.fontSize,
@@ -546,6 +593,8 @@ class HeadingElementBuilder extends MarkdownElementBuilder {
     required this.topMargin,
     required this.onTapLink,
     this.codeBg,
+    this.htmlImageBuilder,
+    this.anchorKeys,
   });
 
   @override
@@ -554,32 +603,128 @@ class HeadingElementBuilder extends MarkdownElementBuilder {
   }
 
   @override
-  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
     if (element.children == null || element.children!.isEmpty) {
-      return SizedBox.shrink();
+      return const SizedBox.shrink();
     }
 
-    final children = _parseInlineChildren(element.children, onTapLink, codeBg);
+    final align = element.attributes['align']?.toLowerCase();
+    final textAlign = switch (align) {
+      'center' => TextAlign.center,
+      'right' => TextAlign.right,
+      _ => TextAlign.start,
+    };
+    final boxAlignment = switch (align) {
+      'center' => Alignment.center,
+      'right' => Alignment.centerRight,
+      _ => Alignment.centerLeft,
+    };
+
+    final anchorWidgets = <Widget>[];
+    final nonWhitespace = <md.Node>[];
+    for (final node in element.children!) {
+      if (node is md.Element && node.tag == 'anchor') {
+        final slug = node.attributes['id'];
+        if (slug != null && slug.isNotEmpty && anchorKeys != null) {
+          final key = GlobalKey(debugLabel: slug);
+          anchorKeys![slug] = key;
+          anchorWidgets.add(SizedBox.shrink(key: key));
+        }
+        continue;
+      }
+      if (node is md.Text && node.text.trim().isEmpty) continue;
+      nonWhitespace.add(node);
+    }
+
+    final isPureImageHeading =
+        htmlImageBuilder != null &&
+        nonWhitespace.isNotEmpty &&
+        nonWhitespace.every(
+          (n) => n is md.Element && (n.tag == 'html_img' || n.tag == 'img'),
+        );
+
+    if (isPureImageHeading) {
+      return Semantics(
+        header: true,
+        child: DefaultTextStyle.merge(
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+          child: Container(
+            margin: EdgeInsets.only(top: topMargin, bottom: 4.0),
+            padding: const EdgeInsets.only(bottom: 8.0),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: dividerColor, width: 1.0),
+              ),
+            ),
+            width: double.infinity,
+            alignment: boxAlignment,
+            child: Wrap(
+              alignment: switch (align) {
+                'center' => WrapAlignment.center,
+                'right' => WrapAlignment.end,
+                _ => WrapAlignment.start,
+              },
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8.0,
+              runSpacing: 8.0,
+              children: [
+                ...anchorWidgets,
+                for (final node in nonWhitespace)
+                  htmlImageBuilder!.buildImageFromAttributes(
+                    context,
+                    (node as md.Element).attributes,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final children = _parseInlineChildren(
+      element.children,
+      onTapLink,
+      codeBg,
+      context,
+      htmlImageBuilder,
+    );
 
     return Semantics(
       header: true,
       child: Container(
-        margin: EdgeInsets.only(top: topMargin, bottom: 16.0),
+        margin: EdgeInsets.only(top: topMargin, bottom: 4.0),
         padding: const EdgeInsets.only(bottom: 6.0),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: dividerColor, width: 1.0)),
         ),
         width: double.infinity,
-        child: Text.rich(
-          TextSpan(
-            children: children,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-              color: color,
-              height: 1.25,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ...anchorWidgets,
+            Text.rich(
+              TextSpan(
+                children: children,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                  height: 1.25,
+                ),
+              ),
+              textAlign: textAlign,
             ),
-          ),
+          ],
         ),
       ),
     );

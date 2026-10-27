@@ -338,4 +338,292 @@ void main() {
       },
     );
   });
+
+  group('Embedded HTML Widget Rendering', () {
+    testWidgets(
+      'Renders Flutter <a href><h1 align="center"><picture> block and switches dark/light srcset',
+      (WidgetTester tester) async {
+        const markdownData = '''<a href="https://flutter.dev/">
+  <h1 align="center">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://docs.flutter.dev/logo_dark.png">
+      <img alt="Flutter" src="https://docs.flutter.dev/logo.png">
+    </picture>
+  </h1>
+</a>''';
+
+        final appState = _TestAppState();
+        appState.currentContent = markdownData;
+
+        // 1. Light theme selects fallback <img> src
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: SirenTheme.light,
+            home: ChangeNotifierProvider<AppState>.value(
+              value: appState,
+              child: const Scaffold(body: RenderedView(filePath: 'test.md')),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(
+            const ValueKey<String>(
+              'network_image_https://docs.flutter.dev/logo.png',
+            ),
+          ),
+          findsOneWidget,
+        );
+
+        // 2. Dark theme selects <source media="(prefers-color-scheme: dark)"> srcset
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: SirenTheme.dark,
+            home: ChangeNotifierProvider<AppState>.value(
+              value: appState,
+              child: const Scaffold(body: RenderedView(filePath: 'test.md')),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(
+            const ValueKey<String>(
+              'network_image_https://docs.flutter.dev/logo_dark.png',
+            ),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'Renders alt text with H1 heading typography when an image inside <h1 align="center"> fails to load',
+      (WidgetTester tester) async {
+        const markdownData = '''<a href="https://flutter.dev/">
+  <h1 align="center">
+    <img alt="Flutter" src="nonexistent_logo.png">
+  </h1>
+</a>''';
+
+        final appState = _TestAppState();
+        appState.currentContent = markdownData;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: SirenTheme.light,
+            home: ChangeNotifierProvider<AppState>.value(
+              value: appState,
+              child: const Scaffold(body: RenderedView(filePath: 'test.md')),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final altTextFinder = find.text('Flutter');
+        expect(altTextFinder, findsOneWidget);
+        final textWidget = tester.widget<Text>(altTextFinder);
+        expect(textWidget.style?.fontSize, 14.0 * 2.25);
+        expect(textWidget.style?.fontWeight, FontWeight.w600);
+      },
+    );
+
+    testWidgets(
+      'Renders Siren README <p align="center"> blocks with sized image, bold text, and badges',
+      (WidgetTester tester) async {
+        const markdownData = '''# Siren
+
+<p align="center">
+  <img src="assets/images/app_icon.png" alt="Siren Logo" width="128" height="128" />
+</p>
+
+<p align="center">
+  <strong>A sleek, high-performance desktop Markdown viewer built with Flutter.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Flutter-3.47+-02569B?logo=flutter&logoColor=white" alt="Flutter" />
+  <img src="https://img.shields.io/badge/Platform-macOS-000000?logo=apple&logoColor=white" alt="macOS" />
+  <a href="https://github.com/tkinnis/siren/releases/latest"><img src="https://img.shields.io/github/v/release/tkinnis/siren?color=007AFF&logo=apple&logoColor=white" alt="Latest Release" /></a>
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
+</p>''';
+
+        final appState = _TestAppState();
+        appState.currentContent = markdownData;
+        appState.explorerRootPath = Directory.current.path;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: SirenTheme.light,
+            home: ChangeNotifierProvider<AppState>.value(
+              value: appState,
+              child: const Scaffold(body: RenderedView(filePath: 'README.md')),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify local 128x128 Siren Logo Image widget rendered
+        final logoFinder = find.byType(Image);
+        expect(logoFinder, findsOneWidget);
+        final logoWidget = tester.widget<Image>(logoFinder);
+        expect(logoWidget.width, 128.0);
+        expect(logoWidget.height, 128.0);
+
+        // Verify centered tagline rendered
+        expect(
+          find.textContaining(
+            'A sleek, high-performance desktop Markdown viewer built with Flutter.',
+            findRichText: true,
+          ),
+          findsOneWidget,
+        );
+
+        // Verify SVG badges rendered via test placeholders
+        expect(find.text('Latest Release'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Resolves ../assets/images/app_icon.png and repo-root assets/images/app_icon.png from docs/ subfolder',
+      (WidgetTester tester) async {
+        const markdownData = '''<p align="center">
+  <img src="../assets/images/app_icon.png" alt="Siren Logo" width="72" height="72" />
+</p>
+
+<p align="center">
+  <img src="assets/images/app_icon.png" alt="Siren Root Logo" width="72" height="72" />
+</p>''';
+
+        final docsDir = '${Directory.current.path}/docs';
+        final docFile = '$docsDir/markdown-guide.md';
+        final appState = _TestAppState();
+        appState.currentContent = markdownData;
+        appState.explorerRootPath = docsDir;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: SirenTheme.light,
+            home: ChangeNotifierProvider<AppState>.value(
+              value: appState,
+              child: Scaffold(body: RenderedView(filePath: docFile)),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(Image), findsNWidgets(2));
+      },
+    );
+
+    testWidgets(
+      'Renders inline <kbd>, <sub>, <sup>, <mark>, <u>, <del>, <br> and collapsible <details>',
+      (WidgetTester tester) async {
+        const markdownData = '''<!-- Hidden HTML comment -->
+Press <kbd>Cmd</kbd> + <kbd>P</kbd> for H<sub>2</sub>O and <mark>marked</mark> and <u>underlined</u>.
+
+<details>
+  <summary>Expandable Section</summary>
+
+  Revealed details body content.
+</details>''';
+
+        final appState = _TestAppState();
+        appState.currentContent = markdownData;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: SirenTheme.light,
+            home: ChangeNotifierProvider<AppState>.value(
+              value: appState,
+              child: const Scaffold(body: RenderedView(filePath: 'test.md')),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Hidden HTML comment'), findsNothing);
+        expect(find.text('Cmd'), findsOneWidget);
+        expect(find.text('P'), findsOneWidget);
+        expect(find.text('marked'), findsOneWidget);
+        expect(find.text('underlined'), findsOneWidget);
+
+        // Details starts collapsed
+        expect(find.text('Expandable Section'), findsOneWidget);
+        expect(
+          find.textContaining(
+            'Revealed details body content.',
+            findRichText: true,
+          ),
+          findsNothing,
+        );
+
+        // Tap summary to expand
+        await tester.tap(find.text('Expandable Section'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining(
+            'Revealed details body content.',
+            findRichText: true,
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'Renders HTML <table>, <dl>, <abbr>, <small>, and <q> elements',
+      (WidgetTester tester) async {
+        const markdownData = '''Hover <abbr title="GitHub Flavored Markdown">GFM</abbr> with <small>fine print</small> and <q>quoted text</q>.
+
+<table>
+  <tr>
+    <th>Component</th>
+    <th align="center">Status</th>
+  </tr>
+  <tr>
+    <td>HTML Parser</td>
+    <td align="center">Active</td>
+  </tr>
+</table>
+
+<dl>
+  <dt>Ripgrep</dt>
+  <dd>Fast workspace search engine</dd>
+</dl>''';
+
+        final appState = _TestAppState();
+        appState.currentContent = markdownData;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: SirenTheme.light,
+            home: ChangeNotifierProvider<AppState>.value(
+              value: appState,
+              child: const Scaffold(body: RenderedView(filePath: 'test.md')),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('GFM'), findsOneWidget);
+        expect(find.text('fine print'), findsOneWidget);
+        expect(find.byType(Table), findsOneWidget);
+        expect(
+          find.textContaining('HTML Parser', findRichText: true),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining(
+            'Fast workspace search engine',
+            findRichText: true,
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+  });
 }

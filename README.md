@@ -21,7 +21,7 @@
 
 ## Overview
 
-**Siren** is a dedicated desktop Markdown viewer engineered for clarity, speed, and elegance. Designed for developers, technical writers, and researchers, Siren delivers full CommonMark rendering alongside modern extensions including GitHub Alerts, LaTeX mathematical typography, Mermaid diagrams, and code syntax highlighting.
+**Siren** is a dedicated desktop Markdown viewer engineered for clarity, speed, and elegance. Designed for developers, technical writers, and researchers, Siren delivers full CommonMark rendering alongside modern extensions including GitHub Alerts, embedded GFM HTML & SVG badges, LaTeX mathematical typography, Mermaid diagrams, and code syntax highlighting.
 
 With built-in ripgrep-powered full-text search, an interactive document outline, live file-system watching, and instant toggling between rendered documents and raw source with line-number gutters, Siren provides a focused, native environment for reviewing documentation and notes.
 
@@ -37,6 +37,7 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | | **YAML Frontmatter & Footnotes** | Structured metadata card with pill badges for leading `---` YAML frontmatter (toggleable in Settings) and GitHub-styled hyperlinked footnotes (`[^1]`) | Automatic / `Cmd + ,` |
 | | **Image Lightbox** | Click any local or network Markdown image to inspect in an interactive zoom & pan lightbox | Click image |
 | | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting and one-click copy | Fenced code blocks |
+| | **Embedded GFM HTML** | Native rendering for `<kbd>`, `<br>`, `<details>`/`<summary>`, `<table>`, `<ul>`/`<ol>`/`<dl>`, `<picture>` dark/light media, sized `<img>` & `3x` Retina SVG badges, `<a href>`, `<p align="center">`, `<sub>`/`<sup>`/`<mark>`/`<abbr>`, and hidden `<!-- comments -->` | Automatic |
 | | **Extended Formatting** | Text highlighting (`==text==`), subscript (`~sub~`), superscript (`^sup~`), tables, task lists | Extended syntax |
 | **Viewer Modes** | **Rendered Preview** | Rich typography, interactive links, and diagram rendering | `Cmd + E` (Toggle) |
 | | **Raw Source View** | Monospace raw Markdown inspection with aligned line number gutter | `Cmd + E` (Toggle) |
@@ -136,7 +137,7 @@ Comprehensive guides and architectural notes are available in the [`docs/`](docs
 
 Download the latest universal macOS release from [**GitHub Releases**](https://github.com/tkinnis/siren/releases/latest):
 
-1. Download **`Siren-v0.3.0-macos.zip`**.
+1. Download **`Siren-v0.4.0-macos.zip`**.
 2. Double-click to extract **`Siren.app`**.
 3. Drag **`Siren.app`** into your **`/Applications`** folder and launch.
 
