@@ -234,18 +234,11 @@ class MermaidRenderService {
       mermaidBytes.offsetInBytes,
       mermaidBytes.lengthInBytes,
     );
-    final elkBytes = await rootBundle.load(
-      'assets/mermaid/mermaid-layout-elk.min.js',
-    );
-    final elkUint8 = elkBytes.buffer.asUint8List(
-      elkBytes.offsetInBytes,
-      elkBytes.lengthInBytes,
-    );
     final pageScript = await rootBundle.loadString(
       'assets/mermaid/mermaid_page.js',
     );
     return Isolate.run(
-      () => _buildPreparedPageInIsolate(mermaidUint8, elkUint8, pageScript),
+      () => _buildPreparedPageInIsolate(mermaidUint8, pageScript),
     );
   }
 
@@ -420,34 +413,226 @@ class _PreparedMermaidPage {
   final List<_PagePiece> pieces;
 }
 
-/// Runs in a background isolate to decode `mermaid.min.js` and `mermaid-layout-elk.min.js`
-/// and slice scripts into ASCII-safe JS string literal chunks so loading never stalls the UI isolate.
+/// Diagram types rendered as native vector SVGs (`vector_graphics`) on macOS.
+const Set<String> mermaidMacosSvgTypes = {
+  'agentflow',
+  'architecture',
+  'block',
+  'c4',
+  'class',
+  'cynefin',
+  'er',
+  'flowchart',
+  'gantt',
+  'gitgraph',
+  'ishikawa',
+  'journey',
+  'kanban',
+  'mindmap',
+  'packet',
+  'pie',
+  'quadrant',
+  'radar',
+  'railroad',
+  'requirement',
+  'sankey',
+  'sequence',
+  'state',
+  'swimlane',
+  'timeline',
+  'treemap',
+  'usecase',
+  'venn',
+  'xychart',
+};
+
+/// Diagram types rendered directly as high-DPI Retina PNGs on macOS.
+const Set<String> mermaidRasterOnlyTypes = {
+  'eventmodeling',
+  'treeview',
+  'wardley',
+};
+
+const List<String> _kSortedMacosSvgTypes = [
+  'agentflow',
+  'architecture',
+  'block',
+  'c4',
+  'class',
+  'cynefin',
+  'er',
+  'flowchart',
+  'gantt',
+  'gitgraph',
+  'ishikawa',
+  'journey',
+  'kanban',
+  'mindmap',
+  'packet',
+  'pie',
+  'quadrant',
+  'radar',
+  'railroad',
+  'requirement',
+  'sankey',
+  'sequence',
+  'state',
+  'swimlane',
+  'timeline',
+  'treemap',
+  'usecase',
+  'venn',
+  'xychart',
+];
+
+const List<String> _kCommonAllowedAttributes = [
+  'clip-path',
+  'id',
+  'mix-blend-mode',
+  'opacity',
+  'transform',
+];
+
+const List<String> _kUsePaintAttributes = [
+  'fill',
+  'fill-opacity',
+  'fill-rule',
+  'stroke',
+  'stroke-linecap',
+  'stroke-linejoin',
+  'stroke-miterlimit',
+  'stroke-opacity',
+  'stroke-width',
+];
+
+const List<String> _kPaintAttributes = [
+  ..._kUsePaintAttributes,
+  'stroke-dasharray',
+  'stroke-dashoffset',
+];
+
+const Map<String, List<String>> _kAllowedSvgAttributes = {
+  'svg': ['height', 'viewBox', 'width'],
+  'g': _kCommonAllowedAttributes,
+  'defs': ['id'],
+  'symbol': [..._kCommonAllowedAttributes, 'viewBox'],
+  'clipPath': ['id'],
+  'linearGradient': [
+    'gradientUnits',
+    'id',
+    'spreadMethod',
+    'x1',
+    'x2',
+    'y1',
+    'y2',
+  ],
+  'radialGradient': [
+    'cx',
+    'cy',
+    'fx',
+    'fy',
+    'gradientUnits',
+    'id',
+    'r',
+    'spreadMethod',
+  ],
+  'stop': ['offset', 'stop-color', 'stop-opacity'],
+  'use': [
+    ..._kCommonAllowedAttributes,
+    'height',
+    'href',
+    'width',
+    'x',
+    'y',
+    ..._kUsePaintAttributes,
+  ],
+  'image': [..._kCommonAllowedAttributes, 'height', 'href', 'width', 'x', 'y'],
+  'rect': [
+    ..._kCommonAllowedAttributes,
+    'height',
+    'rx',
+    'ry',
+    'width',
+    'x',
+    'y',
+    ..._kPaintAttributes,
+  ],
+  'circle': [
+    ..._kCommonAllowedAttributes,
+    'cx',
+    'cy',
+    'r',
+    ..._kPaintAttributes,
+  ],
+  'ellipse': [
+    ..._kCommonAllowedAttributes,
+    'cx',
+    'cy',
+    'rx',
+    'ry',
+    ..._kPaintAttributes,
+  ],
+  'line': [
+    ..._kCommonAllowedAttributes,
+    'x1',
+    'x2',
+    'y1',
+    'y2',
+    ..._kPaintAttributes,
+  ],
+  'polyline': [..._kCommonAllowedAttributes, 'points', ..._kPaintAttributes],
+  'polygon': [..._kCommonAllowedAttributes, 'points', ..._kPaintAttributes],
+  'path': [..._kCommonAllowedAttributes, 'd', ..._kPaintAttributes],
+  'text': [
+    ..._kCommonAllowedAttributes,
+    'font-family',
+    'font-size',
+    'font-weight',
+    'text-anchor',
+    'text-decoration',
+    'x',
+    'y',
+    ..._kPaintAttributes,
+  ],
+};
+
+/// Runs in a background isolate to decode `mermaid.min.js` (Mermaid 12.2.0 with
+/// embedded ELK layout) and slice scripts into ASCII-safe JS string literal chunks
+/// so loading never stalls the UI isolate.
 _PreparedMermaidPage _buildPreparedPageInIsolate(
   Uint8List mermaidScriptBytes,
-  Uint8List elkScriptBytes,
   String pageScript,
 ) {
   final mermaidScript = utf8.decode(mermaidScriptBytes);
-  final elkScript = utf8.decode(elkScriptBytes);
   final config = <String, Object?>{
     'family': 'Helvetica Neue',
     'faces': const <Object>[],
-    'limits': const <String, int>{
+    'allowed': _kAllowedSvgAttributes,
+    'limits': const <String, num>{
       'maxSourceChars': 50000,
       'maxEdges': 500,
-      'maxElements': 10000,
+      'maxSourceStatements': 2000,
+      'maxSourceNames': 3000,
+      'maxSourceItems': 1000,
+      'maxVennAreas': 64,
+      'maxLabelWordChars': 1000,
+      'maxGanttFormatChars': 200,
+      'maxGanttSteppedDays': 100000,
+      'maxDrawnTextChars': 200000,
+      'maxElements': 20000,
       'maxDepth': 64,
-      'maxSvgChars': 4 * 1024 * 1024,
-      'maxImageChars': 8 * 1024 * 1024,
+      'maxSvgChars': 4000000,
+      'maxImageChars': 262144,
       'maxImageSide': 4096,
-      'maxImagePixels': 4096 * 4096,
-      'maxSide': 8192,
-      'maxPixels': 16 * 1024 * 1024,
-      'maxPathChars': 256 * 1024,
+      'maxImagePixels': 4000000,
+      'maxSide': 16384,
+      'maxPixels': 16000000,
+      'maxPathChars': 200000,
       'maxTextChars': 2000,
-      'maxDashEntries': 16,
-      'minDashPeriod': 2,
-      'maxDashSegments': 50000,
+      'maxDashEntries': 4096,
+      'maxSourceDashEntries': 16,
+      'minDashPeriod': 1,
+      'maxDashSegments': 100000,
     },
   };
 
@@ -488,7 +673,6 @@ $configJson
       },
       commit: function () {
         run('mermaid');
-        run('elk');
         run('page');
         delete window.finchBoot;
       }
@@ -505,7 +689,6 @@ $configJson
     bootstrapHtml: bootstrapHtml,
     pieces: [
       ..._chunkScript('mermaid', mermaidScript),
-      ..._chunkScript('elk', elkScript),
       ..._chunkScript('page', pageScript),
     ],
   );
@@ -663,8 +846,9 @@ class _HeadlessMermaidEngine {
       'dark': isDark,
       'width': 1024,
       'scale': scale,
+      'svgTypes': _kSortedMacosSvgTypes,
       'raster': raster,
-    });
+    }).replaceAll('\u2028', r'\u2028').replaceAll('\u2029', r'\u2029');
 
     await _controller.runJavaScript('window.finchMermaid.run($payload);');
     return completer.future;

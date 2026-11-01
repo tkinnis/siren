@@ -1,6 +1,6 @@
 # Mermaid Diagram Examples
 
-A comprehensive gallery of Mermaid diagrams demonstrating all diagram types supported in **Siren**: flowcharts, sequence diagrams, state diagrams, class diagrams, entity-relationship diagrams, Gantt charts, pie charts, Git graphs, user journeys, requirement diagrams, XY charts, quadrant charts, mindmaps, timelines, Sankey diagrams, packet diagrams, block diagrams, Kanban boards, C4 context diagrams, and architecture diagrams.
+A comprehensive gallery of Mermaid diagrams demonstrating all 32 diagram categories supported in **Siren** (Mermaid `12.2.0`): flowcharts, sequence diagrams, state diagrams, class diagrams, entity-relationship diagrams, Gantt charts, pie charts, Git graphs, user journeys, requirement diagrams, XY charts, quadrant charts, mindmaps, timelines, Sankey diagrams, packet diagrams, block diagrams, Kanban boards, C4 context diagrams, architecture diagrams, radar diagrams, treemap diagrams, Venn diagrams, railroad grammar diagrams (`railroad-beta`, `railroad-ebnf-beta`, `railroad-abnf-beta`, `railroad-peg-beta`), TreeView diagrams, Ishikawa diagrams, Cynefin diagrams, Wardley maps, event modeling diagrams, agentflow diagrams, use case diagrams, and swimlane diagrams.
 
 ---
 
@@ -949,4 +949,242 @@ architecture-beta
 
     db:L -- R:server
     disk1:T -- B:server
+```
+
+---
+
+## 21. Radar Diagrams (`radar-beta`)
+
+### Capability Profile
+
+```mermaid
+radar-beta
+    axis a["Speed"], b["Power"], c["Range"], d["Cost"]
+    curve x["Alpha"]{4, 3, 5, 2}
+    curve y["Beta"]{2, 5, 3, 4}
+    max 5
+```
+
+---
+
+## 22. Treemap Diagrams (`treemap-beta`)
+
+### Workspace Breakdown
+
+```mermaid
+treemap-beta
+"Source"
+    "Editor": 40
+    "Terminal": 18
+    "Debugger"
+      "Adapters": 22
+      "Views": 14
+"Tests"
+    "Unit": 60
+    "Integration": 25
+```
+
+---
+
+## 23. Venn Diagrams (`venn-beta`)
+
+### Shared Capabilities
+
+```mermaid
+venn-beta
+    title Shared Capabilities
+    set A["Editor"] : 12
+    set B["Terminal"] : 12
+    set C["Debugger"] : 12
+    union A, B["Tasks"] : 4
+    union B, C["Console"] : 4
+    union A, C["Breakpoints"] : 4
+```
+
+---
+
+## 24. Railroad Diagrams (`railroad-beta`, `railroad-ebnf-beta`, `railroad-abnf-beta`, `railroad-peg-beta`)
+
+### Select Clause Grammar
+
+```mermaid
+railroad-beta
+    select = sequence(
+        terminal("SELECT"),
+        nonterminal("column"),
+        zeroOrMore(sequence(terminal(","), nonterminal("column"))),
+        terminal("FROM"),
+        nonterminal("table"),
+        optional(sequence(terminal("WHERE"), nonterminal("predicate")))
+    );
+```
+
+### EBNF Rule Grammar
+
+```mermaid
+railroad-ebnf-beta
+    number = [ "-" ], digit, { digit }, [ ".", digit, { digit } ];
+```
+
+### ABNF Rule Grammar
+
+```mermaid
+railroad-abnf-beta
+    header = field-name ":" [ field-value ] CRLF;
+```
+
+### PEG Rule Grammar
+
+```mermaid
+railroad-peg-beta
+    pair <- key ":" value ("," key ":" value)*;
+```
+
+---
+
+## 25. TreeView Diagrams (`treeView-beta`)
+
+### Package Directory Tree
+
+```mermaid
+treeView-beta
+    "packages"
+        "origami"
+            "lib"
+                "origami.dart"
+            "pubspec.yaml"
+        "twig"
+            "lib"
+                "twig.dart"
+```
+
+---
+
+## 26. Ishikawa Diagrams (`ishikawa-beta`)
+
+### Release Delay Causes
+
+```mermaid
+ishikawa-beta
+    Late Release
+        Build
+            Slow runner
+            Cold cache
+        Test
+            Flaky suite
+            Missing fixture
+        Review
+            Large diff
+```
+
+---
+
+## 27. Cynefin Diagrams (`cynefin-beta`)
+
+### Incident Triage Framework
+
+```mermaid
+cynefin-beta
+    title Incident Triage
+    complex
+        "Experiment with hypothesis"
+        "Safe-to-fail probe"
+    complicated
+        "Root-cause analysis"
+        "Specialist review"
+    clear
+        "Runbook step"
+    chaotic
+        "Contain blast radius"
+    chaotic --> complex : "stabilise"
+    complex --> complicated : "codify"
+```
+
+---
+
+## 28. Wardley Maps (`wardley-beta`)
+
+### Tea Shop Value Chain
+
+```mermaid
+wardley-beta
+    title Tea Shop
+    anchor Customer [0.95, 0.65]
+    component Cup of Tea [0.80, 0.60]
+    component Hot Water [0.40, 0.80]
+    component Kettle [0.25, 0.55] (buy)
+    Customer -> Cup of Tea
+    Cup of Tea -> Hot Water
+    Hot Water -> Kettle
+    evolve Kettle 0.85
+```
+
+---
+
+## 29. Event Modeling Diagrams (`eventmodeling`)
+
+### Shopping Cart Slice
+
+```mermaid
+eventmodeling
+    tf 01 ui CartView
+    tf 02 cmd AddItem ->> 01
+    tf 03 evt ItemAdded ->> 02
+    tf 04 rmo CartSummary ->> 03
+```
+
+---
+
+## 30. Agentflow Diagrams (`agentflow-beta`)
+
+### Research Agent Pipeline
+
+```mermaid
+agentflow-beta LR
+    User@{ shape: input, label: "Prompt" }
+    Planner@{ shape: task, label: "Plan Steps" }
+    Search@{ shape: tool, label: "Web Search" }
+    Gate@{ shape: decision, label: "Verified?" }
+    User --> Planner
+    Planner --> Search
+    Search --> Gate
+```
+
+---
+
+## 31. Use Case Diagrams (`usecase-beta`)
+
+### Online Store Checkout
+
+```mermaid
+usecase-beta
+    actor Customer("Customer")
+    systemBoundary Store("Online Store")
+        Browse("Browse Catalog")
+        Checkout("Place Order")
+    end
+    Customer --> Browse
+    Customer --> Checkout
+    Checkout ..> : include Browse
+```
+
+---
+
+## 32. Swimlane Diagrams (`swimlane-beta`)
+
+### Order Fulfillment
+
+```mermaid
+swimlane-beta
+    subgraph Customer
+        Order[Place Order]
+        Confirm[Receive Receipt]
+    end
+    subgraph Fulfillment
+        Charge[Capture Payment]
+        Ship[Dispatch Parcel]
+    end
+    Order --> Charge
+    Charge --> Ship
+    Ship --> Confirm
 ```

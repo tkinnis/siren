@@ -33,7 +33,7 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | :--- | :--- | :--- | :--- |
 | **Rendering** | **GitHub Alerts** | 5 color-coded alert levels (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) with custom icons | Automatic |
 | | **LaTeX Mathematics** | Typeset inline formulas (`$E = mc^2$`) and block equations (`$$\sum x_i$$`) | CommonMark math blocks |
-| | **Mermaid Diagrams** | Offline ELK + `neo` vector diagrams across all 20 Mermaid v11 categories with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
+| | **Mermaid Diagrams** | Offline ELK + `neo` vector diagrams across all 32 Mermaid v12.2.0 diagram categories with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
 | | **YAML Frontmatter & Footnotes** | Structured metadata card with pill badges for leading `---` YAML frontmatter (toggleable in Settings) and GitHub-styled hyperlinked footnotes (`[^1]`) | Automatic / `Cmd + ,` |
 | | **Image Lightbox** | Click any local or network Markdown image to inspect in an interactive zoom & pan lightbox | Click image |
 | | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting and one-click copy | Fenced code blocks |
@@ -125,7 +125,7 @@ Comprehensive guides and architectural notes are available in the [`docs/`](docs
 - [Documentation Portal](docs/index.md) — Index and overview of all guides.
 - [Feature Walkthrough](docs/features.md) — In-depth guide to viewer modes, navigation, and workspace management.
 - [Markdown & Syntax Guide](docs/markdown-guide.md) — Complete syntax reference for GitHub alerts, math, diagrams, YAML frontmatter, footnotes, and formatting.
-- [Mermaid Diagram Examples Gallery](docs/mermaid-examples.md) — 52 examples across all 20 Mermaid v11 diagram categories.
+- [Mermaid Diagram Examples Gallery](docs/mermaid-examples.md) — 67 examples across all 32 Mermaid v12.2.0 diagram categories.
 - [Keyboard Shortcuts](docs/shortcuts.md) — Exhaustive keyboard shortcut reference.
 - [Architecture & Internals](docs/architecture.md) — Technical overview of isolates, ripgrep bundling, offline ELK vector Mermaid engine, and state management.
 
@@ -137,7 +137,7 @@ Comprehensive guides and architectural notes are available in the [`docs/`](docs
 
 Download the latest universal macOS release from [**GitHub Releases**](https://github.com/tkinnis/siren/releases/latest):
 
-1. Download **`Siren-v0.4.0-macos.zip`**.
+1. Download **`Siren-v0.5.0-macos.zip`**.
 2. Double-click to extract **`Siren.app`**.
 3. Drag **`Siren.app`** into your **`/Applications`** folder and launch.
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -455,6 +456,66 @@ void main() {
       await tester.tap(find.byKey(const Key('mermaid_zoom_close_button')));
       await tester.pumpAndSettle();
       expect(find.byType(MermaidZoomDialog), findsNothing);
+    });
+  });
+
+  group('Mermaid 12.2.0 Beta & Specialized Diagram Support', () {
+    test(
+      'declares all 29 vector SVG types and 3 raster-only types on macOS',
+      () {
+        expect(mermaidMacosSvgTypes, hasLength(29));
+        expect(
+          mermaidMacosSvgTypes,
+          containsAll(<String>[
+            'radar',
+            'treemap',
+            'venn',
+            'railroad',
+            'ishikawa',
+            'cynefin',
+            'agentflow',
+            'usecase',
+            'swimlane',
+          ]),
+        );
+        expect(
+          mermaidRasterOnlyTypes,
+          equals(<String>{'eventmodeling', 'treeview', 'wardley'}),
+        );
+      },
+    );
+
+    test('bundles Mermaid 12.2.0 and supports all beta diagram keywords in mermaid_page.js', () {
+      final mermaidJs = File('assets/mermaid/mermaid.min.js')
+          .readAsStringSync();
+      expect(mermaidJs, contains('version:"12.2.0"'));
+      for (final keyword in <String>[
+        'radar-beta',
+        'treemap-beta',
+        'venn-beta',
+        'railroad-beta',
+        'railroad-ebnf-beta',
+        'railroad-abnf-beta',
+        'railroad-peg-beta',
+        'treeView-beta',
+        'ishikawa-beta',
+        'cynefin-beta',
+        'wardley-beta',
+        'eventmodeling',
+        'agentflow-beta',
+        'usecase-beta',
+        'swimlane-beta',
+      ]) {
+        expect(
+          mermaidJs,
+          contains(keyword),
+          reason: 'Mermaid 12.2.0 bundle must include $keyword detector',
+        );
+      }
+
+      final pageJs = File('assets/mermaid/mermaid_page.js').readAsStringSync();
+      expect(pageJs, contains('function isSwimlane(source)'));
+      expect(pageJs, contains("? 'swimlane'"));
     });
   });
 }
