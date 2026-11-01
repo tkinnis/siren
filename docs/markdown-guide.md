@@ -1,7 +1,6 @@
 ---
 title: Markdown Syntax Guide
 category: User Manual
-version: 0.5.0
 tags: [commonmark, gfm, html, latex, mermaid, frontmatter, footnotes]
 ---
 
@@ -83,11 +82,11 @@ $$
 
 ## 3. Mermaid Diagrams
 
-Siren renders all 32 Mermaid v12.2.0 diagram categories offline using an offscreen vector compilation pipeline (`vector_graphics`) powered by the **ELK** layout engine (`layout: 'elk'`, `cose-bilkent` for mindmaps, and `swimlane` for swimlane diagrams) and **`neo`** look with fenced code blocks labeled `mermaid`.
+Siren renders standard, beta, and specialized Mermaid diagrams offline using an offscreen vector compilation pipeline (`vector_graphics`) powered by the **ELK** layout engine (`layout: 'elk'`, `cose-bilkent` for mindmaps, and `swimlane` for swimlane diagrams) and **`neo`** look with fenced code blocks labeled `mermaid`.
 
 - **Proportional Scaling**: Increasing or decreasing the document font size via the `+` / `-` toolbar buttons (`Cmd+=` / `Cmd+-` / `Cmd+0`) scales Mermaid diagrams proportionally while remaining crisp at any resolution.
 - **Interactive Zoom, Pan & Export Viewer**: Click any rendered diagram (or the hover **Zoom** button) to open it in a dedicated modal viewer supporting up to `1000%` magnification, drag-to-pan, trackpad pinch-to-zoom, Fit-to-Window, **Copy Diagram Image (PNG)** to the macOS clipboard, **Export Diagram (SVG / PNG)** to disk, and **Copy Mermaid Source**.
-- **Comprehensive Examples**: Browse the **[Mermaid Diagram Examples Gallery](mermaid-examples.md)** for 67 examples across flowcharts, sequence, class, state, ER, user journey, Gantt, pie, quadrant, requirement, GitGraph, C4, mindmap, timeline, Sankey, XY chart, block, packet, kanban, architecture, radar, treemap, Venn, railroad (`railroad-beta`, `railroad-ebnf-beta`, `railroad-abnf-beta`, `railroad-peg-beta`), TreeView, Ishikawa, Cynefin, Wardley map, event modeling, agentflow, use case, and swimlane diagrams.
+- **Comprehensive Examples**: Browse the **[Mermaid Diagram Examples Gallery](mermaid-examples.md)** for examples across flowcharts, sequence, class, state, ER, user journey, Gantt, pie, quadrant, requirement, GitGraph, C4, mindmap, timeline, Sankey, XY chart, block, packet, kanban, architecture, radar, treemap, Venn, railroad (`railroad-beta`, `railroad-ebnf-beta`, `railroad-abnf-beta`, `railroad-peg-beta`), TreeView, Ishikawa, Cynefin, Wardley map, event modeling, agentflow, use case, and swimlane diagrams.
 
 ### Flowcharts
 ```mermaid
@@ -363,7 +362,7 @@ Raw HTML tables (`<table>`, `<thead>`, `<tbody>`, `<tr>`, `<th>`, `<td>`, `<capt
   <dt>Single-Tab Invariant</dt>
   <dd>Opening an already-open document focuses its existing tab instead of duplicating it.</dd>
   <dt>Offscreen Vector Engine</dt>
-  <dd>Compiles Mermaid v11 diagrams and SVG badges at Retina resolution without blocking the UI isolate.</dd>
+  <dd>Compiles Mermaid diagrams and SVG badges at Retina resolution without blocking the UI isolate.</dd>
 </dl>
 ```
 
@@ -389,7 +388,7 @@ Raw HTML tables (`<table>`, `<thead>`, `<tbody>`, `<tr>`, `<th>`, `<td>`, `<capt
   <dt>Single-Tab Invariant</dt>
   <dd>Opening an already-open document focuses its existing tab instead of duplicating it.</dd>
   <dt>Offscreen Vector Engine</dt>
-  <dd>Compiles Mermaid v11 diagrams and SVG badges at Retina resolution without blocking the UI isolate.</dd>
+  <dd>Compiles Mermaid diagrams and SVG badges at Retina resolution without blocking the UI isolate.</dd>
 </dl>
 
 ### Collapsible Disclosure Sections (`<details>` & `<summary>`)

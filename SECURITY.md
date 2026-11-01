@@ -6,8 +6,8 @@ Security updates are applied to the latest minor release of **Siren**.
 
 | Version | Supported |
 | :--- | :--- |
-| `0.4.x` | :white_check_mark: |
-| `< 0.4.0` | :x: |
+| Latest release | :white_check_mark: |
+| Older releases | :x: |
 
 ## Reporting a Vulnerability
 

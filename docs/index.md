@@ -1,7 +1,6 @@
 ---
 title: Siren Documentation
 category: User Manual
-version: 0.5.0
 tags: [documentation, overview, quick-start]
 ---
 
@@ -19,7 +18,7 @@ Explore the documentation guides below:
 
 - **[Features Overview](features.md)** — A comprehensive breakdown of Siren's core features, including dual-mode viewing, document outline, multi-tab workspace, fuzzy search, and live file system watching.
 - **[Markdown Syntax Guide](markdown-guide.md)** — Complete reference for standard Markdown and extended features supported by Siren, such as GitHub Alerts, LaTeX Math, Mermaid diagrams, YAML frontmatter, footnotes, embedded GFM HTML (`<kbd>`, `<details>`, `<table>`, `<picture>`, sized `<img>` & SVG badges), highlighting, and task lists.
-- **[Mermaid Diagram Examples Gallery](mermaid-examples.md)** — Comprehensive 67-diagram gallery across all 32 Mermaid v12.2.0 diagram categories rendered offline with the ELK + `neo` engine.
+- **[Mermaid Diagram Examples Gallery](mermaid-examples.md)** — Comprehensive gallery across all supported standard, beta, and specialized Mermaid diagram categories rendered offline with the ELK + `neo` engine.
 - **[Keyboard Shortcuts](shortcuts.md)** — Quick reference guide for all keyboard shortcuts and navigation commands.
 - **[Architecture & Development](architecture.md)** — Technical deep-dive into Siren's internals, isolate-powered indexing, Ripgrep integration, offline vector Mermaid engine, and development instructions.
 

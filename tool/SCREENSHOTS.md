@@ -36,6 +36,6 @@ Run the full capture script from the repository root after building `build/macos
 | `siren_search_view.png` | Click sidebar `Search` tab and enter search query | Sidebar `Search` tab running an embedded Ripgrep workspace search | `README.md`, `docs/features.md` |
 | `siren_quick_open.png` | Trigger `File -> Quick Open...` (`Cmd+P`) | Isolate-powered `Quick Open` fuzzy file finder modal | `README.md`, `docs/features.md` |
 | `siren_settings_dialog.png` | Click top-right `Settings` gear icon | Desktop `Settings` dialog showing `Theme Mode`, `Show YAML Frontmatter in Preview`, and `File Indexing Patterns (Regex)` | `README.md`, `docs/features.md` |
-| `siren_about_dialog.png` | Click `Siren -> About Siren` menu item | Native macOS `About Siren` modal showing current release version (`Version 0.3.0`) | `README.md`, `docs/features.md` |
+| `siren_about_dialog.png` | Click `Siren -> About Siren` menu item | Native macOS `About Siren` modal showing current release version | `README.md`, `docs/features.md` |
 | `siren_licenses_view.png` | Click `Open Source Licenses` inside `About Siren` | 2-column Open Source Licenses browser inside `AboutSirenDialog` | `README.md`, `docs/features.md` |
 | `siren_mermaid_viewer.png` | Open `docs/mermaid-examples.md` and click diagram fullscreen button | Interactive `MermaidZoomDialog` vector zoom, pan & PNG/SVG export inspector | `README.md`, `docs/features.md` |

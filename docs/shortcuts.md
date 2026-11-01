@@ -1,7 +1,6 @@
 ---
 title: Siren Keyboard Shortcuts
 category: User Manual
-version: 0.5.0
 tags: [shortcuts, macos, menu-bar, navigation]
 ---
 

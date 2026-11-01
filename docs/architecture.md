@@ -1,7 +1,6 @@
 ---
 title: Siren Architecture & Development
 category: Engineering Guide
-version: 0.5.0
 tags: [architecture, flutter, isolates, ripgrep, mermaid]
 ---
 
@@ -47,7 +46,7 @@ graph TD
 - Employs debounce timers and delay strategies to handle macOS atomic saves (where editors write to a temporary file, delete the original, and rename).
 
 ### Offscreen Mermaid Vector & SVG Raster Engine (`lib/mermaid_render_service.dart`, `lib/markdown_extensions.dart`)
-- Uses a single shared headless `WebViewController` loaded with offline `mermaid.min.js` (Mermaid `12.2.0` with embedded ELK layout and `look: 'neo'`) and `mermaid_page.js` assets.
+- Uses a single shared headless `WebViewController` loaded with offline `mermaid.min.js` (with embedded ELK layout and `look: 'neo'`) and `mermaid_page.js` assets.
 - Flattens computed SVG styles, markers, normalized `stroke-dasharray` patterns, and `<foreignObject>` labels into standalone SVG XML and compiles them into binary `vector_graphics` bytecode (`VectorGraphic`), with automatic high-DPI PNG fallback.
 - Caches compiled diagrams in an LRU memory cache (`(code, isDarkMode)`) for instant scrolling, proportional font scaling, interactive zoom/pan inspection, macOS clipboard PNG copy, and SVG/PNG file export (`lib/mermaid_zoom_dialog.dart`).
 - Renders complex SVG badges (`img.shields.io` with nested base64 `<image>` logos and `transform="scale(.1)"` typography) and local `.svg` images through an offscreen `3x` Retina WebKit canvas rasterizer with in-memory LRU caching.
