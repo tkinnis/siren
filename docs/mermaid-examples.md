@@ -1,10 +1,51 @@
 # Mermaid Diagram Examples
 
-A comprehensive gallery of Mermaid diagrams demonstrating all diagram categories supported in **Siren**: flowcharts, sequence diagrams, state diagrams, class diagrams, entity-relationship diagrams, Gantt charts, pie charts, Git graphs, user journeys, requirement diagrams, XY charts, quadrant charts, mindmaps, timelines, Sankey diagrams, packet diagrams, block diagrams, Kanban boards, C4 context diagrams, architecture diagrams, radar diagrams, treemap diagrams, Venn diagrams, railroad grammar diagrams (`railroad-beta`, `railroad-ebnf-beta`, `railroad-abnf-beta`, `railroad-peg-beta`), TreeView diagrams, Ishikawa diagrams, Cynefin diagrams, Wardley maps, event modeling diagrams, agentflow diagrams, use case diagrams, and swimlane diagrams.
+A comprehensive gallery of Mermaid diagrams demonstrating all **33** diagram families supported natively in **Siren** via `pele_dart`: flowcharts, sequence diagrams, state diagrams, class diagrams, entity-relationship diagrams, Gantt charts, pie charts, Git graphs, user journeys, requirement diagrams, XY charts, quadrant charts, mindmaps, timelines, Sankey diagrams, packet diagrams, block diagrams, Kanban boards, C4 architecture diagrams (`C4Context`, `C4Component`), architecture diagrams, radar diagrams, treemap diagrams, Venn diagrams, railroad grammar diagrams (`railroad-ebnf-beta`, `railroad-beta`, `railroad-abnf-beta`, `railroad-peg-beta`), TreeView diagrams, Ishikawa diagrams, Cynefin diagrams, Wardley maps, event modeling diagrams, agentflow diagrams, use case diagrams, swimlane diagrams, and info diagrams.
 
 ---
 
-## 1. Flowcharts & Graphs
+## 1. Flowcharts & Graphs (`flowchart`, `graph`)
+
+### Service Architecture Subgraphs
+
+```mermaid
+flowchart LR
+  subgraph Client
+    UI[Web app]
+    Cache[(Local cache)]
+  end
+  subgraph Services
+    API[API gateway]
+    Auth[Auth service]
+    Orders[Order service]
+  end
+  subgraph Storage
+    DB[(Orders DB)]
+  end
+  UI --> API
+  UI --> Cache
+  API --> Auth
+  API --> Orders
+  Orders --> DB
+  Auth -. token .-> UI
+```
+
+### Pure-Dart Rendering Pipeline
+
+```mermaid
+flowchart TD
+  A([Mermaid text]) --> B{Supported?}
+  B -- Yes --> C[Parse]
+  B -- No --> H[Fall back]
+
+  subgraph Pele
+    C --> D[Layout]
+    D --> E[Render]
+  end
+
+  E --> F[(SVG)]
+  F -.-> G[Compile to Vector Graphics]
+```
 
 ### Simple Left-Right Graph
 
@@ -24,39 +65,6 @@ graph TD
     A-->C
     B-->D
     C-->D
-```
-
-### Sequential Chapter Flow
-
-```mermaid
-flowchart LR
-    a[Chapter 1] --> b[Chapter 2] --> c[Chapter 3]
-    c-->d[Using Ledger]
-    c-->e[Using Trezor]
-    d-->f[Chapter 4]
-    e-->f
-```
-
-### Dependency Sets
-
-```mermaid
-graph TB
-    A & B--> C & D
-```
-
-### Binary Tree
-
-```mermaid
-graph TB
-    A((1))-->B((2))
-    A-->C((3))
-    B-->D((4))
-    B-->E((5))
-    C-->F((6))
-    C-->G((7))
-    D-->H((8))
-    D-->I((9))
-    E-->J((10))
 ```
 
 ### Node Shapes & Link Variants
@@ -102,232 +110,28 @@ flowchart LR
     click D "https://mermaid.js.org/"
 ```
 
-### Multi-Class Styled Flowchart
-
-```mermaid
-flowchart LR
-    A[CI MULTI CHAPTCHA]-->B{Select captcha service by developer?}
-    classDef green color:#022e1f,fill:#00f500
-    classDef red color:#022e1f,fill:#f11111
-    classDef white color:#022e1f,fill:#fff
-    classDef black color:#fff,fill:#000
-    B--YES-->C[How to use?]:::green
-
-    C-->U[I choose recaptcha.]:::green
-    U--Views-->Q["echo CIMC_JS('recaptcha');\n echo CIMC_HTML(['captcha_name'=>'recaptcha']);"]:::green
-    U--Controller-->W["CIMC_RULE('recaptcha');"]:::green
-
-    C-->I[I choose arcaptcha.]:::white
-    I--Views-->O["echo CIMC_JS('arcaptcha');\n echo CIMC_HTML(['captcha_name'=>'arcaptcha']);"]:::white
-    I--Controller-->P["CIMC_RULE('arcaptcha');"]:::white
-
-    C-->X[I choose bibot.]:::red
-    X--Views-->V["echo CIMC_JS('bibot');\n echo CIMC_HTML(['captcha_name'=>'bibot']);"]:::red
-    X--Controller-->N["CIMC_RULE('bibot');"]:::red
-
-    B--NO-->D[How to use?]:::black
-    D--Views-->F["echo CIMC_JS('randomcaptcha');\n echo CIMC_HTML(['captcha_name'=>'randomcaptcha']);"]:::black
-    D--Controller-->T["CIMC_RULE('archaptcha,recaptcha,bibot');"]:::black
-```
-
-### Subgraphs
-
-```mermaid
-graph TB
-    c1-->a2
-    subgraph one
-    a1-->a2
-    end
-    subgraph two
-    b1-->b2
-    end
-    subgraph three
-    c1-->c2
-    end
-```
-
-### Themed Subgraph
-
-```mermaid
-graph LR
-    subgraph 1[System Flow]
-        CP([Command Palette])
-        subgraph 2[Black Box]
-            QA(Quick Addition)
-            QM(Macro)
-        end
-        B[Call Script]
-        C[Open URI]
-        D[Load Workspace]
-        CP --> QA --> QM --> B --> C --> D
-    end
-style 1 fill:#333333,stroke:#FFFFFF,stroke-width:2px
-style 2 fill:#222222,stroke:#FFFFFF,stroke-width:1px
-```
-
-### Larger Flowchart with Custom Styling
-
-```mermaid
-graph TB
-    sq[Square shape] --> ci((Circle shape))
-
-    subgraph A
-        od>Odd shape]-- Two line<br/>edge comment --> ro
-        di{Diamond with <br/> line break} -.-> ro(Rounded<br>square<br>shape)
-        di==>ro2(Rounded square shape)
-    end
-
-    %% Notice that no text in shape are added here instead that is appended further down
-    e --> od3>Really long text with linebreak<br>in an Odd shape]
-
-    %% Comments after double percent signs
-    e((Inner / circle<br>and some odd <br>special characters)) --> f(,.?!+-*ز)
-
-    cyr[Cyrillic]-->cyr2((Circle shape Начало))
-
-    classDef green fill:#9f6,stroke:#333,stroke-width:2px
-    classDef orange fill:#f96,stroke:#333,stroke-width:4px
-    class sq,e green
-    class di orange
-```
-
-### Decision Tree
-
-```mermaid
-graph TB
-A("Do you think online service
-learning is right for you?")
-B("Do you have time to design
-a service learning component?")
-C("What is the civic or public purpose of your discipline?
-How do you teach that without service learning?")
-D("Do you have departmental or school
-support to plan and implement service learning?")
-E["Are you willing to be a trailblazer?"]
-F["What type of service learning to you want to plan?"]
-
-A==Yes==>B
-A--No-->C
-B==Yes==>D
-B--No-->E
-D--Yes-->F
-D--No-->E
-E--Yes-->F
-E--No-->C
-```
-
-### Styled Links
-
-```mermaid
-graph TD
-    Bat(Batteries) -->|150a 50mm| ShutOff
-    Bat -->|150a 50mm| Shunt
-
-    ShutOff[Shut Off] -->|150a 50mm| BusPos[Bus Bar +]
-
-    Shunt -->|150a 50mm| BusNeg[Bus Bar -]
-
-    BusPos -->|40a| Fuse[Fuse Box]
-    BusPos -->|?a| Old{Old Wiring}
-
-    BusNeg -->|40a| Fuse
-
-    Fuse -->|10a| USB(USB-C)
-    Fuse -->|10a| USB
-    Fuse -->|1.5a| Switch -->|1.5a| Wifi
-    Wifi -->|1.5a| Fuse
-
-    Fuse -->|10a| Cig1[Cigarette Lighter]
-    Fuse -->|10a| Cig1
-
-    Fuse -->|10a| Cig2[Cigarette Lighter Near Bed]
-    Fuse -->|10a| Cig2
-
-    BusNeg -->|?a| Old
-
-    Solar --> SolarCont[Solar Controller]
-    Solar --> SolarCont
-
-    SolarCont --> BusNeg
-    SolarCont --> BusPos
-
-    linkStyle 0,1,2,4,5,8,9 stroke-width:2px,fill:none,stroke:red
-    linkStyle 3,6,7 stroke-width:2px,fill:none,stroke:black
-    linkStyle 10 stroke-width:2px,fill:none,stroke:red
-    linkStyle 11 stroke-width:2px,fill:none,stroke:green
-    linkStyle 12 stroke-width:2px,fill:none,stroke:red
-    linkStyle 13 stroke-width:2px,fill:none,stroke:green
-    linkStyle 14 stroke-width:2px,fill:none,stroke:red
-    linkStyle 15 stroke-width:2px,fill:none,stroke:green
-    linkStyle 16 stroke-width:2px,fill:none,stroke:green
-    linkStyle 17 stroke-width:2px,fill:none,stroke:red
-    linkStyle 18 stroke-width:2px,fill:none,stroke:green
-    linkStyle 19 stroke-width:2px,fill:none,stroke:green
-```
-
-### Styled Flowchart with Subgraph Title
-
-```mermaid
-graph TD
-%% Adding a title to the flowchart using the SubGraph feature
-subgraph SGTitle ["WHAT IS THE ROOT CAUSE OF THE PROBLEM? ____"]
-
-%% Nodes
-    0[Key Variable<br>Target: 100, Actual: 80]
-    1[Top Variable 1<br>Tgt: 20, Act: 20]
-    2[Top Variable 2<br>Tgt: 30, Act: 30]
-    3[Top Variable 3<br>Tgt: 50, Act: 30]
-    31[Sub Variable 1<br>Tgt: 25, Act: 25]
-    32[Sub Variable 2<br>Tgt: 25, Act: 5]
-    321[Element 1<br>Tgt: 20, Act: 1]
-    322[Element 2<br>Tgt: 5, Act: 4]
-
-%% Close title subgraph
-end
-
-%% Links
-    0 --- 1
-    0 --- 2
-    0 --- 3
-    3 --- 31
-    3 --- 32
-    32 --- 321
-    32 --- 322
-
-%% Defining node styles
-    classDef Red fill:#FF9999
-    classDef Amber fill:#FFDEAD
-    classDef Green fill:#BDFFA4
-
-%% Assigning styles to nodes
-    class 3,32,321 Red
-    class 322 Amber
-    class 1,2,31 Green
-
-%% Changing color of links [NOTE: Link arrows will remain black]
-    linkStyle default fill: none, stroke: grey
-
-%% Styling the title subgraph
-    classDef Title fill:none, stroke-width:0, color:grey, font-weight:bold, font-size: 17px
-    class SGTitle Title
-```
-
 ---
 
-## 2. Sequence Diagrams
+## 2. Sequence Diagrams (`sequenceDiagram`)
 
-### Basic Sequence Diagram
+### Order Checkout & Payment Authorization
 
 ```mermaid
 sequenceDiagram
-    Alice ->> Bob: Hello Bob, how are you?
-    Bob-->>John: How about you John?
-    Bob--x Alice: I am good thanks!
-    Bob-x John: I am good thanks!
-    Note right of John: Bob thinks a long<br/>long time, so long<br/>that the text does<br/>not fit on a row.
-
-    Bob-->Alice: Checking with John...
-    Alice->John: Yes... John, how are you?
+  autonumber
+  actor Customer
+  participant Web as Web app
+  participant API as API gateway
+  participant Bank
+  Customer->>Web: Place order
+  Web->>API: POST /orders
+  activate API
+  API->>Bank: Authorize payment
+  Bank-->>API: Approved
+  API-->>Web: 201 Created
+  deactivate API
+  Web-->>Customer: Order confirmed
+  Note over Customer,Bank: One order, one transaction
 ```
 
 ### Three-Way Handshake
@@ -343,47 +147,6 @@ sequenceDiagram
   note over c, s: SEQ2 = 300<br>ACK2 = 100+1 = 101
   c->>s: ACK
   note over c, s: SEQ3 = 101<br>ACK3 = 300+1 = 301
-```
-
-### Query Forwarding Sequence
-
-```mermaid
-sequenceDiagram
-    A->> B: Query
-    B->> C: Forward query
-    Note right of C: Thinking...
-    C->> B: Response
-    B->> A: Forward response
-```
-
-### Iframe Render Lifecycle
-
-```mermaid
-sequenceDiagram
-    participant dotcom
-    participant iframe
-    participant viewscreen
-    dotcom->>iframe: loads html w/ iframe url
-    iframe->>viewscreen: request template
-    viewscreen->>iframe: html & javascript
-    iframe->>dotcom: iframe ready
-    dotcom->>iframe: set mermaid data on iframe
-    iframe->>iframe: render mermaid
-```
-
-### Autonumbered Sequence with Loop & Notes
-
-```mermaid
-sequenceDiagram
-    autonumber
-    Student->>Admin: Can I enrol this semester?
-    loop enrolmentCheck
-        Admin->>Admin: Check previous results
-    end
-    Note right of Admin: Exam results may <br> be delayed
-    Admin-->>Student: Enrolment success
-    Admin->>Professor: Assign student to tutor
-    Professor-->>Admin: Student is assigned
 ```
 
 ### Loops, Alt, and Opt Blocks
@@ -404,23 +167,7 @@ sequenceDiagram
     end
 ```
 
-### Message to Self in Loop
-
-```mermaid
-sequenceDiagram
-    participant Alice
-    participant Bob
-    Alice->>John: Hello John, how are you?
-    loop HealthCheck
-        John->>John: Fight against hypochondria
-    end
-    Note right of John: Rational thoughts<br/>prevail...
-    John-->>Alice: Great!
-    John->>Bob: How about you?
-    Bob-->>John: Jolly good!
-```
-
-### Blogging App Service Communication
+### Parallel Service Notifications (`par` / `and`)
 
 ```mermaid
 sequenceDiagram
@@ -455,46 +202,22 @@ sequenceDiagram
 
 ---
 
-## 3. State Diagrams
+## 3. State Diagrams (`stateDiagram-v2`)
 
-### Simple State Diagram
-
-```mermaid
-stateDiagram-v2
-    [*] --> Still
-    Still --> [*]
-    Still --> Moving
-    Moving --> Still
-    Moving --> Crash
-    Crash --> [*]
-```
-
-### Document Lifecycle State Diagram
+### Editorial Review Composite State
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Unwritten
-
-  Unwritten --> Open: Open
-  Unwritten --> Void: Void
-
-  Open --> Void: Void
-  Open --> Cancelled: Cancel
-  Open --> Closed: Close
-  Open --> Open: Update
-
-  Closed --> Open: Open
-```
-
-### Composite State
-
-```mermaid
-stateDiagram-v2
-    [*] --> First
-    state First {
-        [*] --> second
-        second --> [*]
-    }
+  [*] --> Draft
+  Draft --> Submitted : submit
+  state Review {
+    [*] --> Screening
+    Screening --> Decision
+  }
+  Submitted --> Review
+  Review --> Published : approved
+  Review --> Draft : rejected
+  Published --> [*]
 ```
 
 ### Fork and Join State Diagram
@@ -526,7 +249,7 @@ stateDiagram-v2
     note left of State2 : This is the note to the left.
 ```
 
-### Shipment Status State Diagram
+### Shipment Status State Diagram (`direction LR`)
 
 ```mermaid
 stateDiagram-v2
@@ -548,7 +271,35 @@ stateDiagram-v2
 
 ---
 
-## 4. Class Diagrams
+## 4. Class Diagrams (`classDiagram`)
+
+### Namespace Hierarchy
+
+```mermaid
+---
+config:
+  class:
+    hierarchicalNamespaces: false
+---
+classDiagram
+    namespace Earth.Volcano.Summit {
+        class Crater {
+            +erupt()
+        }
+    }
+    namespace Earth.Volcano.Slope {
+        class LavaFlow {
+            +buildLand()
+        }
+    }
+    namespace Earth {
+        class Hotspot {
+            +meltRock()
+        }
+    }
+    Hotspot --> Crater : feeds
+    Hotspot --> LavaFlow : feeds
+```
 
 ### Inheritance and Methods
 
@@ -578,28 +329,31 @@ classDiagram
 
 ---
 
-## 5. Entity Relationship Diagrams
+## 5. Entity Relationship Diagrams (`erDiagram`)
 
-### Customer Orders Schema
+### Customer Orders & Products Schema
 
 ```mermaid
 erDiagram
-    CUSTOMER ||--o{ ORDER : places
-    CUSTOMER {
-        string name
-        string custNumber
-        string sector
-    }
-    ORDER ||--|{ LINE-ITEM : contains
-    ORDER {
-        int orderNumber
-        string deliveryAddress
-    }
-    LINE-ITEM {
-        string productCode
-        int quantity
-        float pricePerUnit
-    }
+  CUSTOMER ||--o{ ORDER : places
+  ORDER ||--|{ LINE_ITEM : contains
+  PRODUCT ||--o{ LINE_ITEM : "appears in"
+  CUSTOMER {
+    string name
+    string email
+  }
+  ORDER {
+    int id
+    date placedAt
+  }
+  LINE_ITEM {
+    int quantity
+    float price
+  }
+  PRODUCT {
+    string sku
+    string title
+  }
 ```
 
 ### E-Commerce Domain Relationships
@@ -618,7 +372,7 @@ erDiagram
 
 ---
 
-## 6. Gantt Charts
+## 6. Gantt Charts (`gantt`)
 
 ### Multi-Team Project Schedule
 
@@ -651,23 +405,15 @@ gantt
 
 ---
 
-## 7. Pie Charts
+## 7. Pie Charts (`pie`)
 
-### Streaming Time Breakdown
-
-```mermaid
-pie title NETFLIX
-    "Time spent looking for movie" : 90
-    "Time spent watching it" : 10
-```
-
-### Character Attributes Breakdown
+### Crew Catch Breakdown
 
 ```mermaid
-pie title What Voldemort doesn't have?
-    "FRIENDS" : 2
-    "FAMILY" : 3
-    "NOSE" : 45
+pie title Fish caught by the crew
+    "ʻAhi" : 386
+    "Mahimahi" : 85
+    "Ono" : 15
 ```
 
 ### Volunteer Pet Adoptions
@@ -683,43 +429,46 @@ pie title Pets adopted by volunteers
 
 ## 8. Git Graphs (`gitGraph`)
 
-### Commit, Tag, and Branch Flow
+### Branches, Merge, and Cherry-Pick
 
 ```mermaid
 gitGraph
-    commit id: "Ashish"
-    branch newbranch
-    checkout newbranch
-    commit id: "1111"
-    commit tag: "test"
+    commit id: "ZERO"
+    branch develop
+    branch release
+    commit id: "A"
     checkout main
-    commit type: HIGHLIGHT
-    commit
-    merge newbranch
-    commit
-    branch b2
-    commit
+    commit id: "ONE"
+    checkout develop
+    commit id: "B"
+    checkout main
+    merge develop id: "MERGE"
+    commit id: "TWO"
+    checkout release
+    cherry-pick id: "MERGE" parent: "B"
+    commit id: "THREE"
+    checkout develop
+    commit id: "C"
 ```
 
-### Custom Node Spacing & Branch Merge
+### Commit Tags and Highlights
 
 ```mermaid
-%%{init: { 'gitGraph': {'nodeSpacing': 150, 'nodeRadius': 10, 'mainBranchName': 'master'} } }%%
 gitGraph
-    commit
-    branch newbranch
-    checkout newbranch
-    commit
-    commit
-    checkout master
-    commit
-    commit
-    merge newbranch
+    commit id: "init"
+    branch feature
+    checkout feature
+    commit id: "feat-1"
+    commit tag: "v0.1.0"
+    checkout main
+    commit type: HIGHLIGHT
+    merge feature
+    commit id: "release"
 ```
 
 ---
 
-## 9. User Journey Diagrams
+## 9. User Journey Diagrams (`journey`)
 
 ### Working Day Journey
 
@@ -732,35 +481,50 @@ journey
       Do work: 1: Me, Cat
     section Go home
       Go downstairs: 5: Me
-      Sit down: 3: Me
+      Sit down: 5: Me
 ```
 
 ---
 
-## 10. Requirement Diagrams
+## 10. Requirement Diagrams (`requirementDiagram`)
 
-### Requirement Satisfaction
+### Checkout & Payment Functional Requirements
 
 ```mermaid
 requirementDiagram
-
-    requirement test_req {
+  requirement checkout_req {
     id: 1
-    text: the test text.
+    text: Orders must be payable online.
     risk: high
     verifymethod: test
-    }
-
-    element test_entity {
-    type: simulation
-    }
-
-    test_entity - satisfies -> test_req
+  }
+  functionalRequirement payment_req {
+    id: 1.1
+    text: Card payments must be authorized.
+    risk: high
+    verifymethod: test
+  }
+  element checkout_service {
+    type: service
+  }
+  checkout_req - contains -> payment_req
+  checkout_service - satisfies -> payment_req
 ```
 
 ---
 
-## 11. XY Charts (`xychart-beta`)
+## 11. XY Charts (`xychart`, `xychart-beta`)
+
+### Monthly Ocean Temperature
+
+```mermaid
+xychart
+    title "Ocean Temperature"
+    x-axis [jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec]
+    y-axis "Temperature (in °F)" 74 --> 82
+    bar [76.3, 75.9, 76.0, 76.7, 77.8, 78.9, 79.9, 80.7, 81.1, 80.5, 79.1, 77.4]
+    line [76.3, 75.9, 76.0, 76.7, 77.8, 78.9, 79.9, 80.7, 81.1, 80.5, 79.1, 77.4]
+```
 
 ### Quarterly Sales Revenue
 
@@ -800,17 +564,38 @@ quadrantChart
 
 ## 13. Mindmaps (`mindmap`)
 
-### Feature Hierarchy Mindmap
+### Hawaiʻi History, Nature & Culture
 
 ```mermaid
-%%{init: {'layout': 'cose-bilkent'}}%%
+mindmap
+  root((Hawaiʻi))
+    History
+      Old legends
+      ::icon(fa fa-book)
+      Voyaging
+        Polynesian navigators who sailed by the stars
+    Nature
+      Mountains<br/>and volcanoes
+      Ocean life
+        Reef
+            Sea turtles
+            Monk seals
+            Parrotfish
+    Culture
+      Hula and lei
+      ʻUkulele
+```
+
+### Siren Feature Hierarchy
+
+```mermaid
 mindmap
   root((Siren))
     Rendering
       CommonMark
       GitHub Alerts
       LaTeX Math
-      Mermaid ELK
+      Pure-Dart Mermaid
     Navigation
       Quick Open
       Outline View
@@ -824,42 +609,60 @@ mindmap
 
 ## 14. Timelines (`timeline`)
 
-### Chronological Platform History
+### Timeline of the Hawaiian Islands
 
 ```mermaid
 timeline
-    title History of Social Media Platform
-    2002 : LinkedIn
-    2004 : Facebook
-         : Google
-    2005 : YouTube
-    2006 : Twitter
+    title Timeline of the Hawaiian Islands
+    section Older islands
+        Kauaʻi : 5 million years old, Canyons, Sea <br>cliffs
+        Oʻahu : 3 million years old, Diamond Head, Surf breaks
+        Molokaʻi : 2 million years old, Fishponds, Tall cliffs
+    section Younger islands
+        Maui : 1 million years old, Haleakalā, Whale watching
+        Hawaiʻi : Still growing, Mauna Kea, Kīlauea
 ```
 
 ---
 
-## 15. Sankey Diagrams (`sankey-beta`)
+## 15. Sankey Diagrams (`sankey`, `sankey-beta`)
 
-### Bio-Conversion Energy Flow
+### Energy Grid Distribution Flow
 
 ```mermaid
-sankey-beta
+---
+config:
+  sankey:
+    showValues: false
+    nodeWidth: 14
+    nodePadding: 18
+---
+sankey
 
-Agricultural 'waste',Bio-conversion,124.729
-Bio-conversion,Liquid,0.597
-Bio-conversion,Losses,26.862
-Bio-conversion,Solid,280.322
-Bio-conversion,Gas,81.144
+Solar,Electricity Grid,140
+Wind,Electricity Grid,185
+Hydro,Electricity Grid,95
+Natural Gas,Electricity Grid,160
+Natural Gas,District Heating,110
+Electricity Grid,Homes,190
+Electricity Grid,Industry,230
+Electricity Grid,Electric Transport,95
+Electricity Grid,Grid Losses,65
+District Heating,Homes,70
+District Heating,Industry,40
 ```
 
 ---
 
-## 16. Packet Diagrams (`packet-beta`)
+## 16. Packet Diagrams (`packet`, `packet-beta`)
 
 ### TCP Packet Header
 
 ```mermaid
-packet-beta
+---
+title: "TCP Packet"
+---
+packet
 0-15: "Source Port"
 16-31: "Destination Port"
 32-63: "Sequence Number"
@@ -875,19 +678,21 @@ packet-beta
 112-127: "Window"
 128-143: "Checksum"
 144-159: "Urgent Pointer"
+160-191: "(Options and Padding)"
+192-255: "Data (variable length)"
 ```
 
 ---
 
-## 17. Block Diagrams (`block-beta`)
+## 17. Block Diagrams (`block`, `block-beta`)
 
 ### Layered Database Block Diagram
 
 ```mermaid
-block-beta
+block
 columns 1
   db(("DB"))
-  blockArrowId6<["   "]>(down)
+  blockArrowId6<["&nbsp;&nbsp;&nbsp;"]>(down)
   block:ID
     A
     B["A wide one in the middle"]
@@ -904,22 +709,33 @@ columns 1
 
 ## 18. Kanban Boards (`kanban`)
 
-### Project Workflow Board
+### Engineering Sprint Board with Ticket Metadata
 
 ```mermaid
+---
+config:
+  kanban:
+    ticketBaseUrl: 'https://mermaidchart.atlassian.net/browse/#TICKET#'
+---
 kanban
   Todo
-    [Design Mermaid Gallery]
-  In Progress
-    [Verify ELK + Neo Layout]
-  Done
-    [Bundle Offline Assets]
-    [Proportional Font Scaling]
+    [Create Documentation]
+    docs[Create Blog about the new diagram]
+  [In progress]
+    id6[Pure-Dart vector Mermaid rendering in Siren]
+  id9[Ready for deploy]
+    id8[Design grammar]@{ assigned: 'knsv' }
+  id10[Ready for test]
+    id4[Create parsing tests]@{ ticket: MC-2038, assigned: 'K.Sveidqvist', priority: 'High' }
+    id66[Verify dark and light palettes]@{ priority: 'Low', assigned: 'tkinnis' }
+  id11[Done]
+    id5[Remove WebView dependency]
+    id3[Proportional font scaling]@{ ticket: MC-2037, assigned: 'tkinnis', priority: 'High' }
 ```
 
 ---
 
-## 19. C4 Architecture Diagrams (`C4Context`)
+## 19. C4 Architecture Diagrams (`C4Context`, `C4Component`)
 
 ### System Context Diagram
 
@@ -931,6 +747,35 @@ C4Context
     System_Ext(SystemE, "Mainframe Banking System", "Stores all of the core banking information about customers, accounts, transactions, etc.")
     Rel(customerA, SystemAA, "Uses")
     Rel(SystemAA, SystemE, "Uses")
+```
+
+### API Application Component Diagram
+
+```mermaid
+C4Component
+    title Component diagram for Internet Banking System - API Application
+
+    Container(spa, "Single Page Application", "JavaScript and Angular", "Provides all the internet banking functionality to customers via their web browser.")
+    Container(ma, "Mobile App", "Flutter", "Provides internet banking functionality to customers via their mobile device.")
+    ContainerDb(db, "Database", "Relational Database Schema", "Stores user registration information, hashed authentication credentials, access logs, etc.")
+    System_Ext(mbs, "Mainframe Banking System", "Stores all of the core banking information about customers, accounts, transactions, etc.")
+
+    Container_Boundary(api, "API Application") {
+        Component(sign, "Sign In Controller", "MVC Rest Controller", "Allows users to sign in to the internet banking system")
+        Component(accounts, "Accounts Summary Controller", "MVC Rest Controller", "Provides customers with a summary of their bank accounts")
+        Component(security, "Security Component", "Spring Bean", "Provides functionality related to signing in, changing passwords, etc.")
+        Component(mbsfacade, "Mainframe Banking System Facade", "Spring Bean", "A facade onto the mainframe banking system.")
+
+        Rel(sign, security, "Uses")
+        Rel(accounts, mbsfacade, "Uses")
+        Rel(security, db, "Read & write to", "JDBC")
+        Rel(mbsfacade, mbs, "Uses", "XML/HTTPS")
+    }
+
+    Rel_Back(spa, sign, "Uses", "JSON/HTTPS")
+    Rel(spa, accounts, "Uses", "JSON/HTTPS")
+    Rel(ma, sign, "Uses", "JSON/HTTPS")
+    Rel(ma, accounts, "Uses", "JSON/HTTPS")
 ```
 
 ---
@@ -945,67 +790,88 @@ architecture-beta
 
     service db(database)[Database] in api
     service disk1(disk)[Storage] in api
+    service disk2(disk)[Storage] in api
     service server(server)[Server] in api
 
     db:L -- R:server
     disk1:T -- B:server
+    disk2:T -- B:db
 ```
 
 ---
 
 ## 21. Radar Diagrams (`radar-beta`)
 
-### Capability Profile
+### Multi-Axis Grades Comparison
 
 ```mermaid
+---
+title: "Grades"
+---
 radar-beta
-    axis a["Speed"], b["Power"], c["Range"], d["Cost"]
-    curve x["Alpha"]{4, 3, 5, 2}
-    curve y["Beta"]{2, 5, 3, 4}
-    max 5
+  axis m["Math"], s["Science"], e["English"]
+  axis h["History"], g["Geography"], a["Art"]
+  curve a["Alice"]{85, 90, 80, 70, 75, 90}
+  curve b["Bob"]{70, 75, 85, 80, 90, 85}
+
+  max 100
+  min 0
 ```
 
 ---
 
 ## 22. Treemap Diagrams (`treemap-beta`)
 
-### Workspace Breakdown
+### Product Catalog Hierarchy
 
 ```mermaid
 treemap-beta
-"Source"
-    "Editor": 40
-    "Terminal": 18
-    "Debugger"
-      "Adapters": 22
-      "Views": 14
-"Tests"
-    "Unit": 60
-    "Integration": 25
+"Products"
+    "Electronics"
+        "Phones": 50
+        "Computers": 30
+        "Accessories": 20
+    "Clothing"
+        "Men's": 40
+        "Women's": 40
 ```
 
 ---
 
 ## 23. Venn Diagrams (`venn-beta`)
 
-### Shared Capabilities
+### Three-Set Feature Overlap
 
 ```mermaid
 venn-beta
-    title Shared Capabilities
-    set A["Editor"] : 12
-    set B["Terminal"] : 12
-    set C["Debugger"] : 12
-    union A, B["Tasks"] : 4
-    union B, C["Console"] : 4
-    union A, C["Breakpoints"] : 4
+  title What makes a good feature
+  set Desirable
+  set Feasible
+  set Viable
+  union Desirable,Feasible["Buildable"]
+  union Feasible,Viable["Sustainable"]
+  union Desirable,Viable["Marketable"]
+  union Desirable,Feasible,Viable["Ship it"]
 ```
 
 ---
 
-## 24. Railroad Diagrams (`railroad-beta`, `railroad-ebnf-beta`, `railroad-abnf-beta`, `railroad-peg-beta`)
+## 24. Railroad Diagrams (`railroad-ebnf-beta`, `railroad-beta`, `railroad-abnf-beta`, `railroad-peg-beta`)
 
-### Select Clause Grammar
+### Arithmetic Expression Grammar (`railroad-ebnf-beta`)
+
+```mermaid
+railroad-ebnf-beta
+title "Arithmetic Expression Grammar"
+
+expression = term ( ( "+" | "-" ) term )* ;
+term = factor ( ( "*" | "/" ) factor )* ;
+factor = number | "(" expression ")" ;
+number = digit+ ;
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+```
+
+### Select Clause Combinator Grammar (`railroad-beta`)
 
 ```mermaid
 railroad-beta
@@ -1019,21 +885,14 @@ railroad-beta
     );
 ```
 
-### EBNF Rule Grammar
-
-```mermaid
-railroad-ebnf-beta
-    number = [ "-" ], digit, { digit }, [ ".", digit, { digit } ];
-```
-
-### ABNF Rule Grammar
+### ABNF Rule Grammar (`railroad-abnf-beta`)
 
 ```mermaid
 railroad-abnf-beta
     header = field-name ":" [ field-value ] CRLF;
 ```
 
-### PEG Rule Grammar
+### PEG Rule Grammar (`railroad-peg-beta`)
 
 ```mermaid
 railroad-peg-beta
@@ -1044,86 +903,113 @@ railroad-peg-beta
 
 ## 25. TreeView Diagrams (`treeView-beta`)
 
-### Package Directory Tree
+### Highlighted Project Tree with Icons & Annotations
 
 ```mermaid
 treeView-beta
-    "packages"
-        "origami"
-            "lib"
-                "origami.dart"
-            "pubspec.yaml"
-        "twig"
-            "lib"
-                "twig.dart"
+├── src/
+│   ├── App.tsx :::highlight icon(logos:react) ## main component
+│   └── index.ts ## entry point
+├── .env ## environment variables
+├── Dockerfile
+└── package.json
 ```
 
 ---
 
 ## 26. Ishikawa Diagrams (`ishikawa-beta`)
 
-### Release Delay Causes
+### Multi-Level Cause & Effect Fishbone
 
 ```mermaid
 ishikawa-beta
-    Late Release
-        Build
-            Slow runner
-            Cold cache
-        Test
-            Flaky suite
-            Missing fixture
-        Review
-            Large diff
+    Blurry Photo
+    Process
+        Out of focus
+        Shutter speed too slow
+        Protective film not removed
+        Beautification filter applied
+    User
+        Shaky hands
+    Equipment
+        LENS
+            Inappropriate lens
+            Damaged lens
+            Dirty lens
+        SENSOR
+            Damaged sensor
+            Dirty sensor
+    Environment
+        Subject moved too quickly
+        Too dark
 ```
 
 ---
 
 ## 27. Cynefin Diagrams (`cynefin-beta`)
 
-### Incident Triage Framework
+### Five-Domain Incident Response Framework
 
 ```mermaid
 cynefin-beta
-    title Incident Triage
-    complex
-        "Experiment with hypothesis"
-        "Safe-to-fail probe"
-    complicated
-        "Root-cause analysis"
-        "Specialist review"
-    clear
-        "Runbook step"
-    chaotic
-        "Contain blast radius"
-    chaotic --> complex : "stabilise"
-    complex --> complicated : "codify"
+  title Incident Response
+
+  complex
+    "Investigate root cause"
+    "Run chaos experiment"
+
+  complicated
+    "Analyze performance data"
+    "Expert review needed"
+
+  clear
+    "Restart service"
+    "Apply known fix"
+
+  chaotic
+    "Page on-call immediately"
+
+  confusion
+    "Unknown failure mode"
+
+  chaotic --> complex : "stabilize"
+  complex --> complicated : "codify"
 ```
 
 ---
 
 ## 28. Wardley Maps (`wardley-beta`)
 
-### Tea Shop Value Chain
+### Tea Shop Value Chain with Evolution & Notes
 
 ```mermaid
 wardley-beta
-    title Tea Shop
-    anchor Customer [0.95, 0.65]
-    component Cup of Tea [0.80, 0.60]
-    component Hot Water [0.40, 0.80]
-    component Kettle [0.25, 0.55] (buy)
-    Customer -> Cup of Tea
-    Cup of Tea -> Hot Water
-    Hot Water -> Kettle
-    evolve Kettle 0.85
+title Tea Shop Value Chain
+
+anchor Business [0.95, 0.63]
+component Cup of Tea [0.79, 0.61]
+component Tea [0.63, 0.81]
+component Hot Water [0.52, 0.80]
+component Kettle [0.43, 0.35]
+component Power [0.10, 0.70]
+
+Business -> Cup of Tea
+Cup of Tea -> Tea
+Cup of Tea -> Hot Water
+Hot Water -> Kettle
+Kettle -> Power
+
+evolve Kettle 0.62
+evolve Power 0.89
+
+note "Standardizing power allows Kettles to evolve faster" [0.30, 0.49]
 ```
 
 ---
 
 ## 29. Event Modeling Diagrams (`eventmodeling`)
 
-### Shopping Cart Slice
+### Shopping Cart Command, Event & Read-Model Slice
 
 ```mermaid
 eventmodeling
@@ -1137,54 +1023,85 @@ eventmodeling
 
 ## 30. Agentflow Diagrams (`agentflow-beta`)
 
-### Research Agent Pipeline
+### Multi-Agent Drafting & Review Pipeline
 
 ```mermaid
-agentflow-beta LR
-    User@{ shape: input, label: "Prompt" }
-    Planner@{ shape: task, label: "Plan Steps" }
-    Search@{ shape: tool, label: "Web Search" }
-    Gate@{ shape: decision, label: "Verified?" }
-    User --> Planner
-    Planner --> Search
-    Search --> Gate
+agentflow-beta TB
+  brief["Release brief"]@{ shape: input }
+  flow writer["Drafting Agent"]
+    draft["Draft the notes"]@{ shape: task }
+    lookup["changelog_search"]@{ shape: tool }
+    guide["Tone of voice"]@{ shape: refdoc }
+    draft --> lookup
+    draft -.- guide
+  end
+  flow reviewer["Review Agent"]
+    check["Check the claims"]@{ shape: task }
+    ok["Accurate?"]@{ shape: decision }
+    check --> ok
+  end
+  publish["Publish"]@{ shape: action }
+  brief --> writer
+  writer --> reviewer
+  ok --> publish
 ```
 
 ---
 
 ## 31. Use Case Diagrams (`usecase-beta`)
 
-### Online Store Checkout
+### Storefront & Fulfillment System Boundaries
 
 ```mermaid
 usecase-beta
-    actor Customer("Customer")
-    systemBoundary Store("Online Store")
-        Browse("Browse Catalog")
-        Checkout("Place Order")
-    end
-    Customer --> Browse
-    Customer --> Checkout
-    Checkout ..> : include Browse
+direction LR
+actor Customer
+actor Support
+systemBoundary Storefront
+  Browse("Browse catalog")
+  Checkout("Checkout")
+end
+systemBoundary Fulfilment
+  Track("Track delivery")
+end
+Customer --> Browse
+Customer --> Checkout
+Customer --> Track
+Support --> Track
+Checkout ..> : include Browse
 ```
 
 ---
 
 ## 32. Swimlane Diagrams (`swimlane-beta`)
 
-### Order Fulfillment
+### Cross-Department Order Fulfillment
 
 ```mermaid
-swimlane-beta
-    subgraph Customer
-        Order[Place Order]
-        Confirm[Receive Receipt]
-    end
-    subgraph Fulfillment
-        Charge[Capture Payment]
-        Ship[Dispatch Parcel]
-    end
-    Order --> Charge
-    Charge --> Ship
-    Ship --> Confirm
+swimlane-beta LR
+  subgraph Customer
+    Browse[Browse catalog]
+    Pay[Pay]
+  end
+  subgraph Warehouse
+    Pick[Pick items]
+    Ship[Ship order]
+  end
+  subgraph Finance
+    Invoice[Raise invoice]
+  end
+  Browse --> Pay
+  Pay --> Pick
+  Pick --> Ship
+  Pay --> Invoice
+```
+
+---
+
+## 33. Info Diagrams (`info`)
+
+### Package Version Info
+
+```mermaid
+info
 ```

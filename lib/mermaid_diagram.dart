@@ -28,9 +28,16 @@ class MermaidDiagram extends StatefulWidget {
 }
 
 class _MermaidDiagramState extends State<MermaidDiagram> {
+  static const int _immediateMountQuotaPerFrame = 4;
+  static const double _viewportLookaheadPx = 1800.0;
+  static int _mountedInCurrentFrame = 0;
+  static bool _resetScheduled = false;
+
   MermaidRenderResult? _result;
   bool _isHovered = false;
+  bool _renderRequested = false;
   int _generation = 0;
+  ScrollPosition? _scrollPosition;
 
   MermaidRenderService get _service =>
       widget.service ?? MermaidRenderService.instance;
@@ -38,10 +45,27 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
   double get _scaleFactor =>
       (widget.fontSize / MermaidDiagram.baseFontSize).clamp(0.5, 4.0);
 
+  static int _claimFrameMountSlot() {
+    if (!_resetScheduled) {
+      _resetScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mountedInCurrentFrame = 0;
+        _resetScheduled = false;
+      });
+    }
+    return ++_mountedInCurrentFrame;
+  }
+
   @override
   void initState() {
     super.initState();
-    _loadDiagram();
+    _scheduleOrLoadDiagram(isInitialMount: true);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateScrollListener();
   }
 
   @override
@@ -50,18 +74,96 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
     if (oldWidget.code != widget.code ||
         oldWidget.isDark != widget.isDark ||
         oldWidget.service != widget.service) {
-      _loadDiagram();
+      _result = null;
+      _renderRequested = false;
+      _scheduleOrLoadDiagram(isInitialMount: false);
     }
   }
 
-  void _loadDiagram() {
+  @override
+  void dispose() {
+    _detachScrollListener();
+    super.dispose();
+  }
+
+  void _updateScrollListener() {
+    final newPosition = Scrollable.maybeOf(context)?.position;
+    if (newPosition == _scrollPosition) return;
+    _detachScrollListener();
+    _scrollPosition = newPosition;
+    if (_result == null && !_renderRequested && _scrollPosition != null) {
+      _scrollPosition!.addListener(_onScroll);
+    }
+  }
+
+  void _detachScrollListener() {
+    _scrollPosition?.removeListener(_onScroll);
+    _scrollPosition = null;
+  }
+
+  void _onScroll() {
+    if (_result != null || _renderRequested || !mounted) {
+      _detachScrollListener();
+      return;
+    }
+    if (_isNearViewport()) {
+      _detachScrollListener();
+      _startRender(_generation);
+    }
+  }
+
+  bool _isNearViewport() {
+    if (!mounted) return false;
+    final scrollable = Scrollable.maybeOf(context);
+    if (scrollable == null || !scrollable.mounted) {
+      return true;
+    }
+    final renderBox = context.findRenderObject();
+    final viewportBox = scrollable.context.findRenderObject();
+    if (renderBox is! RenderBox ||
+        !renderBox.hasSize ||
+        viewportBox is! RenderBox ||
+        !viewportBox.hasSize) {
+      return true;
+    }
+    final offset = renderBox.localToGlobal(Offset.zero, ancestor: viewportBox);
+    final top = offset.dy;
+    final bottom = top + renderBox.size.height;
+    final viewportHeight = viewportBox.size.height;
+    return bottom >= -_viewportLookaheadPx &&
+        top <= viewportHeight + _viewportLookaheadPx;
+  }
+
+  void _scheduleOrLoadDiagram({required bool isInitialMount}) {
     final generation = ++_generation;
     final cached = _service.peek(widget.code, isDark: widget.isDark);
     if (cached != null) {
       _result = cached;
+      _renderRequested = true;
+      _detachScrollListener();
       return;
     }
 
+    final slot = isInitialMount ? _claimFrameMountSlot() : 1;
+    if (slot <= _immediateMountQuotaPerFrame) {
+      _startRender(generation);
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || generation != _generation || _renderRequested) return;
+      if (_isNearViewport()) {
+        _detachScrollListener();
+        _startRender(generation);
+      } else {
+        _updateScrollListener();
+      }
+    });
+  }
+
+  void _startRender(int generation) {
+    if (_renderRequested) return;
+    _renderRequested = true;
     _service.render(widget.code, isDark: widget.isDark).then((result) {
       if (!mounted || generation != _generation) return;
       setState(() {
@@ -116,8 +218,7 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
         theme: theme,
         message: message,
       ),
-      MermaidSvgRender(:final logicalSize) ||
-      MermaidRasterRender(:final logicalSize) => _buildRenderedDiagram(
+      MermaidSvgRender(:final logicalSize) => _buildRenderedDiagram(
         result: result,
         logicalSize: logicalSize,
         containerBg: containerBg,

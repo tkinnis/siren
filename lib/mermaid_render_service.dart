@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:pele_dart/pele_dart.dart' as pele;
 import 'package:vector_graphics_compiler/vector_graphics_compiler.dart' as vg;
-import 'package:webview_flutter/webview_flutter.dart';
 
 /// Result of rendering a Mermaid diagram offscreen.
 @immutable
@@ -21,37 +20,31 @@ final class MermaidSvgRender extends MermaidRenderResult {
     required this.compiledBytes,
     required this.logicalSize,
     this.semanticsLabel,
+    this.diagramType,
+    this.mermaidType,
+    this.links = const <pele.LinkInfo>[],
   });
 
-  /// The flattened, self-contained SVG markup.
+  /// The flattened, self-contained SVG 1.1 markup emitted by `pele_dart`.
   final String svg;
 
-  /// Compiled binary vector_graphics payload for fast native rendering.
+  /// Compiled binary `vector_graphics` payload for fast native rendering.
   final Uint8List compiledBytes;
 
-  /// Natural logical dimensions (width, height) from the Mermaid viewBox.
+  /// Natural logical dimensions (width, height) from the diagram viewBox.
   final Size logicalSize;
 
-  /// Accessible label extracted from `accTitle` / `accDescr` if present.
+  /// Accessible label extracted from `aria-label` or diagram type if present.
   final String? semanticsLabel;
-}
 
-/// High-DPI raster PNG fallback for diagrams that cannot be flattened into pure SVG primitives.
-final class MermaidRasterRender extends MermaidRenderResult {
-  const MermaidRasterRender({
-    required this.pngBytes,
-    required this.logicalSize,
-    this.semanticsLabel,
-  });
+  /// Canonical `pele_dart` diagram family identifier (e.g. `'flowchart'`).
+  final String? diagramType;
 
-  /// Encoded PNG image bytes (typically rendered at 3x scale for sharp zooming).
-  final Uint8List pngBytes;
+  /// Specific Mermaid header variant (e.g. `'flowchart-v2'`).
+  final String? mermaidType;
 
-  /// Natural logical dimensions (width, height) from the Mermaid viewBox.
-  final Size logicalSize;
-
-  /// Accessible label extracted from `accTitle` / `accDescr` if present.
-  final String? semanticsLabel;
+  /// Interactive links extracted from the diagram.
+  final List<pele.LinkInfo> links;
 }
 
 /// Failure details when a Mermaid diagram cannot be rendered.
@@ -68,6 +61,58 @@ typedef MermaidRenderOverride = Future<MermaidRenderResult> Function(
   required bool isDark,
 });
 
+/// Light mode `pele_dart` palette tuned to `SirenTheme` light tokens.
+const pele.PelePalette lightMermaidPalette = pele.PelePalette(
+  bg: '#f8f8fc',
+  fg: '#1a1a2e',
+  fgOnLight: '#1a1a2e',
+  fgOnDark: '#f8f8fc',
+  muted: '#5a5a78',
+  line: '#3a3a52',
+  surface: '#eef0f8',
+  surfaceAlt: '#e4e6f0',
+  border: '#9494b8',
+  accent: '#00a080',
+  code: '#e8e8f0',
+  critical: '#e45756',
+  colors: <String>[
+    '#2060c0',
+    '#00a080',
+    '#8040a0',
+    '#208050',
+    '#c07000',
+    '#e45756',
+    '#4c78a8',
+    '#b279a2',
+  ],
+);
+
+/// Dark mode `pele_dart` palette tuned to `SirenTheme` dark tokens.
+const pele.PelePalette darkMermaidPalette = pele.PelePalette(
+  bg: '#141424',
+  fg: '#e0e0f0',
+  fgOnLight: '#1a1a2e',
+  fgOnDark: '#e0e0f0',
+  muted: '#9898b8',
+  line: '#c8c8e0',
+  surface: '#1e1e30',
+  surfaceAlt: '#25253e',
+  border: '#5c5c84',
+  accent: '#00d4aa',
+  code: '#25253e',
+  critical: '#f87171',
+  colors: <String>[
+    '#6bb8ff',
+    '#00d4aa',
+    '#b86bff',
+    '#6bffb8',
+    '#ffb86b',
+    '#f87171',
+    '#72b7b2',
+    '#f5c2e7',
+  ],
+);
+
 /// Compiles flattened SVG XML into binary `vector_graphics` format.
 Uint8List compileMermaidSvg(String svg) {
   return vg.encodeSvg(
@@ -80,9 +125,222 @@ Uint8List compileMermaidSvg(String svg) {
   );
 }
 
-/// Service that renders Mermaid diagrams offscreen using a single shared
-/// headless [WebViewController], flattens/compiles them to native vector
-/// graphics (or high-DPI PNG fallback), and caches results in memory.
+final RegExp _ariaLabelRegex = RegExp(r'\baria-label="([^"]+)"');
+
+String? _extractAriaLabel(String svg) {
+  final match = _ariaLabelRegex.firstMatch(svg);
+  if (match == null) return null;
+  final raw = match.group(1)?.trim();
+  if (raw == null || raw.isEmpty) return null;
+  return raw
+      .replaceAll('&quot;', '"')
+      .replaceAll('&apos;', "'")
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&amp;', '&');
+}
+
+/// Pure-Dart helper that runs `pele_dart` layout + `vector_graphics_compiler`
+/// encoding without any DOM or WebView dependencies.
+MermaidRenderResult renderMermaidWithPele(String code, {required bool isDark}) {
+  try {
+    final palette = isDark ? darkMermaidPalette : lightMermaidPalette;
+    final rendered = pele.render(
+      code,
+      pele.RenderOptions(
+        outputMode: pele.SvgOutputMode.flattened,
+        palette: palette,
+      ),
+    );
+    final compiled = compileMermaidSvg(rendered.svg);
+    final label = _extractAriaLabel(rendered.svg) ?? '${rendered.type} diagram';
+    return MermaidSvgRender(
+      svg: rendered.svg,
+      compiledBytes: compiled,
+      logicalSize: Size(rendered.width, rendered.height),
+      semanticsLabel: label,
+      diagramType: rendered.type,
+      mermaidType: rendered.mermaidType,
+      links: rendered.links,
+    );
+  } on pele.PeleError catch (e) {
+    return MermaidFailureResult(kind: e.code, message: e.message);
+  } catch (e) {
+    return MermaidFailureResult(
+      kind: 'engineFailed',
+      message: 'Failed to render Mermaid diagram: $e',
+    );
+  }
+}
+
+typedef _TransferableSvgReply = (
+  int,
+  String,
+  TransferableTypedData,
+  double,
+  double,
+  String?,
+  String?,
+  String?,
+  List<pele.LinkInfo>,
+);
+
+void _mermaidWorkerMain(SendPort initPort) {
+  final commandPort = ReceivePort();
+  // Warm up pele_dart's diagram registry, dagre layout engine, and
+  // vector_graphics_compiler inside the persistent worker isolate.
+  renderMermaidWithPele('flowchart LR\n  A --> B', isDark: false);
+  initPort.send(commandPort.sendPort);
+
+  commandPort.listen((dynamic message) {
+    if (message is (int, String, bool, SendPort)) {
+      final (id, code, isDark, replyPort) = message;
+      final result = renderMermaidWithPele(code, isDark: isDark);
+      if (result is MermaidSvgRender) {
+        final reply = (
+          id,
+          result.svg,
+          TransferableTypedData.fromList(<Uint8List>[result.compiledBytes]),
+          result.logicalSize.width,
+          result.logicalSize.height,
+          result.semanticsLabel,
+          result.diagramType,
+          result.mermaidType,
+          result.links,
+        );
+        replyPort.send(reply);
+      } else {
+        replyPort.send((id, result));
+      }
+    }
+  });
+}
+
+class _MermaidIsolateWorker {
+  static const int _poolSize = 2;
+
+  static Future<List<SendPort>>? _workerPoolFuture;
+  static ReceivePort? _replyPort;
+  static int _nextRequestId = 0;
+  static int _nextWorkerIndex = 0;
+  static final Map<int, Completer<MermaidRenderResult>> _pending =
+      <int, Completer<MermaidRenderResult>>{};
+
+  static Future<SendPort> _spawnOneWorker(int index) {
+    final completer = Completer<SendPort>();
+    final initPort = RawReceivePort((dynamic message) {
+      if (message is SendPort && !completer.isCompleted) {
+        completer.complete(message);
+      }
+    });
+
+    Isolate.spawn(
+      _mermaidWorkerMain,
+      initPort.sendPort,
+      debugName: 'SirenMermaidWorker-$index',
+    ).then(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {
+        initPort.close();
+        if (!completer.isCompleted) {
+          completer.completeError(error, stackTrace);
+        }
+      },
+    );
+
+    return completer.future.whenComplete(initPort.close);
+  }
+
+  static Future<List<SendPort>> ensureInitialized() {
+    final existing = _workerPoolFuture;
+    if (existing != null) return existing;
+
+    final future =
+        Future.wait<SendPort>(<Future<SendPort>>[
+          for (var i = 0; i < _poolSize; i++) _spawnOneWorker(i),
+        ]).catchError((Object error) {
+          _workerPoolFuture = null;
+          throw error;
+        });
+    _workerPoolFuture = future;
+    return future;
+  }
+
+  static void _ensureReplyPort() {
+    if (_replyPort != null) return;
+    final port = ReceivePort();
+    _replyPort = port;
+    port.listen((dynamic message) {
+      int? id;
+      MermaidRenderResult? result;
+      if (message is _TransferableSvgReply) {
+        final (
+          msgId,
+          svg,
+          transferableBytes,
+          width,
+          height,
+          semanticsLabel,
+          diagramType,
+          mermaidType,
+          links,
+        ) = message;
+        id = msgId;
+        result = MermaidSvgRender(
+          svg: svg,
+          compiledBytes: transferableBytes.materialize().asUint8List(),
+          logicalSize: Size(width, height),
+          semanticsLabel: semanticsLabel,
+          diagramType: diagramType,
+          mermaidType: mermaidType,
+          links: links,
+        );
+      } else if (message is (int, MermaidRenderResult)) {
+        final (msgId, msgResult) = message;
+        id = msgId;
+        result = msgResult;
+      }
+      if (id != null && result != null) {
+        final completer = _pending.remove(id);
+        if (completer != null && !completer.isCompleted) {
+          completer.complete(result);
+        }
+        if (_pending.isEmpty) {
+          _replyPort?.close();
+          _replyPort = null;
+        }
+      }
+    });
+  }
+
+  static Future<MermaidRenderResult> render(
+    String code, {
+    required bool isDark,
+  }) async {
+    final workerPorts = await ensureInitialized();
+    _ensureReplyPort();
+    final requestId = ++_nextRequestId;
+    final workerPort = workerPorts[_nextWorkerIndex % workerPorts.length];
+    _nextWorkerIndex = (_nextWorkerIndex + 1) % workerPorts.length;
+    final completer = Completer<MermaidRenderResult>();
+    _pending[requestId] = completer;
+    workerPort.send((requestId, code, isDark, _replyPort!.sendPort));
+    return completer.future;
+  }
+}
+
+/// Renders and compiles [code] with `pele_dart` on a persistent, pre-warmed
+/// background worker isolate.
+Future<MermaidRenderResult> renderMermaidInIsolate(
+  String code, {
+  required bool isDark,
+}) {
+  return _MermaidIsolateWorker.render(code, isDark: isDark);
+}
+
+/// Service that renders Mermaid diagrams in pure Dart using `pele_dart`,
+/// compiles them to native `vector_graphics` bytecode, and caches results
+/// in an in-memory LRU cache.
 class MermaidRenderService {
   MermaidRenderService._();
 
@@ -90,10 +348,8 @@ class MermaidRenderService {
   static final MermaidRenderService instance = MermaidRenderService._();
 
   static const int _maxCacheEntries = 128;
-  static const Duration _renderTimeout = Duration(seconds: 20);
-  static const double _defaultRasterScale = 3.0;
 
-  /// Optional override used by tests to bypass platform WebView creation.
+  /// Optional override used by tests to customize diagram rendering.
   @visibleForTesting
   MermaidRenderOverride? renderOverride;
 
@@ -101,12 +357,12 @@ class MermaidRenderService {
       LinkedHashMap<String, MermaidRenderResult>();
   final Map<String, Future<MermaidRenderResult>> _inFlight =
       <String, Future<MermaidRenderResult>>{};
-  final Queue<_QueuedJob> _queue = Queue<_QueuedJob>();
 
-  _HeadlessMermaidEngine? _engine;
-  Future<_PreparedMermaidPage>? _preparedPageFuture;
-  bool _processingQueue = false;
-  int _requestCounter = 0;
+  /// Pre-spawns and JIT-warms the persistent background worker isolate so the
+  /// first diagram document opens without cold isolate startup overhead.
+  Future<void> warmUp() async {
+    await _MermaidIsolateWorker.ensureInitialized();
+  }
 
   String _cacheKey(String code, bool isDark) =>
       '${isDark ? 'dark' : 'light'}|${code.trim()}';
@@ -135,7 +391,20 @@ class MermaidRenderService {
     _cache.clear();
   }
 
-  /// Renders [code] offscreen (or returns from cache).
+  /// Synchronously renders and compiles [code] using `pele_dart` (or returns
+  /// from cache).
+  MermaidRenderResult renderSync(String code, {required bool isDark}) {
+    final cached = peek(code, isDark: isDark);
+    if (cached != null) {
+      return cached;
+    }
+    final key = _cacheKey(code, isDark);
+    final result = renderMermaidWithPele(code, isDark: isDark);
+    _putCache(key, result);
+    return result;
+  }
+
+  /// Renders [code] off the UI isolate (or returns from cache).
   Future<MermaidRenderResult> render(String code, {required bool isDark}) {
     final cached = peek(code, isDark: isDark);
     if (cached != null) {
@@ -149,271 +418,22 @@ class MermaidRenderService {
     }
 
     final override = renderOverride;
-    if (override != null) {
-      final future = override(code, isDark: isDark).then((result) {
-        _inFlight.remove(key);
-        _putCache(key, result);
-        return result;
-      });
-      _inFlight[key] = future;
-      return future;
-    }
+    final Future<MermaidRenderResult> computeFuture = override != null
+        ? override(code, isDark: isDark)
+        : renderMermaidInIsolate(code, isDark: isDark);
 
-    final completer = Completer<MermaidRenderResult>();
-    _inFlight[key] = completer.future;
-    _queue.add(
-      _QueuedJob(key: key, code: code, isDark: isDark, completer: completer),
-    );
-    _pumpQueue();
-    return completer.future;
-  }
-
-  void _pumpQueue() {
-    if (_processingQueue || _queue.isEmpty) {
-      return;
-    }
-    _processingQueue = true;
-    unawaited(_processQueueLoop());
-  }
-
-  Future<void> _processQueueLoop() async {
-    try {
-      while (_queue.isNotEmpty) {
-        final job = _queue.removeFirst();
-        final cached = _cache[job.key];
-        if (cached != null) {
-          _inFlight.remove(job.key);
-          if (!job.completer.isCompleted) {
-            job.completer.complete(cached);
-          }
-          continue;
-        }
-
-        MermaidRenderResult result;
-        try {
-          result = await _executeJob(job);
-        } catch (e) {
-          result = MermaidFailureResult(
-            kind: 'engineFailed',
-            message: 'Failed to render Mermaid diagram: $e',
-          );
-        }
-
-        _inFlight.remove(job.key);
-        if (result is! MermaidFailureResult || result.kind == 'syntaxError') {
-          _putCache(job.key, result);
-        }
-        if (!job.completer.isCompleted) {
-          job.completer.complete(result);
-        }
-      }
-    } finally {
-      _processingQueue = false;
-    }
-  }
-
-  Future<_PreparedMermaidPage> _loadPreparedPage() {
-    final existing = _preparedPageFuture;
-    if (existing != null) {
-      return existing;
-    }
-    final future = _preparePageAssets();
-    _preparedPageFuture = future;
-    future.catchError((Object _) {
-      if (identical(_preparedPageFuture, future)) {
-        _preparedPageFuture = null;
-      }
-      return const _PreparedMermaidPage(bootstrapHtml: '', pieces: []);
+    final future = computeFuture.then((result) {
+      _inFlight.remove(key);
+      _putCache(key, result);
+      return result;
     });
+    _inFlight[key] = future;
     return future;
   }
-
-  Future<_PreparedMermaidPage> _preparePageAssets() async {
-    final mermaidBytes = await rootBundle.load('assets/mermaid/mermaid.min.js');
-    final mermaidUint8 = mermaidBytes.buffer.asUint8List(
-      mermaidBytes.offsetInBytes,
-      mermaidBytes.lengthInBytes,
-    );
-    final pageScript = await rootBundle.loadString(
-      'assets/mermaid/mermaid_page.js',
-    );
-    return Isolate.run(
-      () => _buildPreparedPageInIsolate(mermaidUint8, pageScript),
-    );
-  }
-
-  Future<_HeadlessMermaidEngine> _ensureEngine() async {
-    final current = _engine;
-    if (current != null && !current.isDisposed) {
-      return current;
-    }
-    final prepared = await _loadPreparedPage();
-    final engine = _HeadlessMermaidEngine();
-    try {
-      await engine.initialize(prepared);
-      _engine = engine;
-      return engine;
-    } catch (e) {
-      await engine.dispose();
-      rethrow;
-    }
-  }
-
-  Future<void> _resetEngine() async {
-    final old = _engine;
-    _engine = null;
-    await old?.dispose();
-  }
-
-  Future<MermaidRenderResult> _executeJob(_QueuedJob job) async {
-    _HeadlessMermaidEngine engine;
-    try {
-      engine = await _ensureEngine();
-    } catch (e) {
-      return MermaidFailureResult(
-        kind: 'engineFailed',
-        message: 'Mermaid engine could not start: $e',
-      );
-    }
-
-    // Attempt 1: Request flattened SVG (with automatic PNG fallback inside mermaid_page.js)
-    Map<String, dynamic> response;
-    try {
-      response = await engine
-          .requestRender(
-            id: 'r${++_requestCounter}',
-            source: job.code,
-            isDark: job.isDark,
-            raster: false,
-            scale: _defaultRasterScale,
-          )
-          .timeout(_renderTimeout);
-    } on TimeoutException {
-      await _resetEngine();
-      return const MermaidFailureResult(
-        kind: 'timeout',
-        message: 'Drawing the diagram timed out.',
-      );
-    } catch (e) {
-      await _resetEngine();
-      // Retry once with a fresh engine
-      try {
-        engine = await _ensureEngine();
-        response = await engine
-            .requestRender(
-              id: 'r${++_requestCounter}',
-              source: job.code,
-              isDark: job.isDark,
-              raster: false,
-              scale: _defaultRasterScale,
-            )
-            .timeout(_renderTimeout);
-      } catch (retryError) {
-        await _resetEngine();
-        return MermaidFailureResult(
-          kind: 'engineFailed',
-          message: 'The diagram engine stopped responding: $retryError',
-        );
-      }
-    }
-
-    final kind = response['kind'] as String?;
-    if (kind == 'svg') {
-      final svg = response['svg'] as String? ?? '';
-      final width = (response['width'] as num?)?.toDouble() ?? 0;
-      final height = (response['height'] as num?)?.toDouble() ?? 0;
-      final label = response['label'] as String?;
-      if (svg.isNotEmpty && width > 0 && height > 0) {
-        try {
-          final compiled = await Isolate.run(() => compileMermaidSvg(svg));
-          return MermaidSvgRender(
-            svg: svg,
-            compiledBytes: compiled,
-            logicalSize: Size(width, height),
-            semanticsLabel: label,
-          );
-        } catch (compileError) {
-          debugPrint(
-            'Vector compilation failed, falling back to high-DPI PNG: $compileError',
-          );
-          // Fall through to explicit raster request below
-        }
-      }
-      // Fallback: request high-DPI PNG from the same engine
-      try {
-        response = await engine
-            .requestRender(
-              id: 'r${++_requestCounter}',
-              source: job.code,
-              isDark: job.isDark,
-              raster: true,
-              scale: _defaultRasterScale,
-            )
-            .timeout(_renderTimeout);
-      } catch (e) {
-        await _resetEngine();
-        return MermaidFailureResult(
-          kind: 'engineFailed',
-          message: 'Failed to rasterize diagram: $e',
-        );
-      }
-    }
-
-    final finalKind = response['kind'] as String?;
-    if (finalKind == 'png') {
-      final pngBase64 = response['png'] as String? ?? '';
-      final width = (response['width'] as num?)?.toDouble() ?? 0;
-      final height = (response['height'] as num?)?.toDouble() ?? 0;
-      final label = response['label'] as String?;
-      if (pngBase64.isNotEmpty && width > 0 && height > 0) {
-        final pngBytes = await Isolate.run(() => base64Decode(pngBase64));
-        return MermaidRasterRender(
-          pngBytes: pngBytes,
-          logicalSize: Size(width, height),
-          semanticsLabel: label,
-        );
-      }
-    }
-
-    final failureKind = response['failure'] as String? ?? 'syntaxError';
-    final detail = response['detail'] as String? ?? 'Could not render diagram.';
-    return MermaidFailureResult(kind: failureKind, message: detail);
-  }
 }
 
-class _QueuedJob {
-  _QueuedJob({
-    required this.key,
-    required this.code,
-    required this.isDark,
-    required this.completer,
-  });
-
-  final String key;
-  final String code;
-  final bool isDark;
-  final Completer<MermaidRenderResult> completer;
-}
-
-@immutable
-class _PagePiece {
-  const _PagePiece(this.name, this.literal);
-  final String name;
-  final String literal;
-}
-
-@immutable
-class _PreparedMermaidPage {
-  const _PreparedMermaidPage({
-    required this.bootstrapHtml,
-    required this.pieces,
-  });
-
-  final String bootstrapHtml;
-  final List<_PagePiece> pieces;
-}
-
-/// Diagram types rendered as native vector SVGs (`vector_graphics`) on macOS.
+/// All 33 diagram families rendered as native vector SVGs (`vector_graphics`)
+/// via `pele_dart`.
 const Set<String> mermaidMacosSvgTypes = {
   'agentflow',
   'architecture',
@@ -422,55 +442,18 @@ const Set<String> mermaidMacosSvgTypes = {
   'class',
   'cynefin',
   'er',
-  'flowchart',
-  'gantt',
-  'gitgraph',
-  'ishikawa',
-  'journey',
-  'kanban',
-  'mindmap',
-  'packet',
-  'pie',
-  'quadrant',
-  'radar',
-  'railroad',
-  'requirement',
-  'sankey',
-  'sequence',
-  'state',
-  'swimlane',
-  'timeline',
-  'treemap',
-  'usecase',
-  'venn',
-  'xychart',
-};
-
-/// Diagram types rendered directly as high-DPI Retina PNGs on macOS.
-const Set<String> mermaidRasterOnlyTypes = {
   'eventmodeling',
-  'treeview',
-  'wardley',
-};
-
-const List<String> _kSortedMacosSvgTypes = [
-  'agentflow',
-  'architecture',
-  'block',
-  'c4',
-  'class',
-  'cynefin',
-  'er',
   'flowchart',
   'gantt',
-  'gitgraph',
+  'gitGraph',
+  'info',
   'ishikawa',
   'journey',
   'kanban',
   'mindmap',
   'packet',
   'pie',
-  'quadrant',
+  'quadrantChart',
   'radar',
   'railroad',
   'requirement',
@@ -479,393 +462,10 @@ const List<String> _kSortedMacosSvgTypes = [
   'state',
   'swimlane',
   'timeline',
+  'treeView',
   'treemap',
   'usecase',
   'venn',
+  'wardley',
   'xychart',
-];
-
-const List<String> _kCommonAllowedAttributes = [
-  'clip-path',
-  'id',
-  'mix-blend-mode',
-  'opacity',
-  'transform',
-];
-
-const List<String> _kUsePaintAttributes = [
-  'fill',
-  'fill-opacity',
-  'fill-rule',
-  'stroke',
-  'stroke-linecap',
-  'stroke-linejoin',
-  'stroke-miterlimit',
-  'stroke-opacity',
-  'stroke-width',
-];
-
-const List<String> _kPaintAttributes = [
-  ..._kUsePaintAttributes,
-  'stroke-dasharray',
-  'stroke-dashoffset',
-];
-
-const Map<String, List<String>> _kAllowedSvgAttributes = {
-  'svg': ['height', 'viewBox', 'width'],
-  'g': _kCommonAllowedAttributes,
-  'defs': ['id'],
-  'symbol': [..._kCommonAllowedAttributes, 'viewBox'],
-  'clipPath': ['id'],
-  'linearGradient': [
-    'gradientUnits',
-    'id',
-    'spreadMethod',
-    'x1',
-    'x2',
-    'y1',
-    'y2',
-  ],
-  'radialGradient': [
-    'cx',
-    'cy',
-    'fx',
-    'fy',
-    'gradientUnits',
-    'id',
-    'r',
-    'spreadMethod',
-  ],
-  'stop': ['offset', 'stop-color', 'stop-opacity'],
-  'use': [
-    ..._kCommonAllowedAttributes,
-    'height',
-    'href',
-    'width',
-    'x',
-    'y',
-    ..._kUsePaintAttributes,
-  ],
-  'image': [..._kCommonAllowedAttributes, 'height', 'href', 'width', 'x', 'y'],
-  'rect': [
-    ..._kCommonAllowedAttributes,
-    'height',
-    'rx',
-    'ry',
-    'width',
-    'x',
-    'y',
-    ..._kPaintAttributes,
-  ],
-  'circle': [
-    ..._kCommonAllowedAttributes,
-    'cx',
-    'cy',
-    'r',
-    ..._kPaintAttributes,
-  ],
-  'ellipse': [
-    ..._kCommonAllowedAttributes,
-    'cx',
-    'cy',
-    'rx',
-    'ry',
-    ..._kPaintAttributes,
-  ],
-  'line': [
-    ..._kCommonAllowedAttributes,
-    'x1',
-    'x2',
-    'y1',
-    'y2',
-    ..._kPaintAttributes,
-  ],
-  'polyline': [..._kCommonAllowedAttributes, 'points', ..._kPaintAttributes],
-  'polygon': [..._kCommonAllowedAttributes, 'points', ..._kPaintAttributes],
-  'path': [..._kCommonAllowedAttributes, 'd', ..._kPaintAttributes],
-  'text': [
-    ..._kCommonAllowedAttributes,
-    'font-family',
-    'font-size',
-    'font-weight',
-    'text-anchor',
-    'text-decoration',
-    'x',
-    'y',
-    ..._kPaintAttributes,
-  ],
 };
-
-/// Runs in a background isolate to decode `mermaid.min.js` (Mermaid 12.2.0 with
-/// embedded ELK layout) and slice scripts into ASCII-safe JS string literal chunks
-/// so loading never stalls the UI isolate.
-_PreparedMermaidPage _buildPreparedPageInIsolate(
-  Uint8List mermaidScriptBytes,
-  String pageScript,
-) {
-  final mermaidScript = utf8.decode(mermaidScriptBytes);
-  final config = <String, Object?>{
-    'family': 'Helvetica Neue',
-    'faces': const <Object>[],
-    'allowed': _kAllowedSvgAttributes,
-    'limits': const <String, num>{
-      'maxSourceChars': 50000,
-      'maxEdges': 500,
-      'maxSourceStatements': 2000,
-      'maxSourceNames': 3000,
-      'maxSourceItems': 1000,
-      'maxVennAreas': 64,
-      'maxLabelWordChars': 1000,
-      'maxGanttFormatChars': 200,
-      'maxGanttSteppedDays': 100000,
-      'maxDrawnTextChars': 200000,
-      'maxElements': 20000,
-      'maxDepth': 64,
-      'maxSvgChars': 4000000,
-      'maxImageChars': 262144,
-      'maxImageSide': 4096,
-      'maxImagePixels': 4000000,
-      'maxSide': 16384,
-      'maxPixels': 16000000,
-      'maxPathChars': 200000,
-      'maxTextChars': 2000,
-      'maxDashEntries': 4096,
-      'maxSourceDashEntries': 16,
-      'minDashPeriod': 1,
-      'maxDashSegments': 100000,
-    },
-  };
-
-  final configJson = jsonEncode(config).replaceAll('<', r'\u003c');
-  final bootstrapHtml =
-      '''
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: transparent;
-      overflow: hidden;
-    }
-  </style>
-  <script type="application/json" id="finch-config">
-$configJson
-  </script>
-  <script>
-(function () {
-  'use strict';
-  var parts = {};
-  function text(name) { return (parts[name] || []).join(''); }
-  function run(name) {
-    var script = document.createElement('script');
-    script.textContent = text(name);
-    document.head.appendChild(script);
-  }
-  Object.defineProperty(window, 'finchBoot', {
-    configurable: true,
-    value: Object.freeze({
-      add: function (name, piece) {
-        (parts[name] = parts[name] || []).push(piece);
-      },
-      commit: function () {
-        run('mermaid');
-        run('page');
-        delete window.finchBoot;
-      }
-    })
-  });
-})();
-  </script>
-</head>
-<body></body>
-</html>
-''';
-
-  return _PreparedMermaidPage(
-    bootstrapHtml: bootstrapHtml,
-    pieces: [
-      ..._chunkScript('mermaid', mermaidScript),
-      ..._chunkScript('page', pageScript),
-    ],
-  );
-}
-
-const int _pieceChars = 192 * 1024;
-
-List<_PagePiece> _chunkScript(String name, String text) {
-  final pieces = <_PagePiece>[];
-  var start = 0;
-  while (start < text.length) {
-    var end = start + _pieceChars;
-    if (end >= text.length) {
-      end = text.length;
-    } else {
-      final unit = text.codeUnitAt(end - 1);
-      if (unit >= 0xd800 && unit <= 0xdbff) {
-        end -= 1;
-      }
-    }
-    pieces.add(_PagePiece(name, _jsAsciiLiteral(text.substring(start, end))));
-    start = end;
-  }
-  return pieces;
-}
-
-String _jsAsciiLiteral(String text) {
-  final out = StringBuffer('"');
-  for (final unit in text.codeUnits) {
-    switch (unit) {
-      case 0x22:
-        out.write(r'\"');
-      case 0x5c:
-        out.write(r'\\');
-      case 0x0a:
-        out.write(r'\n');
-      case 0x0d:
-        out.write(r'\r');
-      case < 0x20 || > 0x7e:
-        out
-          ..write(r'\u')
-          ..write(unit.toRadixString(16).padLeft(4, '0'));
-      default:
-        out.writeCharCode(unit);
-    }
-  }
-  return (out..write('"')).toString();
-}
-
-/// Manages a single offscreen [WebViewController] that is never attached to a
-/// widget tree.
-class _HeadlessMermaidEngine {
-  static const String _channelName = 'FinchMermaid';
-
-  late final WebViewController _controller;
-  final Completer<void> _pageLoaded = Completer<void>();
-  final Completer<void> _engineReady = Completer<void>();
-
-  Completer<Map<String, dynamic>>? _pendingRequest;
-  String? _pendingRequestId;
-  bool _disposed = false;
-
-  bool get isDisposed => _disposed;
-
-  Future<void> initialize(_PreparedMermaidPage prepared) async {
-    _controller = WebViewController();
-    await _controller.setJavaScriptMode(JavaScriptMode.unrestricted);
-    await _controller.addJavaScriptChannel(
-      _channelName,
-      onMessageReceived: (JavaScriptMessage message) {
-        _handleChannelMessage(message.message);
-      },
-    );
-    await _controller.setNavigationDelegate(
-      NavigationDelegate(
-        onPageFinished: (_) {
-          if (!_pageLoaded.isCompleted) {
-            _pageLoaded.complete();
-          }
-        },
-        onWebResourceError: (WebResourceError error) {
-          if (error.errorType ==
-              WebResourceErrorType.webContentProcessTerminated) {
-            _failPending('WebView content process terminated');
-            dispose();
-          }
-        },
-      ),
-    );
-
-    await _controller.loadHtmlString(prepared.bootstrapHtml);
-    await _pageLoaded.future.timeout(const Duration(seconds: 15));
-
-    for (final piece in prepared.pieces) {
-      if (_disposed) {
-        throw StateError('Mermaid engine disposed during initialization');
-      }
-      // Yield between chunks so UI frames are never starved
-      await Future.delayed(Duration.zero);
-      await _controller.runJavaScript(
-        'finchBoot.add("${piece.name}",${piece.literal});',
-      );
-    }
-
-    await Future.delayed(Duration.zero);
-    await _controller.runJavaScript('finchBoot.commit();');
-    await _engineReady.future.timeout(const Duration(seconds: 20));
-  }
-
-  void _handleChannelMessage(String rawMessage) {
-    if (_disposed) return;
-    try {
-      final decoded = jsonDecode(rawMessage);
-      if (decoded is! Map<String, dynamic>) return;
-      if (decoded['kind'] == 'ready') {
-        if (!_engineReady.isCompleted) {
-          _engineReady.complete();
-        }
-        return;
-      }
-
-      final id = decoded['id'] as String?;
-      final pending = _pendingRequest;
-      if (id != null &&
-          id == _pendingRequestId &&
-          pending != null &&
-          !pending.isCompleted) {
-        _pendingRequest = null;
-        _pendingRequestId = null;
-        pending.complete(decoded);
-      }
-    } catch (e) {
-      debugPrint('Error decoding Mermaid channel message: $e');
-    }
-  }
-
-  Future<Map<String, dynamic>> requestRender({
-    required String id,
-    required String source,
-    required bool isDark,
-    required bool raster,
-    required double scale,
-  }) async {
-    if (_disposed) {
-      throw StateError('Mermaid engine has been disposed');
-    }
-
-    final completer = Completer<Map<String, dynamic>>();
-    _pendingRequest = completer;
-    _pendingRequestId = id;
-
-    final payload = jsonEncode(<String, Object?>{
-      'id': id,
-      'source': source,
-      'dark': isDark,
-      'width': 1024,
-      'scale': scale,
-      'svgTypes': _kSortedMacosSvgTypes,
-      'raster': raster,
-    }).replaceAll('\u2028', r'\u2028').replaceAll('\u2029', r'\u2029');
-
-    await _controller.runJavaScript('window.finchMermaid.run($payload);');
-    return completer.future;
-  }
-
-  void _failPending(String message) {
-    final pending = _pendingRequest;
-    _pendingRequest = null;
-    _pendingRequestId = null;
-    if (pending != null && !pending.isCompleted) {
-      pending.completeError(StateError(message));
-    }
-  }
-
-  Future<void> dispose() async {
-    if (_disposed) return;
-    _disposed = true;
-    _failPending('Mermaid engine disposed');
-  }
-}

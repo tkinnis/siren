@@ -14,7 +14,7 @@ This document provides operational context, architectural invariants, and workfl
 * **Search Architecture**: 
   * Full-text search: Embedded `rg` (ripgrep) binary (`assets/bin/rg`) executed via `Process.start`.
   * Fuzzy file finding: Background Dart isolate (`quick_open.dart`) for asynchronous search without UI stutter.
-* **Markdown Rendering**: CommonMark and GitHub Flavored Markdown (GFM) compliant with custom extensions for YAML Frontmatter cards, footnotes, GitHub Alerts, embedded GFM HTML (`<kbd>`, `<details>`, `<table>`, `<dl>`, `<picture>`, sized `<img>`, `3x` Retina SVG badges, `<p align="center">`, `<!-- comments -->`), LaTeX math typography, interactive image lightbox, offline vector Mermaid diagrams (`vector_graphics` with proportional font scaling and interactive zoom/pan/export modal), and code syntax highlighting.
+* **Markdown Rendering**: CommonMark and GitHub Flavored Markdown (GFM) compliant with custom extensions for YAML Frontmatter cards, footnotes, GitHub Alerts, embedded GFM HTML (`<kbd>`, `<details>`, `<table>`, `<dl>`, `<picture>`, sized `<img>`, vector SVG badges, `<p align="center">`, `<!-- comments -->`), LaTeX math typography, interactive image lightbox, pure-Dart offline vector Mermaid diagrams (`pele_dart` + `vector_graphics` with proportional font scaling and interactive zoom/pan/export modal), and code syntax highlighting.
 
 ---
 
@@ -30,10 +30,10 @@ siren/
 │   ├── rendered_view.dart         # Formatted Markdown preview
 │   ├── raw_view.dart              # Raw Markdown source view with line gutter
 │   ├── markdown_processor.dart    # Markdown preprocessing & extension pipeline
-│   ├── markdown_extensions.dart   # Custom syntax parsers & builders (alerts, frontmatter, footnotes, GFM HTML, SVG rasterizer)
+│   ├── markdown_extensions.dart   # Custom syntax parsers & builders (alerts, frontmatter, footnotes, GFM HTML, SVG compiler)
 │   ├── image_zoom_dialog.dart     # Interactive zoom & pan image lightbox modal
 │   ├── mermaid_diagram.dart       # Scaled Mermaid vector diagram widget
-│   ├── mermaid_render_service.dart# Offscreen SVG/vector compilation engine
+│   ├── mermaid_render_service.dart# Pure-Dart pele_dart SVG/vector compilation engine
 │   ├── mermaid_zoom_dialog.dart   # Interactive zoom, pan & export diagram modal
 │   ├── outline_view.dart          # Heading hierarchy extractor & navigator
 │   ├── file_explorer.dart         # File tree viewer with hidden file support
@@ -42,7 +42,7 @@ siren/
 │   ├── settings_dialog.dart       # Desktop settings (themes, regex index patterns)
 │   └── about_dialog.dart          # Native macOS About & open-source licenses dialog
 ├── test/              # Unit, widget, and specification tests
-├── assets/            # Bundled runtime assets ONLY (images, ripgrep binary, mermaid scripts)
+├── assets/            # Bundled runtime assets ONLY (images, ripgrep binary)
 ├── docs/              # User documentation and markdown guides
 │   └── screenshots/   # Verification screenshots (NEVER bundled into app assets)
 └── tool/              # Native helper utilities and developer automation tools

@@ -23,15 +23,14 @@ class CompiledMermaidBytesLoader extends BytesLoader {
       SynchronousFuture<ByteData>(ByteData.sublistView(bytes));
 
   @override
-  int get hashCode => Object.hashAll(bytes);
+  int get hashCode => identityHashCode(bytes);
 
   @override
   bool operator ==(Object other) =>
-      other is CompiledMermaidBytesLoader && listEquals(bytes, other.bytes);
+      other is CompiledMermaidBytesLoader && identical(bytes, other.bytes);
 }
 
-/// Renders the visual graphic for a [MermaidSvgRender] or [MermaidRasterRender]
-/// at the specified [size].
+/// Renders the visual graphic for a [MermaidSvgRender] at the specified [size].
 class MermaidGraphic extends StatelessWidget {
   const MermaidGraphic({super.key, required this.result, required this.size});
 
@@ -49,16 +48,6 @@ class MermaidGraphic extends StatelessWidget {
           fit: BoxFit.contain,
           strategy: RenderingStrategy.picture,
           semanticsLabel: semanticsLabel ?? 'Mermaid diagram',
-        ),
-      MermaidRasterRender(:final pngBytes, :final semanticsLabel) =>
-        Image.memory(
-          pngBytes,
-          width: size.width,
-          height: size.height,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.medium,
-          semanticLabel: semanticsLabel ?? 'Mermaid diagram',
-          gaplessPlayback: true,
         ),
       MermaidFailureResult() => const SizedBox.shrink(),
     };
@@ -115,7 +104,6 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
 
   Size get _logicalSize => switch (widget.result) {
     MermaidSvgRender(:final logicalSize) => logicalSize,
-    MermaidRasterRender(:final logicalSize) => logicalSize,
     MermaidFailureResult() => const Size(400, 300),
   };
 
@@ -205,9 +193,6 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
   }
 
   Future<Uint8List?> _capturePngBytes() async {
-    if (widget.result case MermaidRasterRender(:final pngBytes)) {
-      return pngBytes;
-    }
     if (widget.result case MermaidSvgRender(:final compiledBytes)) {
       try {
         final pictureInfo = await vg.loadPicture(

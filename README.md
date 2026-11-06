@@ -33,11 +33,11 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | :--- | :--- | :--- | :--- |
 | **Rendering** | **GitHub Alerts** | 5 color-coded alert levels (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) with custom icons | Automatic |
 | | **LaTeX Mathematics** | Typeset inline formulas (`$E = mc^2$`) and block equations (`$$\sum x_i$$`) | CommonMark math blocks |
-| | **Mermaid Diagrams** | Offline ELK + `neo` vector diagrams across standard and beta Mermaid diagram types with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
+| | **Mermaid Diagrams** | Pure-Dart `pele_dart` offline vector diagrams across all 33 standard, beta, and specialized Mermaid diagram families with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
 | | **YAML Frontmatter & Footnotes** | Structured metadata card with pill badges for leading `---` YAML frontmatter (toggleable in Settings) and GitHub-styled hyperlinked footnotes (`[^1]`) | Automatic / `Cmd + ,` |
 | | **Image Lightbox** | Click any local or network Markdown image to inspect in an interactive zoom & pan lightbox | Click image |
 | | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting and one-click copy | Fenced code blocks |
-| | **Embedded GFM HTML** | Native rendering for `<kbd>`, `<br>`, `<details>`/`<summary>`, `<table>`, `<ul>`/`<ol>`/`<dl>`, `<picture>` dark/light media, sized `<img>` & `3x` Retina SVG badges, `<a href>`, `<p align="center">`, `<sub>`/`<sup>`/`<mark>`/`<abbr>`, and hidden `<!-- comments -->` | Automatic |
+| | **Embedded GFM HTML** | Native rendering for `<kbd>`, `<br>`, `<details>`/`<summary>`, `<table>`, `<ul>`/`<ol>`/`<dl>`, `<picture>` dark/light media, sized `<img>` & vector SVG badges, `<a href>`, `<p align="center">`, `<sub>`/`<sup>`/`<mark>`/`<abbr>`, and hidden `<!-- comments -->` | Automatic |
 | | **Extended Formatting** | Text highlighting (`==text==`), subscript (`~sub~`), superscript (`^sup~`), tables, task lists | Extended syntax |
 | **Viewer Modes** | **Rendered Preview** | Rich typography, interactive links, and diagram rendering | `Cmd + E` (Toggle) |
 | | **Raw Source View** | Monospace raw Markdown inspection with aligned line number gutter | `Cmd + E` (Toggle) |
@@ -127,7 +127,7 @@ Comprehensive guides and architectural notes are available in the [`docs/`](docs
 - [Markdown & Syntax Guide](docs/markdown-guide.md) — Complete syntax reference for GitHub alerts, math, diagrams, YAML frontmatter, footnotes, and formatting.
 - [Mermaid Diagram Examples Gallery](docs/mermaid-examples.md) — Examples across all supported standard, beta, and specialized Mermaid diagram categories.
 - [Keyboard Shortcuts](docs/shortcuts.md) — Exhaustive keyboard shortcut reference.
-- [Architecture & Internals](docs/architecture.md) — Technical overview of isolates, ripgrep bundling, offline ELK vector Mermaid engine, and state management.
+- [Architecture & Internals](docs/architecture.md) — Technical overview of isolates, ripgrep bundling, pure-Dart `pele_dart` vector Mermaid engine, and state management.
 
 ---
 

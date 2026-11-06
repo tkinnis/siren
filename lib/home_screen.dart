@@ -10,6 +10,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app_state.dart';
 import 'editor_tabs.dart';
+import 'mermaid_render_service.dart';
 import 'sidebar.dart';
 import 'raw_view.dart';
 import 'rendered_view.dart';
@@ -28,6 +29,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isResizing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    MermaidRenderService.instance.warmUp();
+  }
 
   void _handleResize(DragUpdateDetails details, AppState appState) {
     appState.setSidebarWidth(appState.sidebarWidth + details.delta.dx);

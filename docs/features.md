@@ -16,11 +16,11 @@ This guide provides a detailed walkthrough of all the features and capabilities 
 | :--- | :--- | :--- | :--- |
 | **Rendering** | **GitHub Alerts** | 5 color-coded alert levels (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) with custom icons | Automatic |
 | | **LaTeX Mathematics** | Typeset inline formulas (`$E = mc^2$`) and block equations (`$$\sum x_i$$`) | CommonMark math blocks |
-| | **Mermaid Diagrams** | Offline ELK + `neo` vector diagrams across standard and beta Mermaid diagram types with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
+| | **Mermaid Diagrams** | Pure-Dart `pele_dart` offline vector diagrams across all 33 standard, beta, and specialized Mermaid diagram families with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
 | | **YAML Frontmatter & Footnotes** | Structured metadata card with pill badges for leading `---` YAML frontmatter (toggleable in Settings) and GitHub-styled hyperlinked footnotes (`[^1]`) | Automatic / `Cmd + ,` |
 | | **Image Lightbox** | Click any local or network Markdown image to inspect in an interactive zoom & pan lightbox | Click image |
 | | **Code Syntax Highlighting** | Multi-language syntax coloring with monospace formatting and one-click copy | Fenced code blocks |
-| | **Embedded GFM HTML** | Native rendering for `<kbd>`, `<br>`, `<details>`/`<summary>`, `<table>`, `<ul>`/`<ol>`/`<dl>`, `<picture>` dark/light media, sized `<img>` & `3x` Retina SVG badges, `<a href>`, `<p align="center">`, `<sub>`/`<sup>`/`<mark>`/`<abbr>`, and hidden `<!-- comments -->` | Automatic |
+| | **Embedded GFM HTML** | Native rendering for `<kbd>`, `<br>`, `<details>`/`<summary>`, `<table>`, `<ul>`/`<ol>`/`<dl>`, `<picture>` dark/light media, sized `<img>` & vector SVG badges, `<a href>`, `<p align="center">`, `<sub>`/`<sup>`/`<mark>`/`<abbr>`, and hidden `<!-- comments -->` | Automatic |
 | | **Extended Formatting** | Text highlighting (`==text==`), subscript (`~sub~`), superscript (`^sup^`), tables, task lists | Extended syntax |
 | **Viewer Modes** | **Rendered Preview** | Rich typography, interactive links, and diagram rendering | `Cmd + E` (Toggle) |
 | | **Raw Source View** | Monospace raw Markdown inspection with aligned line number gutter | `Cmd + E` (Toggle) |
@@ -45,8 +45,8 @@ Siren lets you inspect Markdown files in two distinct modes, toggleable at any t
 
 ### Rendered Mode
 - Clean, typography-focused Markdown rendering compliant with CommonMark.
-- Extended Markdown syntax support including **GitHub Alerts**, **LaTeX Math**, **YAML Frontmatter**, **Footnotes (`[^1]`)**, **Embedded GFM HTML** (`<kbd>`, `<details>`/`<summary>`, `<table>`, `<dl>`, `<picture>` dark/light media, sized `<img>` & `3x` Retina SVG badges, `<p align="center">`, `<br>`), and **Mermaid Diagrams**.
-- **Offscreen Vector Mermaid Diagrams**: Diagrams are laid out offline with the **ELK** layout engine (`look: 'neo'`) and compiled into native Flutter vector graphics (`vector_graphics`), scaling proportionally with document font zoom (`+` / `-`, `Cmd+=` / `Cmd+-` / `Cmd+0`) and supporting an interactive **Zoom & Pan Inspector** with **Copy Image (PNG)** and **Export (SVG / PNG)** when clicked.
+- Extended Markdown syntax support including **GitHub Alerts**, **LaTeX Math**, **YAML Frontmatter**, **Footnotes (`[^1]`)**, **Embedded GFM HTML** (`<kbd>`, `<details>`/`<summary>`, `<table>`, `<dl>`, `<picture>` dark/light media, sized `<img>` & vector SVG badges, `<p align="center">`, `<br>`), and **Mermaid Diagrams**.
+- **Pure-Dart Vector Mermaid Diagrams**: Diagrams are laid out and rendered offline in pure Dart via `pele_dart` and compiled into native Flutter vector graphics (`vector_graphics`) with zero WebView or JavaScript runtime dependencies, scaling proportionally with document font zoom (`+` / `-`, `Cmd+=` / `Cmd+-` / `Cmd+0`) and supporting an interactive **Zoom & Pan Inspector** with **Copy Image (PNG)** and **Export (SVG / PNG)** when clicked.
 - **Image Lightbox**: Click any rendered local or network image to open it in an interactive zoom and pan lightbox modal.
 - Full support for interactive clickable relative links, images, tables, and task lists.
 - Smooth anchor navigation when clicking heading links.

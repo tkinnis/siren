@@ -12,9 +12,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:path/path.dart' as p;
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:vector_graphics/vector_graphics_compat.dart';
+import 'package:vector_graphics_compiler/vector_graphics_compiler.dart' as vg;
 
 import 'image_zoom_dialog.dart';
+import 'mermaid_zoom_dialog.dart' show CompiledMermaidBytesLoader;
 import 'theme.dart';
 
 // --- YAML Frontmatter ---
@@ -1425,38 +1427,23 @@ class AbbrBuilder extends MarkdownElementBuilder {
   }
 }
 
-// --- Offscreen WebKit SVG Rasterizer ---
+// --- Native Vector SVG Compiler & Network Payload Loader ---
 
 @immutable
-class _SvgRasterResult {
-  const _SvgRasterResult({
-    required this.pngBytes,
+class _CompiledSvgResult {
+  const _CompiledSvgResult({
+    required this.compiledBytes,
+    required this.normalizedSvg,
     required this.logicalWidth,
     required this.logicalHeight,
   });
 
-  final Uint8List pngBytes;
+  final Uint8List compiledBytes;
+  final String normalizedSvg;
   final double logicalWidth;
   final double logicalHeight;
 }
 
-class _SvgRasterJob {
-  _SvgRasterJob({
-    required this.cacheKey,
-    required this.svgXml,
-    required this.targetWidth,
-    required this.targetHeight,
-    required this.completer,
-  });
-
-  final String cacheKey;
-  final String svgXml;
-  final double? targetWidth;
-  final double? targetHeight;
-  final Completer<_SvgRasterResult?> completer;
-}
-
-/// Renders arbitrary SVG XML (including `img.shields.io` badges with nested
 class _NetworkImagePayload {
   final Uint8List bytes;
   final String contentType;
@@ -1471,39 +1458,30 @@ class _NetworkImagePayload {
   });
 }
 
-/// Compiles SVG images (including complex Shields.io badges with embedded
-/// base64 `<image>` logos, `<linearGradient>`, and `transform="scale(.1)"`
-/// text) to high-DPI 3x Retina PNGs via a shared offscreen [WebViewController].
-class _SvgRasterService {
-  _SvgRasterService._();
+/// Normalizes SVG XML (including `img.shields.io` badges with embedded
+/// `data:image/svg+xml;base64,...` `<image>` logos, `<linearGradient>` stops
+/// without `stop-color`, and `<text transform="scale(.1)">` typography) into
+/// pure SVG 1.1 primitives and compiles them into `vector_graphics` bytecode.
+class _SvgVectorService {
+  _SvgVectorService._();
 
-  static final _SvgRasterService instance = _SvgRasterService._();
+  static final _SvgVectorService instance = _SvgVectorService._();
 
   static const int _maxCacheEntries = 128;
-  static const double _rasterScale = 3.0;
-  static const String _channelName = 'SirenSvgRaster';
   static const String _browserUserAgent =
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
       'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
   static const String _browserAcceptHeader =
       'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
 
-  final LinkedHashMap<String, _SvgRasterResult> _cache =
-      LinkedHashMap<String, _SvgRasterResult>();
+  final LinkedHashMap<String, _CompiledSvgResult> _cache =
+      LinkedHashMap<String, _CompiledSvgResult>();
   final LinkedHashMap<String, _NetworkImagePayload> _payloadCache =
       LinkedHashMap<String, _NetworkImagePayload>();
   final Map<String, Future<_NetworkImagePayload?>> _payloadInFlight =
       <String, Future<_NetworkImagePayload?>>{};
-  final Map<String, Future<_SvgRasterResult?>> _inFlight =
-      <String, Future<_SvgRasterResult?>>{};
-  final Queue<_SvgRasterJob> _queue = Queue<_SvgRasterJob>();
-
-  WebViewController? _controller;
-  Completer<void>? _readyCompleter;
-  Completer<Map<String, dynamic>>? _pendingRequest;
-  String? _pendingRequestId;
-  bool _processing = false;
-  int _reqCounter = 0;
+  final Map<String, Future<_CompiledSvgResult?>> _inFlight =
+      <String, Future<_CompiledSvgResult?>>{};
 
   static String buildCacheKey(
     String sourceKey,
@@ -1511,7 +1489,7 @@ class _SvgRasterService {
     double? targetHeight,
   ) => '$sourceKey|w=${targetWidth ?? 'auto'}|h=${targetHeight ?? 'auto'}';
 
-  _SvgRasterResult? peek(String cacheKey) {
+  _CompiledSvgResult? peek(String cacheKey) {
     final existing = _cache.remove(cacheKey);
     if (existing != null) {
       _cache[cacheKey] = existing;
@@ -1527,7 +1505,7 @@ class _SvgRasterService {
     return existing;
   }
 
-  void _putCache(String key, _SvgRasterResult value) {
+  void _putCache(String key, _CompiledSvgResult value) {
     _cache.remove(key);
     _cache[key] = value;
     while (_cache.length > _maxCacheEntries) {
@@ -1600,7 +1578,7 @@ class _SvgRasterService {
     }
   }
 
-  Future<_SvgRasterResult?> rasterizeSvg({
+  Future<_CompiledSvgResult?> compileSvg({
     required String cacheKey,
     required String svgXml,
     double? targetWidth,
@@ -1608,235 +1586,439 @@ class _SvgRasterService {
   }) {
     final cached = peek(cacheKey);
     if (cached != null) {
-      return Future<_SvgRasterResult?>.value(cached);
+      return Future<_CompiledSvgResult?>.value(cached);
     }
     final existing = _inFlight[cacheKey];
     if (existing != null) {
       return existing;
     }
-    final completer = Completer<_SvgRasterResult?>();
-    _inFlight[cacheKey] = completer.future;
-    _queue.add(
-      _SvgRasterJob(
-        cacheKey: cacheKey,
-        svgXml: svgXml,
-        targetWidth: targetWidth,
-        targetHeight: targetHeight,
-        completer: completer,
-      ),
-    );
-    _pumpQueue();
-    return completer.future;
-  }
 
-  void _pumpQueue() {
-    if (_processing || _queue.isEmpty) return;
-    _processing = true;
-    unawaited(_processLoop());
-  }
-
-  Future<void> _processLoop() async {
-    try {
-      while (_queue.isNotEmpty) {
-        final job = _queue.removeFirst();
-        final cached = _cache[job.cacheKey];
-        if (cached != null) {
-          _inFlight.remove(job.cacheKey);
-          if (!job.completer.isCompleted) {
-            job.completer.complete(cached);
+    final future =
+        Future<_CompiledSvgResult?>(() {
+          return compileSvgXml(
+            svgXml: svgXml,
+            targetWidth: targetWidth,
+            targetHeight: targetHeight,
+          );
+        }).then((result) {
+          _inFlight.remove(cacheKey);
+          if (result != null) {
+            _putCache(cacheKey, result);
           }
-          continue;
-        }
+          return result;
+        });
 
-        _SvgRasterResult? result;
-        try {
-          result = await _executeJob(job);
-        } catch (_) {
-          result = null;
-        }
-
-        _inFlight.remove(job.cacheKey);
-        if (result != null) {
-          _putCache(job.cacheKey, result);
-        }
-        if (!job.completer.isCompleted) {
-          job.completer.complete(result);
-        }
-      }
-    } finally {
-      _processing = false;
-    }
+    _inFlight[cacheKey] = future;
+    return future;
   }
 
-  Future<WebViewController> _ensureController() async {
-    if (_controller != null && _readyCompleter != null) {
-      await _readyCompleter!.future;
-      return _controller!;
-    }
+  static final RegExp _rootSvgRegex = RegExp(
+    r'<svg\b([^>]*)>',
+    caseSensitive: false,
+  );
+  static final RegExp _nestedImageSvgRegex = RegExp(
+    r'<image\b([^>]*?)(?:/>|>[\s\S]*?</image>)',
+    caseSensitive: false,
+  );
+  static final RegExp _innerSvgContentRegex = RegExp(
+    r'<svg\b([^>]*)>([\s\S]*?)</svg>',
+    caseSensitive: false,
+  );
+  static final RegExp _stripTitleDescRegex = RegExp(
+    r'<(?:title|desc|metadata)\b[^>]*>[\s\S]*?</(?:title|desc|metadata)>',
+    caseSensitive: false,
+  );
+  static final RegExp _stopTagRegex = RegExp(
+    r'<stop\b([^>]*?)/?>',
+    caseSensitive: false,
+  );
+  static final RegExp _filterElementRegex = RegExp(
+    r'<filter\b[^>]*>[\s\S]*?</filter>',
+    caseSensitive: false,
+  );
+  static final RegExp _filteredTextRegex = RegExp(
+    r'<text\b[^>]*\bfilter\s*=\s*(?:"[^"]*"|'
+    r"'[^']*')"
+    r'[^>]*>[\s\S]*?</text>',
+    caseSensitive: false,
+  );
+  static final RegExp _groupOrTextTokenRegex = RegExp(
+    r'<(/?g)\b([^>]*?)(/?)>|<text\b([^>]*)>([\s\S]*?)</text>',
+    caseSensitive: false,
+  );
+  static final RegExp _scaleTransformRegex = RegExp(
+    r'^scale\(\s*([0-9.]+)(?:[\s,]+([0-9.]+))?\s*\)$',
+    caseSensitive: false,
+  );
 
-    final ready = Completer<void>();
-    _readyCompleter = ready;
-    final controller = WebViewController();
-    await controller.setJavaScriptMode(JavaScriptMode.unrestricted);
-    await controller.addJavaScriptChannel(
-      _channelName,
-      onMessageReceived: (JavaScriptMessage msg) {
-        _handleMessage(msg.message);
-      },
+  static double? _parsePositiveNum(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty || trimmed.endsWith('%')) return null;
+    final cleaned = trimmed.replaceFirst(
+      RegExp(r'(?:px|pt)$', caseSensitive: false),
+      '',
     );
-    await controller.loadHtmlString(_bootstrapHtml);
-    await ready.future.timeout(const Duration(seconds: 10));
-    _controller = controller;
-    return controller;
+    final val = double.tryParse(cleaned);
+    return (val != null && val.isFinite && val > 0) ? val : null;
   }
 
-  void _handleMessage(String raw) {
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map<String, dynamic>) return;
-      if (decoded['kind'] == 'ready') {
-        if (_readyCompleter != null && !_readyCompleter!.isCompleted) {
-          _readyCompleter!.complete();
-        }
-        return;
-      }
-      final id = decoded['id'] as String?;
-      final pending = _pendingRequest;
-      if (id != null &&
-          id == _pendingRequestId &&
-          pending != null &&
-          !pending.isCompleted) {
-        _pendingRequest = null;
-        _pendingRequestId = null;
-        pending.complete(decoded);
-      }
-    } catch (_) {}
-  }
-
-  Future<_SvgRasterResult?> _executeJob(_SvgRasterJob job) async {
-    final controller = await _ensureController();
-    final id = 'svg_${++_reqCounter}';
-    final completer = Completer<Map<String, dynamic>>();
-    _pendingRequest = completer;
-    _pendingRequestId = id;
-
-    final payload = jsonEncode(<String, Object?>{
-      'id': id,
-      'svg': job.svgXml,
-      'width': job.targetWidth,
-      'height': job.targetHeight,
-      'scale': _rasterScale,
-    });
-
-    await controller.runJavaScript('window.sirenSvg.render($payload);');
-    final response = await completer.future.timeout(
-      const Duration(seconds: 10),
-    );
-    if (response['kind'] != 'ok') return null;
-
-    final pngBase64 = response['png'] as String? ?? '';
-    final width = (response['width'] as num?)?.toDouble() ?? 0;
-    final height = (response['height'] as num?)?.toDouble() ?? 0;
-    if (pngBase64.isEmpty || width <= 0 || height <= 0) return null;
-
-    final bytes = base64Decode(pngBase64);
-    return _SvgRasterResult(
-      pngBytes: bytes,
-      logicalWidth: width,
-      logicalHeight: height,
-    );
-  }
-
-  static const String _bootstrapHtml = '''
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden;}</style>
-<script>
-(function() {
-  'use strict';
-  const PNG_PREFIX = 'data:image/png;base64,';
-  const XLINK_NS = 'http://www.w3.org/1999/xlink';
-
-  function send(obj) {
-    const text = JSON.stringify(obj);
-    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.SirenSvgRaster) {
-      window.webkit.messageHandlers.SirenSvgRaster.postMessage(text);
-    } else if (window.SirenSvgRaster) {
-      window.SirenSvgRaster.postMessage(text);
+  static String _formatSvgNum(double value) {
+    final rounded = (value * 1000).round() / 1000;
+    if (rounded == rounded.roundToDouble()) {
+      return rounded.round().toString();
     }
+    return rounded.toString();
   }
 
-  function parsePositiveNum(val) {
-    if (!val) return 0;
-    const s = String(val).trim();
-    if (s.endsWith('%')) return 0;
-    const n = parseFloat(s);
-    return (Number.isFinite(n) && n > 0) ? n : 0;
-  }
+  static String _inlineNestedSvgDataImages(String svg) {
+    return svg.replaceAllMapped(_nestedImageSvgRegex, (match) {
+      final rawAttrs = match.group(1) ?? '';
+      final attrs = HtmlAttributeParser.parse(rawAttrs);
+      final href = (attrs['href'] ?? attrs['xlink:href'] ?? '').trim();
+      if (!href.toLowerCase().startsWith('data:image/svg+xml')) {
+        return match.group(0)!;
+      }
 
-  async function reencodeNestedImages(root, scale) {
-    const images = Array.from(root.querySelectorAll('image'));
-    for (const imgEl of images) {
-      const href = imgEl.getAttribute('href') ||
-                   imgEl.getAttribute('xlink:href') ||
-                   imgEl.getAttributeNS(XLINK_NS, 'href') || '';
-      if (!href.startsWith('data:image/')) continue;
-      const inner = new Image();
-      inner.src = href;
+      final commaIdx = href.indexOf(',');
+      if (commaIdx < 0) return match.group(0)!;
+      final header = href.substring(0, commaIdx).toLowerCase();
+      final payloadPart = href.substring(commaIdx + 1).trim();
+
+      String decodedSvg;
       try {
-        await inner.decode();
+        if (header.contains(';base64')) {
+          final cleanBase64 = payloadPart.replaceAll(RegExp(r'\s+'), '');
+          decodedSvg = utf8.decode(
+            base64Decode(cleanBase64),
+            allowMalformed: true,
+          );
+        } else {
+          decodedSvg = Uri.decodeFull(payloadPart);
+        }
       } catch (_) {
+        return match.group(0)!;
+      }
+
+      final innerMatch = _innerSvgContentRegex.firstMatch(decodedSvg);
+      if (innerMatch == null) return match.group(0)!;
+
+      final innerAttrs = HtmlAttributeParser.parse(innerMatch.group(1) ?? '');
+      var innerBody = (innerMatch.group(2) ?? '').replaceAll(
+        _stripTitleDescRegex,
+        '',
+      );
+      if (innerBody.trim().isEmpty) return '';
+
+      final x = double.tryParse(attrs['x'] ?? '') ?? 0.0;
+      final y = double.tryParse(attrs['y'] ?? '') ?? 0.0;
+      final w = _parsePositiveNum(attrs['width']) ?? 14.0;
+      final h = _parsePositiveNum(attrs['height']) ?? 14.0;
+
+      double vw = _parsePositiveNum(innerAttrs['width']) ?? 24.0;
+      double vh = _parsePositiveNum(innerAttrs['height']) ?? 24.0;
+      double vx = 0.0;
+      double vy = 0.0;
+      final vb = innerAttrs['viewbox'];
+      if (vb != null) {
+        final parts = vb
+            .trim()
+            .split(RegExp(r'[\s,]+'))
+            .map(double.tryParse)
+            .toList();
+        if (parts.length == 4 &&
+            parts[0] != null &&
+            parts[1] != null &&
+            parts[2] != null &&
+            parts[3] != null &&
+            parts[2]! > 0 &&
+            parts[3]! > 0) {
+          vx = parts[0]!;
+          vy = parts[1]!;
+          vw = parts[2]!;
+          vh = parts[3]!;
+        }
+      }
+
+      final sx = w / vw;
+      final sy = h / vh;
+      final transforms = <String>[
+        if (x != 0 || y != 0)
+          'translate(${_formatSvgNum(x)}, ${_formatSvgNum(y)})',
+        if ((sx - 1.0).abs() > 1e-4 || (sy - 1.0).abs() > 1e-4)
+          'scale(${_formatSvgNum(sx)}, ${_formatSvgNum(sy)})',
+        if (vx != 0 || vy != 0)
+          'translate(${_formatSvgNum(-vx)}, ${_formatSvgNum(-vy)})',
+      ];
+
+      final groupAttrs = StringBuffer();
+      if (transforms.isNotEmpty) {
+        groupAttrs.write(' transform="${transforms.join(' ')}"');
+      }
+      for (final key in const [
+        'fill',
+        'stroke',
+        'stroke-width',
+        'stroke-linecap',
+        'stroke-linejoin',
+      ]) {
+        final val = innerAttrs[key];
+        if (val != null && val.isNotEmpty) {
+          groupAttrs.write(' $key="$val"');
+        }
+      }
+      return '<g$groupAttrs>$innerBody</g>';
+    });
+  }
+
+  static String? _resolveSvgFontFamily(String? rawFamily) {
+    if (rawFamily == null) return null;
+    for (final candidate in rawFamily.split(',')) {
+      var cleaned = candidate.trim();
+      if ((cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+          (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+        cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+      }
+      if (cleaned.isEmpty) continue;
+      final lower = cleaned.toLowerCase();
+      if (lower == 'sans-serif' ||
+          lower == 'serif' ||
+          lower == 'monospace' ||
+          lower == 'system-ui') {
         continue;
       }
-      const w = parsePositiveNum(imgEl.getAttribute('width')) || inner.naturalWidth || 14;
-      const h = parsePositiveNum(imgEl.getAttribute('height')) || inner.naturalHeight || 14;
-      const c = document.createElement('canvas');
-      c.width = Math.max(1, Math.ceil(w * scale));
-      c.height = Math.max(1, Math.ceil(h * scale));
-      c.getContext('2d').drawImage(inner, 0, 0, c.width, c.height);
-      const pngUrl = c.toDataURL('image/png');
-      imgEl.setAttribute('href', pngUrl);
-      imgEl.setAttributeNS(XLINK_NS, 'xlink:href', pngUrl);
+      return cleaned;
     }
+    return null;
   }
 
-  async function renderRequest(req) {
-    const scale = Math.max(1, Number(req.scale) || 3);
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(req.svg, 'image/svg+xml');
-    if (doc.getElementsByTagName('parsererror').length > 0) {
-      throw new Error('Malformed SVG');
-    }
-    const root = doc.documentElement;
-    if (!root.getAttribute('xmlns')) {
-      root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    }
-    if (!root.getAttribute('xmlns:xlink')) {
-      root.setAttribute('xmlns:xlink', XLINK_NS);
-    }
+  static String _normalizeBadgeTextGroups(String svg) {
+    var cleaned = svg
+        .replaceAll(_filterElementRegex, '')
+        .replaceAll(_filteredTextRegex, '');
 
-    await reencodeNestedImages(root, scale);
+    final stack =
+        <
+          ({
+            double scaleX,
+            double scaleY,
+            double? rawFontSize,
+            String? fill,
+            String? fillOpacity,
+            String? textAnchor,
+            String? fontFamily,
+          })
+        >[];
 
-    let naturalW = parsePositiveNum(root.getAttribute('width'));
-    let naturalH = parsePositiveNum(root.getAttribute('height'));
-    const vbAttr = root.getAttribute('viewBox');
-    if (vbAttr) {
-      const parts = vbAttr.trim().split(/[\\s,]+/).map(Number);
-      if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
-        if (!naturalW) naturalW = parts[2];
-        if (!naturalH) naturalH = parts[3];
+    return cleaned.replaceAllMapped(_groupOrTextTokenRegex, (match) {
+      final groupTag = match.group(1);
+      if (groupTag != null) {
+        if (groupTag.toLowerCase() == '/g') {
+          if (stack.isNotEmpty) {
+            stack.removeLast();
+          }
+          return '</g>';
+        }
+
+        final groupRawAttrs = match.group(2) ?? '';
+        final selfClose = match.group(3) ?? '';
+        final groupAttrs = HtmlAttributeParser.parse(groupRawAttrs);
+        final parent = stack.isNotEmpty
+            ? stack.last
+            : (
+                scaleX: 1.0,
+                scaleY: 1.0,
+                rawFontSize: null,
+                fill: null,
+                fillOpacity: null,
+                textAnchor: null,
+                fontFamily: null,
+              );
+
+        double ownScaleX = 1.0;
+        double ownScaleY = 1.0;
+        final transformAttr = groupAttrs['transform']?.trim();
+        if (transformAttr != null) {
+          final scaleMatch = _scaleTransformRegex.firstMatch(transformAttr);
+          if (scaleMatch != null) {
+            final sx = double.tryParse(scaleMatch.group(1) ?? '');
+            final sy = double.tryParse(
+              scaleMatch.group(2) ?? scaleMatch.group(1) ?? '',
+            );
+            if (sx != null && sx > 0 && sy != null && sy > 0) {
+              ownScaleX = sx;
+              ownScaleY = sy;
+              groupAttrs.remove('transform');
+            }
+          }
+        }
+
+        final ownFontSize = _parsePositiveNum(groupAttrs['font-size']);
+        if (ownFontSize != null) {
+          groupAttrs.remove('font-size');
+        }
+
+        final resolvedFamily = _resolveSvgFontFamily(groupAttrs['font-family']);
+        if (resolvedFamily != null) {
+          groupAttrs['font-family'] = resolvedFamily;
+        }
+
+        final nextFrame = (
+          scaleX: parent.scaleX * ownScaleX,
+          scaleY: parent.scaleY * ownScaleY,
+          rawFontSize: ownFontSize ?? parent.rawFontSize,
+          fill: groupAttrs['fill'] ?? parent.fill,
+          fillOpacity: groupAttrs['fill-opacity'] ?? parent.fillOpacity,
+          textAnchor: groupAttrs['text-anchor'] ?? parent.textAnchor,
+          fontFamily: resolvedFamily ?? parent.fontFamily,
+        );
+
+        if (selfClose != '/') {
+          stack.add(nextFrame);
+        }
+
+        final attrBuf = StringBuffer();
+        groupAttrs.forEach((k, v) {
+          attrBuf.write(' $k="$v"');
+        });
+        return '<g$attrBuf$selfClose>';
       }
-    } else if (naturalW > 0 && naturalH > 0) {
-      root.setAttribute('viewBox', '0 0 ' + naturalW + ' ' + naturalH);
+
+      final textRawAttrs = match.group(4) ?? '';
+      final textContent = match.group(5) ?? '';
+      final textAttrs = HtmlAttributeParser.parse(textRawAttrs);
+      final frame = stack.isNotEmpty
+          ? stack.last
+          : (
+              scaleX: 1.0,
+              scaleY: 1.0,
+              rawFontSize: null,
+              fill: null,
+              fillOpacity: null,
+              textAnchor: null,
+              fontFamily: null,
+            );
+
+      double ownScaleX = 1.0;
+      double ownScaleY = 1.0;
+      final transformAttr = textAttrs['transform']?.trim();
+      if (transformAttr != null) {
+        final scaleMatch = _scaleTransformRegex.firstMatch(transformAttr);
+        if (scaleMatch != null) {
+          final sx = double.tryParse(scaleMatch.group(1) ?? '');
+          final sy = double.tryParse(
+            scaleMatch.group(2) ?? scaleMatch.group(1) ?? '',
+          );
+          if (sx != null && sx > 0 && sy != null && sy > 0) {
+            ownScaleX = sx;
+            ownScaleY = sy;
+            textAttrs.remove('transform');
+          }
+        }
+      }
+
+      final effScaleX = frame.scaleX * ownScaleX;
+      final effScaleY = frame.scaleY * ownScaleY;
+
+      final baseFontSize =
+          _parsePositiveNum(textAttrs['font-size']) ?? frame.rawFontSize;
+      if (baseFontSize != null) {
+        textAttrs['font-size'] = _formatSvgNum(baseFontSize * effScaleY);
+      }
+
+      if (effScaleX != 1.0 || effScaleY != 1.0) {
+        final xVal = double.tryParse(textAttrs['x'] ?? '');
+        final yVal = double.tryParse(textAttrs['y'] ?? '');
+        if (xVal != null) {
+          textAttrs['x'] = _formatSvgNum(xVal * effScaleX);
+        }
+        if (yVal != null) {
+          textAttrs['y'] = _formatSvgNum(yVal * effScaleY);
+        }
+      }
+
+      textAttrs.remove('textlength');
+      textAttrs.remove('lengthadjust');
+      textAttrs.remove('filter');
+
+      if (!textAttrs.containsKey('fill') && frame.fill != null) {
+        textAttrs['fill'] = frame.fill!;
+      }
+      if (!textAttrs.containsKey('fill-opacity') && frame.fillOpacity != null) {
+        textAttrs['fill-opacity'] = frame.fillOpacity!;
+      }
+      if (!textAttrs.containsKey('text-anchor') && frame.textAnchor != null) {
+        textAttrs['text-anchor'] = frame.textAnchor!;
+      }
+      final textFamily =
+          _resolveSvgFontFamily(textAttrs['font-family']) ?? frame.fontFamily;
+      if (textFamily != null) {
+        textAttrs['font-family'] = textFamily;
+      }
+
+      final attrBuf = StringBuffer();
+      textAttrs.forEach((k, v) {
+        attrBuf.write(' $k="$v"');
+      });
+      return '<text$attrBuf>$textContent</text>';
+    });
+  }
+
+  static String _ensureGradientStopColors(String svg) {
+    if (!svg.contains('<stop')) return svg;
+    return svg.replaceAllMapped(_stopTagRegex, (match) {
+      final rawAttrs = match.group(1) ?? '';
+      if (RegExp(
+        r'\bstop-color\s*=',
+        caseSensitive: false,
+      ).hasMatch(rawAttrs)) {
+        return match.group(0)!;
+      }
+      final full = match.group(0)!;
+      if (full.endsWith('/>')) {
+        return '<stop$rawAttrs stop-color="#000000"/>';
+      }
+      return '<stop$rawAttrs stop-color="#000000">';
+    });
+  }
+
+  static _CompiledSvgResult? compileSvgXml({
+    required String svgXml,
+    double? targetWidth,
+    double? targetHeight,
+  }) {
+    final rootMatch = _rootSvgRegex.firstMatch(svgXml);
+    if (rootMatch == null) return null;
+
+    final rootAttrs = HtmlAttributeParser.parse(rootMatch.group(1) ?? '');
+    double? naturalW = _parsePositiveNum(rootAttrs['width']);
+    double? naturalH = _parsePositiveNum(rootAttrs['height']);
+    final vbAttr = rootAttrs['viewbox'];
+    if (vbAttr != null) {
+      final parts = vbAttr
+          .trim()
+          .split(RegExp(r'[\s,]+'))
+          .map(double.tryParse)
+          .toList();
+      if (parts.length == 4 &&
+          parts[2] != null &&
+          parts[3] != null &&
+          parts[2]! > 0 &&
+          parts[3]! > 0) {
+        naturalW ??= parts[2];
+        naturalH ??= parts[3];
+      }
     }
 
-    if (!naturalW) naturalW = 100;
-    if (!naturalH) naturalH = 20;
+    naturalW ??= 100.0;
+    naturalH ??= 20.0;
 
-    let logicalW = Number(req.width) > 0 ? Number(req.width) : 0;
-    let logicalH = Number(req.height) > 0 ? Number(req.height) : 0;
+    double logicalW = (targetWidth != null && targetWidth > 0)
+        ? targetWidth
+        : 0.0;
+    double logicalH = (targetHeight != null && targetHeight > 0)
+        ? targetHeight
+        : 0.0;
     if (logicalW > 0 && logicalH <= 0) {
       logicalH = logicalW * (naturalH / naturalW);
     } else if (logicalH > 0 && logicalW <= 0) {
@@ -1846,48 +2028,35 @@ class _SvgRasterService {
       logicalH = naturalH;
     }
 
-    root.setAttribute('width', String(logicalW));
-    root.setAttribute('height', String(logicalH));
+    var normalized = _normalizeBadgeTextGroups(svgXml);
+    normalized = _inlineNestedSvgDataImages(normalized);
+    normalized = _ensureGradientStopColors(normalized);
 
-    const serialized = new XMLSerializer().serializeToString(root);
-    const outerImg = new Image();
-    outerImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(serialized);
-    await outerImg.decode();
-
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.ceil(logicalW * scale));
-    canvas.height = Math.max(1, Math.ceil(logicalH * scale));
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(outerImg, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/png');
-    if (!dataUrl.startsWith(PNG_PREFIX)) {
-      throw new Error('Failed to encode PNG');
+    if (vbAttr == null) {
+      normalized = normalized.replaceFirstMapped(_rootSvgRegex, (m) {
+        return '<svg${m.group(1)} viewBox="0 0 ${_formatSvgNum(naturalW!)} ${_formatSvgNum(naturalH!)}">';
+      });
     }
-    return {
-      id: req.id,
-      kind: 'ok',
-      png: dataUrl.slice(PNG_PREFIX.length),
-      width: logicalW,
-      height: logicalH
-    };
+
+    try {
+      final compiledBytes = vg.encodeSvg(
+        xml: normalized,
+        debugName: 'markdown_svg',
+        theme: const vg.SvgTheme(),
+        enableClippingOptimizer: false,
+        enableMaskingOptimizer: false,
+        enableOverdrawOptimizer: false,
+      );
+      return _CompiledSvgResult(
+        compiledBytes: compiledBytes,
+        normalizedSvg: normalized,
+        logicalWidth: logicalW,
+        logicalHeight: logicalH,
+      );
+    } catch (_) {
+      return null;
+    }
   }
-
-  window.sirenSvg = {
-    render: async function(req) {
-      try {
-        send(await renderRequest(req));
-      } catch (e) {
-        send({id: req && req.id, kind: 'error', message: String(e)});
-      }
-    }
-  };
-  send({kind: 'ready'});
-})();
-</script>
-</head>
-<body></body>
-</html>
-''';
 }
 
 /// Renders a browser/GitHub-style broken image fallback that preserves the
@@ -1956,13 +2125,13 @@ class _BrowserSvgImage extends StatefulWidget {
 }
 
 class _BrowserSvgImageState extends State<_BrowserSvgImage> {
-  _SvgRasterResult? _svgResult;
+  _CompiledSvgResult? _svgResult;
   Uint8List? _rasterBytes;
   String? _fallbackSvgXml;
   bool _failed = false;
   bool _loading = true;
 
-  String get _cacheKey => _SvgRasterService.buildCacheKey(
+  String get _cacheKey => _SvgVectorService.buildCacheKey(
     widget.networkUrl ?? widget.localFile?.path ?? '',
     widget.width,
     widget.height,
@@ -1987,7 +2156,7 @@ class _BrowserSvgImageState extends State<_BrowserSvgImage> {
 
   Future<void> _loadImage() async {
     final key = _cacheKey;
-    final cachedSvg = _SvgRasterService.instance.peek(key);
+    final cachedSvg = _SvgVectorService.instance.peek(key);
     if (cachedSvg != null) {
       setState(() {
         _svgResult = cachedSvg;
@@ -2000,7 +2169,7 @@ class _BrowserSvgImageState extends State<_BrowserSvgImage> {
     }
 
     if (widget.networkUrl != null) {
-      final cachedPayload = _SvgRasterService.instance.peekPayload(
+      final cachedPayload = _SvgVectorService.instance.peekPayload(
         widget.networkUrl!,
       );
       if (cachedPayload != null && !cachedPayload.isSvg) {
@@ -2025,7 +2194,7 @@ class _BrowserSvgImageState extends State<_BrowserSvgImage> {
 
     String? svgXml;
     if (widget.networkUrl != null) {
-      final payload = await _SvgRasterService.instance.fetchNetworkPayload(
+      final payload = await _SvgVectorService.instance.fetchNetworkPayload(
         widget.networkUrl!,
       );
       if (!mounted) return;
@@ -2062,7 +2231,7 @@ class _BrowserSvgImageState extends State<_BrowserSvgImage> {
       return;
     }
 
-    final raster = await _SvgRasterService.instance.rasterizeSvg(
+    final compiledSvg = await _SvgVectorService.instance.compileSvg(
       cacheKey: key,
       svgXml: svgXml,
       targetWidth: widget.width,
@@ -2070,9 +2239,9 @@ class _BrowserSvgImageState extends State<_BrowserSvgImage> {
     );
 
     if (!mounted) return;
-    if (raster != null) {
+    if (compiledSvg != null) {
       setState(() {
-        _svgResult = raster;
+        _svgResult = compiledSvg;
         _loading = false;
         _failed = false;
       });
@@ -2087,13 +2256,13 @@ class _BrowserSvgImageState extends State<_BrowserSvgImage> {
   @override
   Widget build(BuildContext context) {
     if (_svgResult != null) {
-      return Image.memory(
-        _svgResult!.pngBytes,
+      return createCompatVectorGraphic(
+        loader: CompiledMermaidBytesLoader(_svgResult!.compiledBytes),
         width: _svgResult!.logicalWidth,
         height: _svgResult!.logicalHeight,
         fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
-        semanticLabel: widget.semanticsLabel,
+        strategy: RenderingStrategy.picture,
+        semanticsLabel: widget.semanticsLabel,
       );
     }
 
@@ -2142,8 +2311,8 @@ class _BrowserSvgImageState extends State<_BrowserSvgImage> {
 /// Renders `html_img` (`<img>` and `<picture>`) elements as well as standard
 /// Markdown images with support for `width`/`height` attributes, dark/light
 /// theme `<picture>` sources, HTTP Content-Type/payload SVG detection,
-/// offscreen 3x WebKit SVG rasterization, hyperlink wrapping, and the
-/// interactive `ImageZoomDialog` lightbox.
+/// pure-Dart SVG normalization & `vector_graphics` compilation, hyperlink
+/// wrapping, and the interactive `ImageZoomDialog` lightbox.
 class HtmlImageBuilder extends MarkdownElementBuilder {
   final String basePath;
   final String? explorerRootPath;
@@ -2154,6 +2323,31 @@ class HtmlImageBuilder extends MarkdownElementBuilder {
     required this.explorerRootPath,
     required this.onTapLink,
   });
+
+  /// Normalizes and compiles arbitrary SVG XML (including `img.shields.io`
+  /// badges with embedded `data:image/svg+xml` `<image>` logos and scaled text)
+  /// into `vector_graphics` bytecode.
+  @visibleForTesting
+  static ({
+    Uint8List compiledBytes,
+    String normalizedSvg,
+    double width,
+    double height,
+  })?
+  compileSvgBadge(String svgXml, {double? width, double? height}) {
+    final result = _SvgVectorService.compileSvgXml(
+      svgXml: svgXml,
+      targetWidth: width,
+      targetHeight: height,
+    );
+    if (result == null) return null;
+    return (
+      compiledBytes: result.compiledBytes,
+      normalizedSvg: result.normalizedSvg,
+      width: result.logicalWidth,
+      height: result.logicalHeight,
+    );
+  }
 
   /// Determines whether an HTTP response or file payload is SVG XML by
   /// inspecting the MIME `Content-Type` and leading bytes (ignoring URL paths

@@ -83,8 +83,8 @@ configure_prefs 1 0
 APP_PID=$!
 sleep 3.5
 
-WIN_INFO="$("$REPO_ROOT/tool/find_window" 2>&1 | awk '/Owner: Siren ID:/{flag=1} flag{print; if (/}/) exit}')"
-WID="$(echo "$WIN_INFO" | head -n 1 | sed -E 's/.*ID: ([0-9]+).*/\1/')"
+WIN_INFO="$("$REPO_ROOT/tool/find_window" 2>&1 | awk '/Owner: Siren ID:/{flag=1} flag{print} flag && /\}/{flag=0}')"
+WID="$(echo "$WIN_INFO" | sed -n '1s/.*ID: \([0-9]*\).*/\1/p')"
 WIN_X="$(echo "$WIN_INFO" | awk -F'= ' '/X =/{gsub(/;/,"",$2); print int($2)}')"
 WIN_Y="$(echo "$WIN_INFO" | awk -F'= ' '/Y =/{gsub(/;/,"",$2); print int($2)}')"
 echo "    Window ID=$WID at ($WIN_X, $WIN_Y)"
@@ -102,8 +102,8 @@ configure_prefs 2 0
 APP_PID=$!
 sleep 3.5
 
-WIN_INFO="$("$REPO_ROOT/tool/find_window" 2>&1 | awk '/Owner: Siren ID:/{flag=1} flag{print; if (/}/) exit}')"
-WID="$(echo "$WIN_INFO" | head -n 1 | sed -E 's/.*ID: ([0-9]+).*/\1/')"
+WIN_INFO="$("$REPO_ROOT/tool/find_window" 2>&1 | awk '/Owner: Siren ID:/{flag=1} flag{print} flag && /\}/{flag=0}')"
+WID="$(echo "$WIN_INFO" | sed -n '1s/.*ID: \([0-9]*\).*/\1/p')"
 WIN_X="$(echo "$WIN_INFO" | awk -F'= ' '/X =/{gsub(/;/,"",$2); print int($2)}')"
 WIN_Y="$(echo "$WIN_INFO" | awk -F'= ' '/Y =/{gsub(/;/,"",$2); print int($2)}')"
 echo "    Window ID=$WID at ($WIN_X, $WIN_Y)"
@@ -187,8 +187,8 @@ configure_prefs 2 1
 APP_PID=$!
 sleep 4.5
 
-WIN_INFO="$("$REPO_ROOT/tool/find_window" 2>&1 | awk '/Owner: Siren ID:/{flag=1} flag{print; if (/}/) exit}')"
-WID="$(echo "$WIN_INFO" | head -n 1 | sed -E 's/.*ID: ([0-9]+).*/\1/')"
+WIN_INFO="$("$REPO_ROOT/tool/find_window" 2>&1 | awk '/Owner: Siren ID:/{flag=1} flag{print} flag && /\}/{flag=0}')"
+WID="$(echo "$WIN_INFO" | sed -n '1s/.*ID: \([0-9]*\).*/\1/p')"
 WIN_X="$(echo "$WIN_INFO" | awk -F'= ' '/X =/{gsub(/;/,"",$2); print int($2)}')"
 WIN_Y="$(echo "$WIN_INFO" | awk -F'= ' '/Y =/{gsub(/;/,"",$2); print int($2)}')"
 

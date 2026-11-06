@@ -22,6 +22,8 @@ graph TD
     State -->|Parallel Anchor Injection| AnchorIsolate[Anchor Injection Isolate]
     State -->|Search Process| Ripgrep[Ripgrep Subprocess]
     State -->|File Events| Watcher[WatcherService]
+    UI -->|Viewport-Aware Render| Mermaid[MermaidRenderService]
+    Mermaid -->|Zero-Copy TransferableTypedData| MermaidIsolates[Mermaid Worker Isolate Pool]
 ```
 
 ---
@@ -36,6 +38,7 @@ graph TD
 ### Background Isolates
 - **File Indexer (`lib/file_indexer.dart`)**: Traverses the workspace filesystem recursively inside a separate Dart isolate, filtering via include/exclude patterns and building an index of known Markdown documents.
 - **Anchor Injection (`lib/markdown_processor.dart`)**: Injects HTML anchors into heading lines in an isolate so that large documents can be indexed and jumped to without blocking user interaction.
+- **Mermaid Worker Isolate Pool (`lib/mermaid_render_service.dart`)**: Pre-spawns and JIT-warms persistent background worker isolates at application startup, executing `pele_dart` layout and `vector_graphics_compiler` encoding off the UI thread and returning compiled bytecode via zero-copy `TransferableTypedData`.
 
 ### Search Services
 - **Fuzzy Matcher (`lib/fuzzy_matcher.dart`)**: Multi-token fuzzy matching with word-boundary and camelCase prioritization.
@@ -45,11 +48,12 @@ graph TD
 - Monitors file system modification and removal events.
 - Employs debounce timers and delay strategies to handle macOS atomic saves (where editors write to a temporary file, delete the original, and rename).
 
-### Offscreen Mermaid Vector & SVG Raster Engine (`lib/mermaid_render_service.dart`, `lib/markdown_extensions.dart`)
-- Uses a single shared headless `WebViewController` loaded with offline `mermaid.min.js` (with embedded ELK layout and `look: 'neo'`) and `mermaid_page.js` assets.
-- Flattens computed SVG styles, markers, normalized `stroke-dasharray` patterns, and `<foreignObject>` labels into standalone SVG XML and compiles them into binary `vector_graphics` bytecode (`VectorGraphic`), with automatic high-DPI PNG fallback.
+### Pure-Dart Mermaid Vector & SVG Compiler Engine (`lib/mermaid_render_service.dart`, `lib/mermaid_diagram.dart`, `lib/markdown_extensions.dart`)
+- Uses `pele_dart` (`obsidianmd/pele` port) to parse, lay out, and render all 33 standard, beta, and specialized Mermaid diagram families in pure Dart with zero `WebView`, DOM, or JavaScript runtime dependencies.
+- Flattens `--pele-*` CSS custom properties, `color-mix()` blends, `calc()`, `currentColor`, and nested icons/math against Siren's Light and Dark `PelePalette` themes (`SvgOutputMode.flattened`) and compiles them into binary `vector_graphics` bytecode (`VectorGraphic`) in a persistent background worker isolate pool with zero-copy `TransferableTypedData` transfer.
+- Employs viewport-aware lazy rendering (`lib/mermaid_diagram.dart`), rendering the initial visible quota immediately on document open and deferring off-screen diagrams until they enter the scroll viewport lookahead buffer.
 - Caches compiled diagrams in an LRU memory cache (`(code, isDarkMode)`) for instant scrolling, proportional font scaling, interactive zoom/pan inspection, macOS clipboard PNG copy, and SVG/PNG file export (`lib/mermaid_zoom_dialog.dart`).
-- Renders complex SVG badges (`img.shields.io` with nested base64 `<image>` logos and `transform="scale(.1)"` typography) and local `.svg` images through an offscreen `3x` Retina WebKit canvas rasterizer with in-memory LRU caching.
+- Normalizes and compiles complex SVG badges (`img.shields.io` with nested base64 `data:image/svg+xml` `<image>` logos and `transform="scale(.1)"` typography) and local `.svg` images into `vector_graphics` bytecode in pure Dart with in-memory LRU caching.
 
 ---
 
@@ -57,7 +61,7 @@ graph TD
 
 ```text
 siren/
-├── assets/             # Bundled application assets (images, ripgrep, mermaid + ELK)
+├── assets/             # Bundled application assets (images, ripgrep binary)
 ├── docs/               # User and developer documentation
 ├── lib/                # Flutter Dart source code
 │   ├── app_state.dart             # Core application state & recent items persistence
@@ -68,10 +72,10 @@ siren/
 │   ├── global_search_view.dart    # Workspace full-text search
 │   ├── home_screen.dart           # Main window scaffold, menus & shortcuts
 │   ├── image_zoom_dialog.dart     # Interactive image lightbox viewer
-│   ├── markdown_extensions.dart   # YAML frontmatter, GFM HTML, GitHub alerts, math & SVG rasterizer
+│   ├── markdown_extensions.dart   # YAML frontmatter, GFM HTML, GitHub alerts, math & SVG compiler
 │   ├── markdown_processor.dart    # HTML comment stripping & background heading anchor injection
 │   ├── mermaid_diagram.dart       # Scaled Mermaid vector diagram widget
-│   ├── mermaid_render_service.dart# Offscreen ELK SVG/vector compilation engine
+│   ├── mermaid_render_service.dart# Pure-Dart pele_dart SVG/vector compilation engine
 │   ├── mermaid_zoom_dialog.dart   # Interactive zoom, pan & export diagram modal
 │   ├── outline_view.dart          # Heading hierarchy tree
 │   ├── raw_view.dart              # Raw Markdown source view with line gutter
