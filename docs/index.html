@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Siren Documentation — macOS Markdown Viewer</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <meta name="description" content="User manual, syntax guide, and architecture documentation for Siren — a sleek, high-performance desktop Markdown viewer for macOS built with Flutter." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/tkinnis/siren/main/assets/images/app_icon.png" />
+
+  <!-- Base Docsify Theme -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css" />
+  <!-- KaTeX for LaTeX Math -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+
+  <style>
+    :root {
+      --theme-color: #007aff;
+      --bg-primary: #ffffff;
+      --bg-secondary: #f7f8fa;
+      --bg-elevated: #f1f3f6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #515154;
+      --text-muted: #86868b;
+      --border-color: #e5e5ea;
+      --code-bg: #f5f6f8;
+      --kbd-bg: #f7f7f9;
+      --kbd-border: #d1d1d6;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+
+    html[data-theme="dark"] {
+      --theme-color: #2997ff;
+      --bg-primary: #161618;
+      --bg-secondary: #1e1e21;
+      --bg-elevated: #26262b;
+      --text-primary: #f5f5f7;
+      --text-secondary: #a1a1a6;
+      --text-muted: #6e6e73;
+      --border-color: #323236;
+      --code-bg: #202024;
+      --kbd-bg: #2c2c30;
+      --kbd-border: #48484e;
+      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Top Header Bar */
+    .siren-topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 54px;
+      background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+    }
+
+    .siren-topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .siren-topbar-brand img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+    }
+
+    .siren-topbar-badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+    }
+
+    .siren-topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .siren-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+
+    .siren-btn:hover {
+      background: var(--bg-elevated);
+    }
+
+    .siren-btn-primary {
+      background: var(--theme-color);
+      color: #ffffff !important;
+      border-color: var(--theme-color);
+    }
+
+    .siren-btn-primary:hover {
+      filter: brightness(1.08);
+      background: var(--theme-color);
+    }
+
+    /* Offset Docsify layout for fixed topbar */
+    .sidebar {
+      top: 54px !important;
+      background-color: var(--bg-secondary) !important;
+      border-right: 1px solid var(--border-color) !important;
+      color: var(--text-primary) !important;
+    }
+
+    .sidebar-toggle {
+      top: 64px !important;
+      background-color: transparent !important;
+    }
+
+    .content {
+      padding-top: 74px !important;
+    }
+
+    .markdown-section {
+      max-width: 900px !important;
+      padding: 24px 40px 64px !important;
+      color: var(--text-primary) !important;
+    }
+
+    /* Sidebar & Search Overrides */
+    .sidebar > h1 {
+      display: none;
+    }
+
+    .search {
+      border-bottom: 1px solid var(--border-color) !important;
+      margin-bottom: 12px !important;
+      padding: 12px !important;
+    }
+
+    .search input {
+      background: var(--bg-primary) !important;
+      color: var(--text-primary) !important;
+      border: 1px solid var(--border-color) !important;
+      border-radius: 7px !important;
+      padding: 7px 12px !important;
+      font-size: 13px !important;
+    }
+
+    .sidebar ul li a {
+      color: var(--text-secondary) !important;
+      font-size: 14px;
+    }
+
+    .sidebar ul li.active > a {
+      color: var(--theme-color) !important;
+      border-right: 2px solid var(--theme-color) !important;
+      font-weight: 600;
+    }
+
+    /* Typography & Elements */
+    .markdown-section h1,
+    .markdown-section h2,
+    .markdown-section h3,
+    .markdown-section h4 {
+      color: var(--text-primary) !important;
+      letter-spacing: -0.015em;
+    }
+
+    .markdown-section h2 {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+    }
+
+    .markdown-section a {
+      color: var(--theme-color) !important;
+      text-decoration: none;
+    }
+
+    .markdown-section a:hover {
+      text-decoration: underline;
+    }
+
+    .markdown-section hr {
+      border-bottom: 1px solid var(--border-color) !important;
+    }
+
+    .markdown-section code,
+    .markdown-section pre {
+      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace !important;
+      background-color: var(--code-bg) !important;
+      color: var(--text-primary) !important;
+      border-radius: 6px;
+    }
+
+    .markdown-section pre {
+      border: 1px solid var(--border-color);
+      padding: 14px 16px !important;
+    }
+
+    .markdown-section pre > code {
+      background-color: transparent !important;
+      color: var(--text-primary) !important;
+    }
+
+    .markdown-section p,
+    .markdown-section ul,
+    .markdown-section ol,
+    .markdown-section dl {
+      color: var(--text-primary);
+      line-height: 1.65;
+    }
+
+    .markdown-section blockquote {
+      border-left: 4px solid var(--theme-color);
+      background: var(--bg-secondary);
+      padding: 10px 16px;
+      border-radius: 0 8px 8px 0;
+      color: var(--text-secondary);
+    }
+
+    /* Tables */
+    .markdown-section table {
+      display: table !important;
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+    }
+
+    .markdown-section table tr {
+      border-top: 1px solid var(--border-color) !important;
+      background-color: var(--bg-primary) !important;
+    }
+
+    .markdown-section table tr:nth-child(2n) {
+      background-color: var(--bg-secondary) !important;
+    }
+
+    .markdown-section table th,
+    .markdown-section table td {
+      border: 1px solid var(--border-color) !important;
+      padding: 10px 13px !important;
+    }
+
+    .markdown-section table th {
+      background-color: var(--bg-elevated) !important;
+      font-weight: 600;
+    }
+
+    /* Keycaps (<kbd>) */
+    kbd {
+      display: inline-block;
+      padding: 2px 6px;
+      font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.3;
+      color: var(--text-primary);
+      background-color: var(--kbd-bg);
+      border: 1px solid var(--kbd-border);
+      border-bottom-width: 2px;
+      border-radius: 5px;
+    }
+
+    /* Details / Summary */
+    details {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin: 12px 0;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* YAML Frontmatter Card (Siren Style) */
+    .siren-frontmatter-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .siren-frontmatter-header {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .siren-frontmatter-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 6px 16px;
+      font-size: 13px;
+      align-items: baseline;
+    }
+
+    .siren-frontmatter-key {
+      font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .siren-frontmatter-val {
+      color: var(--text-primary);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .siren-pill {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      background: color-mix(in srgb, var(--theme-color) 15%, transparent);
+      color: var(--theme-color);
+      border: 1px solid color-mix(in srgb, var(--theme-color) 30%, transparent);
+    }
+
+    /* GitHub-Style Alerts */
+    .siren-alert {
+      border-left: 4px solid var(--theme-color);
+      background: var(--bg-secondary);
+      border-radius: 0 8px 8px 0;
+      padding: 12px 16px;
+      margin: 16px 0;
+    }
+
+    .siren-alert-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .siren-alert p:last-child {
+      margin-bottom: 0;
+    }
+
+    .siren-alert-note {
+      border-left-color: #0969da;
+      background: color-mix(in srgb, #0969da 8%, var(--bg-secondary));
+    }
+    .siren-alert-note .siren-alert-title { color: #2f81f7; }
+
+    .siren-alert-tip {
+      border-left-color: #1a7f37;
+      background: color-mix(in srgb, #1a7f37 8%, var(--bg-secondary));
+    }
+    .siren-alert-tip .siren-alert-title { color: #3fb950; }
+
+    .siren-alert-important {
+      border-left-color: #8250df;
+      background: color-mix(in srgb, #8250df 8%, var(--bg-secondary));
+    }
+    .siren-alert-important .siren-alert-title { color: #a371f7; }
+
+    .siren-alert-warning {
+      border-left-color: #9a6700;
+      background: color-mix(in srgb, #9a6700 8%, var(--bg-secondary));
+    }
+    .siren-alert-warning .siren-alert-title { color: #d29922; }
+
+    .siren-alert-caution {
+      border-left-color: #cf222e;
+      background: color-mix(in srgb, #cf222e 8%, var(--bg-secondary));
+    }
+    .siren-alert-caution .siren-alert-title { color: #f85149; }
+
+    /* Screenshots & Mermaid Containers */
+    .markdown-section img {
+      border-radius: 8px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .markdown-section p[align="center"] img,
+    .markdown-section h1[align="center"] img {
+      box-shadow: none;
+    }
+
+    .siren-mermaid-container {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 18px;
+      margin: 16px 0;
+      overflow-x: auto;
+      text-align: center;
+    }
+
+    .siren-pele-fallback {
+      text-align: left;
+    }
+
+    .siren-pele-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--theme-color);
+      background: color-mix(in srgb, var(--theme-color) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--theme-color) 28%, transparent);
+      border-radius: 6px;
+      padding: 4px 10px;
+      margin-bottom: 10px;
+    }
+
+    .siren-footnotes {
+      margin-top: 36px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
+      .siren-topbar-badge,
+      .siren-hide-mobile {
+        display: none;
+      }
+      .markdown-section {
+        padding: 20px 18px 48px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="siren-topbar">
+    <a class="siren-topbar-brand" href="#/">
+      <img src="https://raw.githubusercontent.com/tkinnis/siren/main/assets/images/app_icon.png" alt="Siren Icon" />
+      <span>Siren</span>
+      <span class="siren-topbar-badge">User Manual &amp; Docs</span>
+    </a>
+    <div class="siren-topbar-actions">
+      <a class="siren-btn siren-hide-mobile" href="https://tonykinnis.com" target="_blank" rel="noopener">
+        tonykinnis.com
+      </a>
+      <a class="siren-btn" href="https://github.com/tkinnis/siren" target="_blank" rel="noopener">
+        GitHub
+      </a>
+      <a class="siren-btn siren-btn-primary" href="https://github.com/tkinnis/siren/releases/latest" target="_blank" rel="noopener">
+        Download for macOS
+      </a>
+      <button id="theme-toggle" class="siren-btn" type="button" title="Toggle Light / Dark Theme" aria-label="Toggle Light / Dark Theme">
+        <span id="theme-toggle-label">Theme</span>
+      </button>
+    </div>
+  </header>
+
+  <div id="app">Loading Siren Documentation...</div>
+
+  <!-- Mermaid & KaTeX Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+
+  <script>
+    // Theme Management
+    (function () {
+      const saved = localStorage.getItem('siren-docs-theme');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initialTheme = saved || (prefersDark ? 'dark' : 'light');
+
+      function applyTheme(theme, reRenderMermaid) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('siren-docs-theme', theme);
+        const label = document.getElementById('theme-toggle-label');
+        if (label) {
+          label.textContent = theme === 'dark' ? '☀ Light' : '☾ Dark';
+        }
+        if (window.mermaid) {
+          window.mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'loose',
+            theme: theme === 'dark' ? 'dark' : 'default',
+          });
+          if (reRenderMermaid && window.renderSirenMermaidDiagrams) {
+            window.renderSirenMermaidDiagrams();
+          }
+        }
+      }
+
+      applyTheme(initialTheme, false);
+
+      window.addEventListener('DOMContentLoaded', function () {
+        applyTheme(document.documentElement.getAttribute('data-theme') || initialTheme, false);
+        const btn = document.getElementById('theme-toggle');
+        if (btn) {
+          btn.addEventListener('click', function () {
+            const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            applyTheme(current, true);
+          });
+        }
+      });
+    })();
+
+    // Helper: Escape HTML
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Helper: Render leading YAML Frontmatter as a Siren-styled metadata card
+    function transformFrontmatter(markdown) {
+      const fmRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/;
+      const match = markdown.match(fmRegex);
+      if (!match) return markdown;
+
+      const rawYaml = match[1];
+      const rows = [];
+      rawYaml.split(/\r?\n/).forEach(function (line) {
+        const idx = line.indexOf(':');
+        if (idx === -1) return;
+        const key = line.slice(0, idx).trim();
+        let val = line.slice(idx + 1).trim();
+        if (!key) return;
+
+        let renderedVal = '';
+        if (val.startsWith('[') && val.endsWith(']')) {
+          const items = val
+            .slice(1, -1)
+            .split(',')
+            .map(function (s) { return s.trim().replace(/^['"]|['"]$/g, ''); })
+            .filter(Boolean);
+          renderedVal = items
+            .map(function (item) { return '<span class="siren-pill">' + escapeHtml(item) + '</span>'; })
+            .join('');
+        } else {
+          val = val.replace(/^['"]|['"]$/g, '');
+          renderedVal = '<span>' + escapeHtml(val) + '</span>';
+        }
+        rows.push(
+          '<div class="siren-frontmatter-key">' + escapeHtml(key) + '</div>' +
+          '<div class="siren-frontmatter-val">' + renderedVal + '</div>'
+        );
+      });
+
+      const cardHtml = rows.length
+        ? '<div class="siren-frontmatter-card">' +
+            '<div class="siren-frontmatter-header">Frontmatter Metadata</div>' +
+            '<div class="siren-frontmatter-grid">' + rows.join('') + '</div>' +
+          '</div>\n\n'
+        : '';
+
+      return cardHtml + markdown.slice(match[0].length);
+    }
+
+    // Helper: Transform Siren Markdown extensions outside of fenced/inline code blocks
+    function transformSirenMarkdown(markdown) {
+      let content = transformFrontmatter(markdown);
+
+      // Protect fenced code blocks first
+      const codeBlocks = [];
+      content = content.replace(/(`{3,}|~{3,})[\s\S]*?\1/g, function (match) {
+        const id = '@@SIREN_CODE_BLOCK_' + codeBlocks.length + '@@';
+        codeBlocks.push(match);
+        return id;
+      });
+
+      // Protect inline code spans
+      const inlineCodes = [];
+      content = content.replace(/`[^`\n]+`/g, function (match) {
+        const id = '@@SIREN_INLINE_CODE_' + inlineCodes.length + '@@';
+        inlineCodes.push(match);
+        return id;
+      });
+
+      // 1. GitHub-Style Alerts: > [!NOTE], > [!TIP], > [!IMPORTANT], > [!WARNING], > [!CAUTION]
+      const alertMeta = {
+        NOTE: { label: 'Note', cls: 'siren-alert-note', icon: 'ℹ️' },
+        TIP: { label: 'Tip', cls: 'siren-alert-tip', icon: '💡' },
+        IMPORTANT: { label: 'Important', cls: 'siren-alert-important', icon: '💬' },
+        WARNING: { label: 'Warning', cls: 'siren-alert-warning', icon: '⚠️' },
+        CAUTION: { label: 'Caution', cls: 'siren-alert-caution', icon: '🛑' },
+      };
+
+      content = content.replace(
+        /(?:^|\n)> \[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*\r?\n((?:>.*(?:\r?\n|$))+)/g,
+        function (_, type, bodyLines) {
+          const meta = alertMeta[type] || alertMeta.NOTE;
+          const inner = bodyLines
+            .split(/\r?\n/)
+            .map(function (l) { return l.replace(/^>[ \t]?/, ''); })
+            .join('\n')
+            .trim();
+          return (
+            '\n<div class="siren-alert ' + meta.cls + '">' +
+              '<div class="siren-alert-title"><span>' + meta.icon + '</span><span>' + meta.label + '</span></div>' +
+              '<p>' + inner + '</p>' +
+            '</div>\n'
+          );
+        }
+      );
+
+      // 2. Display LaTeX Math: $$ ... $$
+      content = content.replace(/\$\$([\s\S]+?)\$\$/g, function (match, tex) {
+        if (!window.katex) return match;
+        try {
+          return '<div class="siren-math-block">' + window.katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false }) + '</div>';
+        } catch (_) {
+          return match;
+        }
+      });
+
+      // 3. Inline LaTeX Math: $ ... $
+      content = content.replace(/\$([^\$\n]+?)\$/g, function (match, tex) {
+        if (!window.katex) return match;
+        try {
+          return window.katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false });
+        } catch (_) {
+          return match;
+        }
+      });
+
+      // 4. Footnotes: [^id]: definition and [^id] citations
+      const footnoteDefs = {};
+      const footnoteOrder = [];
+      content = content.replace(/^\[\^([^\]]+)\]:[ \t]*(.+)$/gm, function (_, id, def) {
+        if (!footnoteDefs[id]) {
+          footnoteOrder.push(id);
+        }
+        footnoteDefs[id] = def.trim();
+        return '';
+      });
+
+      content = content.replace(/\[\^([^\]]+)\]/g, function (match, id) {
+        let idx = footnoteOrder.indexOf(id);
+        if (idx === -1) return match;
+        const num = idx + 1;
+        return '<sup id="fnref-' + escapeHtml(id) + '"><a href="#fn-' + escapeHtml(id) + '">[' + num + ']</a></sup>';
+      });
+
+      if (footnoteOrder.length > 0) {
+        const items = footnoteOrder.map(function (id) {
+          return '<li id="fn-' + escapeHtml(id) + '">' + footnoteDefs[id] + ' <a href="#fnref-' + escapeHtml(id) + '" title="Jump back">↩︎</a></li>';
+        }).join('');
+        content += '\n\n<div class="siren-footnotes"><ol>' + items + '</ol></div>\n';
+      }
+
+      // 5. Highlighting ==text==, Superscript ^sup^, Subscript ~sub~
+      content = content.replace(/==([^=\n]+)==/g, '<mark>$1</mark>');
+      content = content.replace(/\^([^\^\s\n]+)\^/g, '<sup>$1</sup>');
+      content = content.replace(/(?<!~)~([^~\s\n]+)~(?!~)/g, '<sub>$1</sub>');
+
+      // Restore inline code spans
+      content = content.replace(/@@SIREN_INLINE_CODE_(\d+)@@/g, function (_, idx) {
+        return inlineCodes[Number(idx)];
+      });
+
+      // Restore fenced code blocks
+      content = content.replace(/@@SIREN_CODE_BLOCK_(\d+)@@/g, function (_, idx) {
+        return codeBlocks[Number(idx)];
+      });
+
+      return content;
+    }
+
+    // Helper: Render Mermaid diagrams with graceful fallback for pele_dart-exclusive diagram families
+    window.renderSirenMermaidDiagrams = async function () {
+      if (!window.mermaid) return;
+      const containers = document.querySelectorAll('.siren-mermaid-container[data-mermaid-src]');
+      for (let i = 0; i < containers.length; i++) {
+        const el = containers[i];
+        const code = decodeURIComponent(el.getAttribute('data-mermaid-src') || '');
+        if (!code) continue;
+        const renderId = 'siren-mermaid-svg-' + i + '-' + Date.now();
+        try {
+          const result = await window.mermaid.render(renderId, code);
+          el.classList.remove('siren-pele-fallback');
+          el.innerHTML = result.svg;
+        } catch (_) {
+          // Clean up any stray error node Mermaid may have appended to body
+          const stray = document.getElementById('d' + renderId) || document.getElementById(renderId);
+          if (stray && stray.parentNode) {
+            stray.parentNode.removeChild(stray);
+          }
+          el.classList.add('siren-pele-fallback');
+          el.innerHTML =
+            '<div class="siren-pele-badge">⚡ Extended Mermaid family rendered offline in Siren via pure-Dart <code>pele_dart</code></div>' +
+            '<pre><code>' + escapeHtml(code) + '</code></pre>';
+        }
+      }
+    };
+
+    window.$docsify = {
+      name: 'Siren',
+      repo: '',
+      homepage: 'index.md',
+      loadSidebar: true,
+      subMaxLevel: 2,
+      auto2top: true,
+      search: {
+        maxAge: 86400000,
+        paths: 'auto',
+        placeholder: 'Search manual & guides...',
+        noData: 'No matching documentation found.',
+        depth: 3,
+      },
+      pagination: {
+        previousText: 'Previous Guide',
+        nextText: 'Next Guide',
+        crossChapter: true,
+        crossChapterText: true,
+      },
+      markdown: {
+        renderer: {
+          code: function (code, lang) {
+            if (lang === 'mermaid') {
+              return (
+                '<div class="siren-mermaid-container" data-mermaid-src="' +
+                encodeURIComponent(code.trim()) +
+                '"><pre><code>' +
+                escapeHtml(code) +
+                '</code></pre></div>'
+              );
+            }
+            return this.origin.code.apply(this, arguments);
+          },
+        },
+      },
+      plugins: [
+        function (hook) {
+          hook.beforeEach(function (markdown) {
+            return transformSirenMarkdown(markdown);
+          });
+
+          hook.afterEach(function (html, next) {
+            // Rewrite ../assets/images/app_icon.png so it works when /docs is web root on GitHub Pages
+            const updated = html.replace(
+              /src=(["'])(?:\.\.\/)?assets\/images\/app_icon\.png\1/g,
+              'src="https://raw.githubusercontent.com/tkinnis/siren/main/assets/images/app_icon.png"'
+            );
+            next(updated);
+          });
+
+          hook.doneEach(function () {
+            window.renderSirenMermaidDiagrams();
+          });
+        },
+      ],
+    };
+  </script>
+
+  <!-- Docsify Core & Plugins -->
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/zoom-image.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2/dist/docsify-copy-code.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-pagination@2/dist/docsify-pagination.min.js"></script>
+  <!-- Syntax Highlighting -->
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-dart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-markdown.min.js"></script>
+</body>
+</html>

@@ -120,7 +120,7 @@ For the complete list of shortcuts, see [docs/shortcuts.md](docs/shortcuts.md).
 
 ## Documentation
 
-Comprehensive guides and architectural notes are available in the [`docs/`](docs/) directory:
+Browse the interactive **[Siren User Manual & Documentation Website](https://tkinnis.github.io/siren/)**, or explore the raw Markdown guides in the [`docs/`](docs/) directory:
 
 - [Documentation Portal](docs/index.md) — Index and overview of all guides.
 - [Feature Walkthrough](docs/features.md) — In-depth guide to viewer modes, navigation, and workspace management.
