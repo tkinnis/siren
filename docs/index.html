@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <title>Siren Documentation — macOS Markdown Viewer</title>
@@ -14,61 +14,76 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
 
   <style>
-    :root {
-      --theme-color: #007aff;
-      --bg-primary: #ffffff;
-      --bg-secondary: #f7f8fa;
-      --bg-elevated: #f1f3f6;
-      --text-primary: #1d1d1f;
-      --text-secondary: #515154;
-      --text-muted: #86868b;
-      --border-color: #e5e5ea;
-      --code-bg: #f5f6f8;
-      --kbd-bg: #f7f7f9;
-      --kbd-border: #d1d1d6;
-      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.1);
+    /* Exact SirenTheme Light Tokens (from lib/theme.dart) */
+    :root,
+    html[data-theme="light"] {
+      --theme-color: #00a080;
+      --heading-color: #2060c0;
+      --bg-surface: #f8f8fc;
+      --bg-surface-container: #e8e8f0;
+      --bg-code: #e8e8f0;
+      --bg-code-block: #f8f8fc;
+      --bg-code-block-header: #e4e6f0;
+      --text-body: #1a1a2e;
+      --text-muted: #3a3a52;
+      --border-color: #d0d0e0;
+      --divider-color: #e0e0ec;
+      --quote-border: #00a080;
+      --syn-keyword: #8040a0;
+      --syn-function: #2060c0;
+      --syn-string: #208050;
+      --syn-comment: #8a8aa2;
+      --syn-number: #c07000;
+      --syn-type: #00a080;
+      --shadow-sm: 0 2px 8px rgba(26, 26, 46, 0.06);
+      --shadow-md: 0 8px 24px rgba(26, 26, 46, 0.12);
     }
 
+    /* Exact SirenTheme Dark Tokens (from lib/theme.dart) */
     html[data-theme="dark"] {
-      --theme-color: #2997ff;
-      --bg-primary: #161618;
-      --bg-secondary: #1e1e21;
-      --bg-elevated: #26262b;
-      --text-primary: #f5f5f7;
-      --text-secondary: #a1a1a6;
-      --text-muted: #6e6e73;
-      --border-color: #323236;
-      --code-bg: #202024;
-      --kbd-bg: #2c2c30;
-      --kbd-border: #48484e;
-      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
-      --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.45);
+      --theme-color: #00d4aa;
+      --heading-color: #6bb8ff;
+      --bg-surface: #1a1a2e;
+      --bg-surface-container: #0f0f1a;
+      --bg-code: #25253e;
+      --bg-code-block: #141424;
+      --bg-code-block-header: #1e1e30;
+      --text-body: #e0e0f0;
+      --text-muted: #c8c8e0;
+      --border-color: #3d3d5c;
+      --divider-color: #2d2d4a;
+      --quote-border: #00d4aa;
+      --syn-keyword: #b86bff;
+      --syn-function: #6bb8ff;
+      --syn-string: #6bffb8;
+      --syn-comment: #606080;
+      --syn-number: #ffb86b;
+      --syn-type: #00d4aa;
+      --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
-      background-color: var(--bg-primary);
-      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, ".AppleSystemUIFont", "SF Pro Text", "Inter", system-ui, sans-serif;
+      background-color: var(--bg-surface);
+      color: var(--text-body);
       -webkit-font-smoothing: antialiased;
-      transition: background-color 0.2s ease, color 0.2s ease;
+      transition: background-color 0.18s ease, color 0.18s ease;
     }
 
-    /* Top Header Bar */
+    /* Top Window Header Bar (Siren Titlebar + Tabbar feel) */
     .siren-topbar {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
-      height: 54px;
-      background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      height: 52px;
+      background: var(--bg-surface-container);
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 20px;
+      padding: 0 18px;
       z-index: 100;
     }
 
@@ -77,181 +92,347 @@
       align-items: center;
       gap: 10px;
       text-decoration: none;
-      color: var(--text-primary);
+      color: var(--text-body);
       font-weight: 600;
-      font-size: 16px;
+      font-size: 15px;
       letter-spacing: -0.01em;
     }
 
     .siren-topbar-brand img {
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
       border-radius: 6px;
     }
 
     .siren-topbar-badge {
       font-size: 11px;
-      font-weight: 500;
-      padding: 2px 8px;
+      font-weight: 600;
+      padding: 2px 9px;
       border-radius: 999px;
-      background: var(--bg-elevated);
-      color: var(--text-secondary);
-      border: 1px solid var(--border-color);
+      background: color-mix(in srgb, var(--theme-color) 14%, transparent);
+      color: var(--theme-color);
+      border: 1px solid color-mix(in srgb, var(--theme-color) 38%, transparent);
     }
 
     .siren-topbar-actions {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .siren-btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 12px;
-      border-radius: 7px;
-      font-size: 13px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12.5px;
       font-weight: 500;
       text-decoration: none;
       transition: all 0.15s ease;
       cursor: pointer;
       border: 1px solid var(--border-color);
-      background: var(--bg-secondary);
-      color: var(--text-primary);
+      background: var(--bg-surface);
+      color: var(--text-body);
     }
 
     .siren-btn:hover {
-      background: var(--bg-elevated);
+      border-color: var(--theme-color);
+      color: var(--theme-color);
     }
 
     .siren-btn-primary {
       background: var(--theme-color);
-      color: #ffffff !important;
+      color: #0f0f1a !important;
       border-color: var(--theme-color);
+      font-weight: 600;
     }
 
     .siren-btn-primary:hover {
       filter: brightness(1.08);
-      background: var(--theme-color);
+      color: #0f0f1a !important;
     }
 
-    /* Offset Docsify layout for fixed topbar */
+    /* Sidebar & Toggle Button (Fixed so .sidebar-toggle never overlays sidebar links) */
     .sidebar {
-      top: 54px !important;
-      background-color: var(--bg-secondary) !important;
+      top: 52px !important;
+      width: 270px !important;
+      background-color: var(--bg-surface-container) !important;
       border-right: 1px solid var(--border-color) !important;
-      color: var(--text-primary) !important;
+      color: var(--text-body) !important;
+      padding-bottom: 48px !important;
     }
 
     .sidebar-toggle {
-      top: 64px !important;
-      background-color: transparent !important;
+      position: fixed !important;
+      top: auto !important;
+      bottom: 12px !important;
+      left: 12px !important;
+      width: 36px !important;
+      height: 36px !important;
+      padding: 8px !important;
+      border-radius: 6px !important;
+      background-color: var(--bg-surface) !important;
+      border: 1px solid var(--border-color) !important;
+      z-index: 45 !important;
+      cursor: pointer;
+    }
+
+    .sidebar-toggle span {
+      background-color: var(--theme-color) !important;
     }
 
     .content {
-      padding-top: 74px !important;
+      left: 270px;
+      padding-top: 64px !important;
+      background-color: var(--bg-surface) !important;
+    }
+
+    body.close .content {
+      left: 0;
     }
 
     .markdown-section {
-      max-width: 900px !important;
-      padding: 24px 40px 64px !important;
-      color: var(--text-primary) !important;
+      max-width: 920px !important;
+      padding: 24px 44px 72px !important;
+      color: var(--text-body) !important;
     }
 
-    /* Sidebar & Search Overrides */
+    /* Sidebar Navigation & Search */
     .sidebar > h1 {
       display: none;
     }
 
     .search {
       border-bottom: 1px solid var(--border-color) !important;
-      margin-bottom: 12px !important;
+      margin-bottom: 10px !important;
       padding: 12px !important;
     }
 
     .search input {
-      background: var(--bg-primary) !important;
-      color: var(--text-primary) !important;
+      background: var(--bg-surface) !important;
+      color: var(--text-body) !important;
       border: 1px solid var(--border-color) !important;
-      border-radius: 7px !important;
-      padding: 7px 12px !important;
+      border-radius: 6px !important;
+      padding: 7px 11px !important;
       font-size: 13px !important;
     }
 
+    .search input:focus {
+      border-color: var(--theme-color) !important;
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-color) 25%, transparent) !important;
+    }
+
+    .search .matching-post {
+      border-bottom: 1px solid var(--divider-color) !important;
+    }
+
+    .sidebar ul li p {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin: 14px 0 4px;
+    }
+
     .sidebar ul li a {
-      color: var(--text-secondary) !important;
-      font-size: 14px;
+      color: var(--text-muted) !important;
+      font-size: 13.5px;
+      padding: 4px 10px;
+      border-radius: 5px;
+      transition: color 0.12s ease, background-color 0.12s ease;
+    }
+
+    .sidebar ul li a:hover {
+      color: var(--text-body) !important;
+      background: color-mix(in srgb, var(--theme-color) 8%, transparent);
+      text-decoration: none;
     }
 
     .sidebar ul li.active > a {
       color: var(--theme-color) !important;
-      border-right: 2px solid var(--theme-color) !important;
+      background: color-mix(in srgb, var(--theme-color) 12%, transparent);
+      border-right: 3px solid var(--theme-color) !important;
       font-weight: 600;
     }
 
-    /* Typography & Elements */
+    /* Siren Heading Typography (Matching lib/rendered_view.dart) */
     .markdown-section h1,
     .markdown-section h2,
     .markdown-section h3,
-    .markdown-section h4 {
-      color: var(--text-primary) !important;
-      letter-spacing: -0.015em;
+    .markdown-section h4,
+    .markdown-section h5 {
+      color: var(--heading-color) !important;
+      font-weight: 600 !important;
+      letter-spacing: -0.01em;
+    }
+
+    .markdown-section h1 span,
+    .markdown-section h2 span,
+    .markdown-section h3 span,
+    .markdown-section h4 span,
+    .markdown-section h5 span {
+      color: var(--heading-color) !important;
+    }
+
+    .markdown-section h1 {
+      font-size: 2.1rem !important;
+      border-bottom: 1px solid var(--divider-color);
+      padding-bottom: 10px;
+      margin-top: 0 !important;
     }
 
     .markdown-section h2 {
-      border-bottom: 1px solid var(--border-color);
+      font-size: 1.6rem !important;
+      border-bottom: 1px solid var(--divider-color);
       padding-bottom: 8px;
+      margin-top: 32px !important;
+    }
+
+    .markdown-section h3 {
+      font-size: 1.3rem !important;
+      margin-top: 24px !important;
+    }
+
+    .markdown-section h6 {
+      color: var(--text-muted) !important;
     }
 
     .markdown-section a {
-      color: var(--theme-color) !important;
+      color: var(--heading-color) !important;
       text-decoration: none;
     }
 
     .markdown-section a:hover {
+      color: var(--theme-color) !important;
       text-decoration: underline;
     }
 
     .markdown-section hr {
-      border-bottom: 1px solid var(--border-color) !important;
-    }
-
-    .markdown-section code,
-    .markdown-section pre {
-      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace !important;
-      background-color: var(--code-bg) !important;
-      color: var(--text-primary) !important;
-      border-radius: 6px;
-    }
-
-    .markdown-section pre {
-      border: 1px solid var(--border-color);
-      padding: 14px 16px !important;
-    }
-
-    .markdown-section pre > code {
-      background-color: transparent !important;
-      color: var(--text-primary) !important;
+      border: none !important;
+      border-bottom: 1px solid var(--divider-color) !important;
+      margin: 28px 0 !important;
     }
 
     .markdown-section p,
     .markdown-section ul,
     .markdown-section ol,
     .markdown-section dl {
-      color: var(--text-primary);
+      color: var(--text-body);
       line-height: 1.65;
     }
 
-    .markdown-section blockquote {
-      border-left: 4px solid var(--theme-color);
-      background: var(--bg-secondary);
-      padding: 10px 16px;
-      border-radius: 0 8px 8px 0;
-      color: var(--text-secondary);
+    .markdown-section strong {
+      color: var(--text-body) !important;
     }
 
-    /* Tables */
+    /* Inline Code & Siren Code Blocks with Header Bar */
+    .markdown-section code {
+      font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Monaco, Consolas, monospace !important;
+      background-color: var(--bg-code) !important;
+      color: var(--text-body) !important;
+      padding: 2px 6px !important;
+      border-radius: 4px !important;
+      font-size: 0.88em !important;
+    }
+
+    .siren-codeblock {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 16px 0;
+      background: var(--bg-code-block);
+    }
+
+    .siren-codeblock-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-code-block-header);
+      border-bottom: 1px solid var(--border-color);
+      padding: 6px 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .siren-copy-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 2px 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.12s ease;
+    }
+
+    .siren-copy-btn:hover {
+      color: var(--theme-color);
+      border-color: var(--border-color);
+      background: var(--bg-surface);
+    }
+
+    .markdown-section pre {
+      font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Monaco, Consolas, monospace !important;
+      background-color: var(--bg-code-block) !important;
+      color: var(--text-body) !important;
+      margin: 0 !important;
+      padding: 14px 16px !important;
+      border: none !important;
+      overflow-x: auto;
+    }
+
+    .markdown-section pre > code {
+      background-color: transparent !important;
+      color: var(--text-body) !important;
+      padding: 0 !important;
+      font-size: 13px !important;
+    }
+
+    /* Prism Syntax Highlighting Mapped to SirenTheme.showcaseTheme */
+    .token.keyword,
+    .token.tag,
+    .token.operator { color: var(--syn-keyword) !important; }
+    .token.function,
+    .token.class-name,
+    .token.selector { color: var(--syn-function) !important; }
+    .token.string,
+    .token.regex,
+    .token.attr-value { color: var(--syn-string) !important; }
+    .token.comment,
+    .token.prolog,
+    .token.doctype { color: var(--syn-comment) !important; font-style: italic; }
+    .token.number,
+    .token.boolean,
+    .token.constant { color: var(--syn-number) !important; }
+    .token.builtin,
+    .token.property { color: var(--syn-type) !important; }
+
+    /* Blockquotes (Siren quote style) */
+    .markdown-section blockquote {
+      border-left: 4px solid var(--quote-border) !important;
+      background: var(--bg-surface-container) !important;
+      padding: 10px 16px !important;
+      border-radius: 0 6px 6px 0;
+      color: var(--text-muted) !important;
+      margin: 16px 0 !important;
+    }
+
+    .markdown-section blockquote p {
+      color: var(--text-muted) !important;
+      margin: 0;
+    }
+
+    /* Tables (Siren Table Style) */
     .markdown-section table {
       display: table !important;
       width: 100%;
@@ -260,22 +441,23 @@
     }
 
     .markdown-section table tr {
-      border-top: 1px solid var(--border-color) !important;
-      background-color: var(--bg-primary) !important;
+      border-top: 1px solid var(--divider-color) !important;
+      background-color: var(--bg-surface) !important;
     }
 
     .markdown-section table tr:nth-child(2n) {
-      background-color: var(--bg-secondary) !important;
+      background-color: color-mix(in srgb, var(--bg-surface-container) 55%, var(--bg-surface)) !important;
     }
 
     .markdown-section table th,
     .markdown-section table td {
-      border: 1px solid var(--border-color) !important;
-      padding: 10px 13px !important;
+      border: 1px solid var(--divider-color) !important;
+      padding: 9px 14px !important;
     }
 
     .markdown-section table th {
-      background-color: var(--bg-elevated) !important;
+      background-color: var(--bg-surface-container) !important;
+      color: var(--heading-color) !important;
       font-weight: 600;
     }
 
@@ -286,16 +468,24 @@
       font-family: "SF Mono", ui-monospace, Menlo, monospace;
       font-size: 12px;
       line-height: 1.3;
-      color: var(--text-primary);
-      background-color: var(--kbd-bg);
-      border: 1px solid var(--kbd-border);
+      color: var(--text-body);
+      background-color: var(--bg-code);
+      border: 1px solid var(--border-color);
       border-bottom-width: 2px;
       border-radius: 5px;
     }
 
+    /* Highlight (<mark>) */
+    mark {
+      background-color: color-mix(in srgb, var(--theme-color) 28%, transparent);
+      color: var(--text-body);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
     /* Details / Summary */
     details {
-      background: var(--bg-secondary);
+      background: var(--bg-surface-container);
       border: 1px solid var(--border-color);
       border-radius: 8px;
       padding: 10px 16px;
@@ -305,63 +495,85 @@
     details summary {
       cursor: pointer;
       font-weight: 600;
+      color: var(--heading-color);
     }
 
-    /* YAML Frontmatter Card (Siren Style) */
+    /* YAML Frontmatter Card (Exact Siren FrontmatterBuilder Style) */
     .siren-frontmatter-card {
-      background: var(--bg-secondary);
+      background: var(--bg-code-block);
       border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 14px 18px;
-      margin-bottom: 24px;
-      box-shadow: var(--shadow-sm);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 28px;
     }
 
     .siren-frontmatter-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-code-block-header);
+      border-bottom: 1px solid var(--border-color);
+      padding: 8px 16px;
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: var(--text-muted);
-      margin-bottom: 10px;
     }
 
-    .siren-frontmatter-grid {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 6px 16px;
+    .siren-frontmatter-icon {
+      color: var(--theme-color);
       font-size: 13px;
-      align-items: baseline;
+    }
+
+    .siren-frontmatter-rows {
+      padding: 4px 16px;
+    }
+
+    .siren-frontmatter-row {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 12px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--divider-color);
+      font-size: 13px;
+      align-items: center;
+    }
+
+    .siren-frontmatter-row:last-child {
+      border-bottom: none;
     }
 
     .siren-frontmatter-key {
       font-family: "SF Mono", ui-monospace, Menlo, monospace;
-      color: var(--text-secondary);
+      color: var(--text-muted);
       font-weight: 600;
+      font-size: 12.5px;
     }
 
     .siren-frontmatter-val {
-      color: var(--text-primary);
+      color: var(--text-body);
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
+      font-weight: 500;
     }
 
     .siren-pill {
       display: inline-block;
-      padding: 2px 9px;
+      padding: 2px 10px;
       border-radius: 999px;
       font-size: 12px;
       font-weight: 500;
-      background: color-mix(in srgb, var(--theme-color) 15%, transparent);
+      background: color-mix(in srgb, var(--theme-color) 14%, transparent);
       color: var(--theme-color);
-      border: 1px solid color-mix(in srgb, var(--theme-color) 30%, transparent);
+      border: 1px solid color-mix(in srgb, var(--theme-color) 45%, transparent);
     }
 
-    /* GitHub-Style Alerts */
+    /* GitHub-Style Alerts (Matching Siren AlertBuilder) */
     .siren-alert {
       border-left: 4px solid var(--theme-color);
-      background: var(--bg-secondary);
+      background: var(--bg-surface-container);
       border-radius: 0 8px 8px 0;
       padding: 12px 16px;
       margin: 16px 0;
@@ -381,32 +593,32 @@
     }
 
     .siren-alert-note {
-      border-left-color: #0969da;
-      background: color-mix(in srgb, #0969da 8%, var(--bg-secondary));
+      border-left-color: #2f81f7;
+      background: color-mix(in srgb, #2f81f7 10%, var(--bg-surface-container));
     }
     .siren-alert-note .siren-alert-title { color: #2f81f7; }
 
     .siren-alert-tip {
-      border-left-color: #1a7f37;
-      background: color-mix(in srgb, #1a7f37 8%, var(--bg-secondary));
+      border-left-color: #3fb950;
+      background: color-mix(in srgb, #3fb950 10%, var(--bg-surface-container));
     }
     .siren-alert-tip .siren-alert-title { color: #3fb950; }
 
     .siren-alert-important {
-      border-left-color: #8250df;
-      background: color-mix(in srgb, #8250df 8%, var(--bg-secondary));
+      border-left-color: #a371f7;
+      background: color-mix(in srgb, #a371f7 10%, var(--bg-surface-container));
     }
     .siren-alert-important .siren-alert-title { color: #a371f7; }
 
     .siren-alert-warning {
-      border-left-color: #9a6700;
-      background: color-mix(in srgb, #9a6700 8%, var(--bg-secondary));
+      border-left-color: #d29922;
+      background: color-mix(in srgb, #d29922 10%, var(--bg-surface-container));
     }
     .siren-alert-warning .siren-alert-title { color: #d29922; }
 
     .siren-alert-caution {
-      border-left-color: #cf222e;
-      background: color-mix(in srgb, #cf222e 8%, var(--bg-secondary));
+      border-left-color: #f85149;
+      background: color-mix(in srgb, #f85149 10%, var(--bg-surface-container));
     }
     .siren-alert-caution .siren-alert-title { color: #f85149; }
 
@@ -422,13 +634,18 @@
     }
 
     .siren-mermaid-container {
-      background: var(--bg-secondary);
+      background: var(--bg-code-block);
       border: 1px solid var(--border-color);
-      border-radius: 10px;
+      border-radius: 8px;
       padding: 18px;
       margin: 16px 0;
       overflow-x: auto;
       text-align: center;
+    }
+
+    .siren-mermaid-container svg {
+      max-width: 100%;
+      height: auto;
     }
 
     .siren-pele-fallback {
@@ -443,7 +660,7 @@
       font-weight: 500;
       color: var(--theme-color);
       background: color-mix(in srgb, var(--theme-color) 12%, transparent);
-      border: 1px solid color-mix(in srgb, var(--theme-color) 28%, transparent);
+      border: 1px solid color-mix(in srgb, var(--theme-color) 35%, transparent);
       border-radius: 6px;
       padding: 4px 10px;
       margin-bottom: 10px;
@@ -452,15 +669,26 @@
     .siren-footnotes {
       margin-top: 36px;
       padding-top: 16px;
-      border-top: 1px solid var(--border-color);
+      border-top: 1px solid var(--divider-color);
       font-size: 13px;
-      color: var(--text-secondary);
+      color: var(--text-muted);
+    }
+
+    .docsify-pagination-container {
+      border-top: 1px solid var(--divider-color) !important;
+    }
+
+    .pagination-item-title {
+      color: var(--heading-color) !important;
     }
 
     @media (max-width: 768px) {
       .siren-topbar-badge,
       .siren-hide-mobile {
         display: none;
+      }
+      .content {
+        left: 0 !important;
       }
       .markdown-section {
         padding: 20px 18px 48px !important;
@@ -487,23 +715,23 @@
         Download for macOS
       </a>
       <button id="theme-toggle" class="siren-btn" type="button" title="Toggle Light / Dark Theme" aria-label="Toggle Light / Dark Theme">
-        <span id="theme-toggle-label">Theme</span>
+        <span id="theme-toggle-label">☀ Light</span>
       </button>
     </div>
   </header>
 
   <div id="app">Loading Siren Documentation...</div>
 
-  <!-- Mermaid & KaTeX Libraries -->
+  <!-- Pre-rendered pure-Dart pele_dart SVGs (Light & Dark Siren palettes) + Mermaid/KaTeX -->
+  <script src="pele_diagrams.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 
   <script>
-    // Theme Management
+    // Theme Management (Defaulting to Siren's signature Dark Theme unless user toggled Light)
     (function () {
       const saved = localStorage.getItem('siren-docs-theme');
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initialTheme = saved || (prefersDark ? 'dark' : 'light');
+      const initialTheme = saved || 'dark';
 
       function applyTheme(theme, reRenderMermaid) {
         document.documentElement.setAttribute('data-theme', theme);
@@ -516,11 +744,34 @@
           window.mermaid.initialize({
             startOnLoad: false,
             securityLevel: 'loose',
-            theme: theme === 'dark' ? 'dark' : 'default',
+            theme: 'base',
+            themeVariables: theme === 'dark'
+              ? {
+                  darkMode: true,
+                  background: '#141424',
+                  primaryColor: '#1e1e30',
+                  primaryTextColor: '#e0e0f0',
+                  primaryBorderColor: '#5c5c84',
+                  lineColor: '#c8c8e0',
+                  secondaryColor: '#25253e',
+                  tertiaryColor: '#1a1a2e',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                }
+              : {
+                  darkMode: false,
+                  background: '#f8f8fc',
+                  primaryColor: '#eef0f8',
+                  primaryTextColor: '#1a1a2e',
+                  primaryBorderColor: '#9494b8',
+                  lineColor: '#3a3a52',
+                  secondaryColor: '#e4e6f0',
+                  tertiaryColor: '#f8f8fc',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                },
           });
-          if (reRenderMermaid && window.renderSirenMermaidDiagrams) {
-            window.renderSirenMermaidDiagrams();
-          }
+        }
+        if (reRenderMermaid && window.renderSirenMermaidDiagrams) {
+          window.renderSirenMermaidDiagrams();
         }
       }
 
@@ -546,6 +797,19 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
     }
+
+    // Helper: Copy code block text
+    window.copySirenCode = function (btn) {
+      const wrapper = btn.closest('.siren-codeblock');
+      if (!wrapper) return;
+      const codeEl = wrapper.querySelector('pre code');
+      if (!codeEl) return;
+      navigator.clipboard.writeText(codeEl.textContent || '').then(function () {
+        const orig = btn.innerHTML;
+        btn.textContent = '✓ Copied';
+        setTimeout(function () { btn.innerHTML = orig; }, 1400);
+      });
+    };
 
     // Helper: Render leading YAML Frontmatter as a Siren-styled metadata card
     function transformFrontmatter(markdown) {
@@ -577,15 +841,17 @@
           renderedVal = '<span>' + escapeHtml(val) + '</span>';
         }
         rows.push(
-          '<div class="siren-frontmatter-key">' + escapeHtml(key) + '</div>' +
-          '<div class="siren-frontmatter-val">' + renderedVal + '</div>'
+          '<div class="siren-frontmatter-row">' +
+            '<div class="siren-frontmatter-key">' + escapeHtml(key) + '</div>' +
+            '<div class="siren-frontmatter-val">' + renderedVal + '</div>' +
+          '</div>'
         );
       });
 
       const cardHtml = rows.length
         ? '<div class="siren-frontmatter-card">' +
-            '<div class="siren-frontmatter-header">Frontmatter Metadata</div>' +
-            '<div class="siren-frontmatter-grid">' + rows.join('') + '</div>' +
+            '<div class="siren-frontmatter-header"><span class="siren-frontmatter-icon">⊞</span><span>FRONTMATTER</span></div>' +
+            '<div class="siren-frontmatter-rows">' + rows.join('') + '</div>' +
           '</div>\n\n'
         : '';
 
@@ -614,7 +880,7 @@
 
       // 1. GitHub-Style Alerts: > [!NOTE], > [!TIP], > [!IMPORTANT], > [!WARNING], > [!CAUTION]
       const alertMeta = {
-        NOTE: { label: 'Note', cls: 'siren-alert-note', icon: 'ℹ️' },
+        NOTE: { label: 'Note', cls: 'siren-alert-note', icon: 'ⓘ' },
         TIP: { label: 'Tip', cls: 'siren-alert-tip', icon: '💡' },
         IMPORTANT: { label: 'Important', cls: 'siren-alert-important', icon: '💬' },
         WARNING: { label: 'Warning', cls: 'siren-alert-warning', icon: '⚠️' },
@@ -702,21 +968,34 @@
       return content;
     }
 
-    // Helper: Render Mermaid diagrams with graceful fallback for pele_dart-exclusive diagram families
+    // Helper: Render Mermaid diagrams (supports pre-rendered pele_dart SVGs if present, with Mermaid.js fallback)
     window.renderSirenMermaidDiagrams = async function () {
-      if (!window.mermaid) return;
+      const theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
       const containers = document.querySelectorAll('.siren-mermaid-container[data-mermaid-src]');
       for (let i = 0; i < containers.length; i++) {
         const el = containers[i];
         const code = decodeURIComponent(el.getAttribute('data-mermaid-src') || '');
         if (!code) continue;
+
+        // 1. Check if pre-rendered pele_dart SVG map is available
+        if (window.SIREN_PELE_DIAGRAMS && window.SIREN_PELE_DIAGRAMS[code]) {
+          const entry = window.SIREN_PELE_DIAGRAMS[code];
+          const svg = theme === 'light' ? entry.light : entry.dark;
+          if (svg) {
+            el.classList.remove('siren-pele-fallback');
+            el.innerHTML = svg;
+            continue;
+          }
+        }
+
+        // 2. Fallback to browser Mermaid.js
+        if (!window.mermaid) continue;
         const renderId = 'siren-mermaid-svg-' + i + '-' + Date.now();
         try {
           const result = await window.mermaid.render(renderId, code);
           el.classList.remove('siren-pele-fallback');
           el.innerHTML = result.svg;
         } catch (_) {
-          // Clean up any stray error node Mermaid may have appended to body
           const stray = document.getElementById('d' + renderId) || document.getElementById(renderId);
           if (stray && stray.parentNode) {
             stray.parentNode.removeChild(stray);
@@ -761,7 +1040,17 @@
                 '</code></pre></div>'
               );
             }
-            return this.origin.code.apply(this, arguments);
+            const rendered = this.origin.code.apply(this, arguments);
+            const label = (lang || 'text').toUpperCase();
+            return (
+              '<div class="siren-codeblock">' +
+                '<div class="siren-codeblock-header">' +
+                  '<span>' + escapeHtml(label) + '</span>' +
+                  '<button type="button" class="siren-copy-btn" onclick="window.copySirenCode(this)">⧉ Copy</button>' +
+                '</div>' +
+                rendered +
+              '</div>'
+            );
           },
         },
       },
@@ -772,7 +1061,6 @@
           });
 
           hook.afterEach(function (html, next) {
-            // Rewrite ../assets/images/app_icon.png so it works when /docs is web root on GitHub Pages
             const updated = html.replace(
               /src=(["'])(?:\.\.\/)?assets\/images\/app_icon\.png\1/g,
               'src="https://raw.githubusercontent.com/tkinnis/siren/main/assets/images/app_icon.png"'
@@ -792,7 +1080,6 @@
   <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/zoom-image.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2/dist/docsify-copy-code.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docsify-pagination@2/dist/docsify-pagination.min.js"></script>
   <!-- Syntax Highlighting -->
   <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-dart.min.js"></script>
