@@ -43,11 +43,15 @@ siren/
 │   └── about_dialog.dart          # Native macOS About & open-source licenses dialog
 ├── test/              # Unit, widget, and specification tests
 ├── assets/            # Bundled runtime assets ONLY (images, ripgrep binary)
-├── docs/              # User documentation and markdown guides
+├── docs/              # User documentation, GitHub Pages Docsify portal, and markdown guides
+│   ├── index.html     # Docsify GitHub Pages portal entrypoint (SirenTheme dark/light styling)
+│   ├── _sidebar.md    # Docsify sidebar navigation
+│   ├── pele_diagrams.js # Pre-rendered pele_dart SVGs for all Mermaid blocks in docs/*.md
 │   └── screenshots/   # Verification screenshots (NEVER bundled into app assets)
 └── tool/              # Native helper utilities and developer automation tools
-    ├── SCREENSHOTS.md         # Release screenshot inventory & checklist
-    └── capture_screenshots.sh # Automated UI-driven screenshot capture script
+    ├── SCREENSHOTS.md             # Release screenshot inventory & checklist
+    ├── capture_screenshots.sh     # Automated UI-driven screenshot capture script
+    └── generate_docs_diagrams.dart# Pre-renders docs/*.md Mermaid blocks into docs/pele_diagrams.js
 ```
 
 ---
@@ -74,6 +78,7 @@ When modifying or adding code, you must respect the following project invariants
 ### E. Documentation & Comment Integrity
 * Maintain existing code comments and docstrings.
 * If a feature, shortcut, or UI behavior changes, update the corresponding documentation files in `docs/` (`features.md`, `shortcuts.md`, `markdown-guide.md`, `README.md`).
+* Whenever Mermaid code blocks in `docs/*.md` are added or modified, run `dart run tool/generate_docs_diagrams.dart` so `docs/pele_diagrams.js` stays in sync for the GitHub Pages documentation portal.
 
 ---
 
