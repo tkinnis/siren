@@ -771,8 +771,18 @@ class AppState extends ChangeNotifier {
         } else {
           await openFileAndSetDirectory(targetPath);
         }
-        await windowManager.show();
-        await windowManager.focus();
+        try {
+          final window = WindowManager.instance.getCurrent();
+          if (window != null) {
+            if (window.isMinimized) {
+              window.restore();
+            }
+            window.show();
+            window.focus();
+          }
+        } on ArgumentError {
+          // Native window library is unavailable in headless test environments.
+        }
       }
     });
   }

@@ -9,9 +9,16 @@ import 'app_state.dart';
 import 'home_screen.dart';
 import 'theme.dart';
 
+Window? _currentNativeWindow() {
+  try {
+    return WindowManager.instance.getCurrent();
+  } on ArgumentError {
+    return null;
+  }
+}
+
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
 
   // Start loading state but don't block the first frame if we can help it
   // However, since AppState.create is currently async and needed for MainApp,
@@ -29,37 +36,28 @@ void main(List<String> args) async {
 
   runApp(MainApp(appState: appState));
 
-  WindowOptions windowOptions = const WindowOptions(
-    size: Size(1200, 800),
-    minimumSize: Size(400, 300),
-    center: true,
-    backgroundColor: Colors.transparent,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden,
-  );
+  final window = _currentNativeWindow();
+  if (window != null) {
+    window.titleBarStyle = TitleBarStyle.hidden;
+    window.isWindowControlButtonsVisible = true;
+    window.minimumSize = const Size(400, 300).toNative();
+    window.backgroundColor = Colors.transparent.toNative();
+    window.isVisibleInTaskbar = true;
 
-  // Restore saved bounds if available (unless forced standard window)
-  if (!isStandardWindow && appState.windowBounds != null) {
-    windowOptions = WindowOptions(
-      size: appState.windowBounds!.size,
-      minimumSize: const Size(400, 300),
-      center: false,
-      backgroundColor: Colors.transparent,
-      skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.hidden,
-    );
-  }
-
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    if (isStandardWindow) {
-      await windowManager.setSize(const Size(1200, 800));
-      await windowManager.center();
-    } else if (appState.windowBounds != null) {
-      await windowManager.setBounds(appState.windowBounds!);
+    // Restore saved bounds if available (unless forced standard window)
+    if (isStandardWindow || appState.windowBounds == null) {
+      window.setSize(const Size(1200, 800).toNative(), false);
+      window.center();
+    } else {
+      window.bounds = appState.windowBounds!.toNative();
     }
-    await windowManager.show();
-    await windowManager.focus();
-  });
+
+    if (window.isMinimized) {
+      window.restore();
+    }
+    window.show();
+    window.focus();
+  }
 }
 
 class MainApp extends StatefulWidget {
@@ -71,32 +69,39 @@ class MainApp extends StatefulWidget {
   State<MainApp> createState() => _MainAppState();
 }
 
-class _MainAppState extends State<MainApp> with WindowListener {
+class _MainAppState extends State<MainApp> {
+  Window? _window;
+  ListenerId? _windowListenerId;
+
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
+    final window = _currentNativeWindow();
+    if (window != null) {
+      _window = window;
+      _windowListenerId = window.addListener(_handleWindowEvent);
+    }
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    final listenerId = _windowListenerId;
+    if (listenerId != null) {
+      _window?.removeListener(listenerId);
+    }
     super.dispose();
   }
 
-  @override
-  void onWindowMove() {
-    _saveWindowBounds();
+  void _handleWindowEvent(WindowEvent event) {
+    if (event is WindowMovedEvent || event is WindowResizedEvent) {
+      _saveWindowBounds();
+    }
   }
 
-  @override
-  void onWindowResize() {
-    _saveWindowBounds();
-  }
-
-  Future<void> _saveWindowBounds() async {
-    final bounds = await windowManager.getBounds();
-    widget.appState.setWindowBounds(bounds);
+  void _saveWindowBounds() {
+    final window = _window ?? _currentNativeWindow();
+    if (window == null) return;
+    widget.appState.setWindowBounds(window.bounds.toRect());
   }
 
   @override
