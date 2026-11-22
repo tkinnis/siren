@@ -86,9 +86,9 @@ When fixing a bug or adding a feature, include unit or widget tests in `test/` t
   * `test(scope): ...` for test additions or improvements
   * `ci(scope): ...` / `chore(scope): ...` for build and repository maintenance
 * **Release Naming Convention**:
-  * **Git Tag**: `v<version>` (e.g., `v0.4.0`)
-  * **GitHub Release Title**: `Siren v<version>` (e.g., `Siren v0.4.0`)
-  * **Release Asset Archive**: `Siren-v<version>-macos.zip` (e.g., `Siren-v0.4.0-macos.zip`)
+  * **Git Tag**: `v<version>` (e.g., `v0.7.0`)
+  * **GitHub Release Title**: `Siren v<version>` (e.g., `Siren v0.7.0`)
+  * **Release Asset Archive**: `Siren-v<version>-macos.zip` (e.g., `Siren-v0.7.0-macos.zip`)
 
 ---
 

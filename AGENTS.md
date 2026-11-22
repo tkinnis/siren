@@ -129,7 +129,7 @@ Before completing any task or proposing changes, you must run and pass the follo
   * `test(scope): ...` for adding or improving test coverage.
 * Write concise, descriptive commit messages describing the rationale and outcome.
 * **Release Naming Convention**:
-  * **Tag**: `v<version>` (e.g., `v0.4.0`).
-  * **GitHub Release Title**: `Siren v<version>` (e.g., `Siren v0.4.0`). Never omit `Siren` or append platform suffixes like `(macOS)` to the release title.
-  * **Release Asset Archive**: `Siren-v<version>-macos.zip` (e.g., `Siren-v0.4.0-macos.zip`).
+  * **Tag**: `v<version>` (e.g., `v0.7.0`).
+  * **GitHub Release Title**: `Siren v<version>` (e.g., `Siren v0.7.0`). Never omit `Siren` or append platform suffixes like `(macOS)` to the release title.
+  * **Release Asset Archive**: `Siren-v<version>-macos.zip` (e.g., `Siren-v0.7.0-macos.zip`).
 
