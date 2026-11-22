@@ -2,6 +2,7 @@
   * [Overview & Quick Start](index.md)
   * [Features Walkthrough](features.md)
   * [Markdown Syntax Guide](markdown-guide.md)
+  * [LaTeX Examples Gallery](latex-examples.md)
   * [Mermaid Examples Gallery](mermaid-examples.md)
   * [Keyboard Shortcuts](shortcuts.md)
 

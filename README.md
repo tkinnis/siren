@@ -32,7 +32,7 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | Category | Feature | Description | Access / Shortcut |
 | :--- | :--- | :--- | :--- |
 | **Rendering** | **GitHub Alerts** | 5 color-coded alert levels (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) with custom icons | Automatic |
-| | **LaTeX Mathematics** | Typeset inline formulas (`$E = mc^2$`) and block equations (`$$\sum x_i$$`) | CommonMark math blocks |
+| | **LaTeX Mathematics** | Pure-Dart OpenType `MATH` typography (`tex_math_flutter` with bundled `NewCMMath-Regular.otf`) supporting inline baseline alignment (`$...$`), horizontally scrollable display equations (`$$...$$`), `SelectionArea` copy-as-LaTeX, clickable `\href` links, and error span diagnostics | `$...$` / `$$...$$` math blocks |
 | | **Mermaid Diagrams** | Pure-Dart `pele_dart` offline vector diagrams across all 33 standard, beta, and specialized Mermaid diagram families with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
 | | **YAML Frontmatter & Footnotes** | Structured metadata card with pill badges for leading `---` YAML frontmatter (toggleable in Settings) and GitHub-styled hyperlinked footnotes (`[^1]`) | Automatic / `Cmd + ,` |
 | | **Image Lightbox** | Click any local or network Markdown image to inspect in an interactive zoom & pan lightbox | Click image |
@@ -48,7 +48,7 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 | **Search** | **Workspace Ripgrep** | Embedded binary full-text search across thousands of files with match counts | `Cmd + Shift + F` |
 | | **Quick Open** | Background isolate fuzzy finder for instant file switching | `Cmd + P` |
 | | **In-File Find** | Active document search with regex support, match counter, and next/prev jumps | `Cmd + F` / `Cmd + G` |
-| **Appearance** | **Light & Dark Themes** | Seamless toggling between System, Light, and Dark themes with tailored typography and syntax highlighting | Toolbar icon / `Cmd + Shift + D` |
+| **Appearance** | **Light & Dark Themes** | Instant toggling between System, Light, and Dark themes with tailored typography, math colors, and syntax highlighting | Toolbar icon / `Cmd + Shift + D` |
 | | **Settings Configuration** | Modal dialog (`Cmd + ,`) to set default theme mode, toggle YAML frontmatter visibility, and customize regex file indexing patterns | `Cmd + ,` |
 | **Desktop Integration** | **Live File Watching** | Monitors open documents on disk and auto-reloads upon external edits | Automatic / `Cmd + R` |
 | | **Finder Drag & Drop** | Drag files or folders directly into the window to open immediately | Drag & drop |
@@ -83,6 +83,10 @@ With built-in ripgrep-powered full-text search, an interactive document outline,
 ### Interactive Vector Mermaid Inspector
 
 ![Siren Mermaid Viewer](docs/screenshots/siren_mermaid_viewer.png)
+
+### Pure-Dart OpenType MATH LaTeX Typography
+
+![Siren LaTeX Math Examples](docs/screenshots/siren_latex_math.png)
 
 ---
 
@@ -125,9 +129,10 @@ Browse the interactive **[Siren User Manual & Documentation Website](https://tki
 - [Documentation Portal](docs/index.md) — Index and overview of all guides.
 - [Feature Walkthrough](docs/features.md) — In-depth guide to viewer modes, navigation, and workspace management.
 - [Markdown & Syntax Guide](docs/markdown-guide.md) — Complete syntax reference for GitHub alerts, math, diagrams, YAML frontmatter, footnotes, and formatting.
+- [LaTeX Math Examples Gallery](docs/latex-examples.md) — Showcase of inline formulas, fractions, nested radicals, matrices, commutative diagrams, multi-line alignments, and error diagnostics rendered natively in pure Dart with `tex_math_flutter`.
 - [Mermaid Diagram Examples Gallery](docs/mermaid-examples.md) — Examples across all supported standard, beta, and specialized Mermaid diagram categories.
 - [Keyboard Shortcuts](docs/shortcuts.md) — Exhaustive keyboard shortcut reference.
-- [Architecture & Internals](docs/architecture.md) — Technical overview of isolates, ripgrep bundling, pure-Dart `pele_dart` vector Mermaid engine, and state management.
+- [Architecture & Internals](docs/architecture.md) — Technical overview of isolates, ripgrep bundling, pure-Dart `tex_math_flutter` OpenType `MATH` layout, pure-Dart `pele_dart` vector Mermaid engine, and state management.
 
 ---
 

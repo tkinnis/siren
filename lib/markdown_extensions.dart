@@ -7,11 +7,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
-import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:path/path.dart' as p;
+import 'package:tex_math_flutter/tex_math_flutter.dart';
 import 'package:vector_graphics/vector_graphics_compat.dart';
 import 'package:vector_graphics_compiler/vector_graphics_compiler.dart' as vg;
 
@@ -510,13 +510,190 @@ class AlertBuilder extends MarkdownElementBuilder {
 
 // --- LaTeX Math ---
 
+typedef _CachedMathEntry = ({
+  DisplayList? displayList,
+  String? spokenText,
+  TexMathError? error,
+});
+
+/// Bounded LRU cache of pure-Dart [DisplayList] and spoken-text results keyed
+/// by font signature, display mode, and TeX source so theme/font-size rebuilds
+/// reuse existing layouts in O(1) time.
+final class SirenMathLayoutCache {
+  SirenMathLayoutCache({this.maxEntries = 512}) : assert(maxEntries > 0);
+
+  /// Shared application-wide layout cache used by Siren Markdown views.
+  static final SirenMathLayoutCache shared = SirenMathLayoutCache();
+
+  /// Maximum number of cached entries kept in memory.
+  final int maxEntries;
+
+  final LinkedHashMap<String, _CachedMathEntry> _entries =
+      LinkedHashMap<String, _CachedMathEntry>();
+
+  int _layoutCount = 0;
+
+  /// Number of synchronous parse/layout evaluations performed on cache misses.
+  @visibleForTesting
+  int get layoutCount => _layoutCount;
+
+  /// Clears all cached entries and resets [layoutCount] for testing.
+  @visibleForTesting
+  void clear() {
+    _entries.clear();
+    _layoutCount = 0;
+  }
+
+  _CachedMathEntry _lookupOrRender(
+    String source, {
+    required TexMathDisplayMode displayMode,
+    required MathFont font,
+  }) {
+    final String key = '${font.signature}|${displayMode.name}|$source';
+    final _CachedMathEntry? hit = _entries.remove(key);
+    if (hit != null) {
+      _entries[key] = hit;
+      return hit;
+    }
+
+    _layoutCount++;
+    _CachedMathEntry entry;
+    try {
+      final RenderResult result = TexMathEngine(font: font)
+          .render(source, options: TexMathOptions(displayMode: displayMode));
+      final String spoken = result.toSpokenText().trim();
+      entry = (
+        displayList: result.displayList,
+        spokenText: spoken.isNotEmpty ? spoken : source,
+        error: null,
+      );
+    } on TexMathError catch (error) {
+      entry = (displayList: null, spokenText: null, error: error);
+    }
+
+    if (_entries.length >= maxEntries) {
+      _entries.remove(_entries.keys.first);
+    }
+    _entries[key] = entry;
+    return entry;
+  }
+
+  /// Builds a math widget reusing any cached [DisplayList] once the bundled
+  /// font is loaded, falling back to async [TexMath] while cold.
+  Widget buildMathWidget(
+    String source, {
+    required TexMathDisplayMode displayMode,
+    required TexMathOverflow overflow,
+    required TexMathPathCache pathCache,
+    TextStyle? textStyle,
+    ValueChanged<String>? onLinkTap,
+  }) {
+    final MathFont? cachedFont = TexMathFontBundle.cachedMathFont;
+    if (cachedFont == null) {
+      return TexMath(
+        source,
+        displayMode: displayMode,
+        overflow: overflow,
+        pathCache: pathCache,
+        textStyle: textStyle,
+        onLinkTap: onLinkTap,
+      );
+    }
+
+    final _CachedMathEntry entry = _lookupOrRender(
+      source,
+      displayMode: displayMode,
+      font: cachedFont,
+    );
+    if (entry.error != null) {
+      return TexMathErrorWidget(
+        source: source,
+        error: entry.error,
+        displayMode: displayMode,
+      );
+    }
+    return TexMath.displayList(
+      entry.displayList!,
+      source: source,
+      displayMode: displayMode,
+      font: cachedFont,
+      overflow: overflow,
+      pathCache: pathCache,
+      textStyle: textStyle,
+      semanticsLabel: entry.spokenText,
+      selectable: true,
+      onLinkTap: onLinkTap,
+    );
+  }
+
+  /// Builds an alphabetic-baseline [InlineSpan] reusing cached [DisplayList]
+  /// results once the bundled font is loaded.
+  InlineSpan buildInlineSpan(
+    String source, {
+    TexMathOverflow overflow = TexMathOverflow.visible,
+    TexMathPathCache? pathCache,
+    TextStyle? style,
+    ValueChanged<String>? onLinkTap,
+  }) {
+    final TexMathPathCache effectiveCache =
+        pathCache ?? TexMathPathCache.shared;
+    final MathFont? cachedFont = TexMathFontBundle.cachedMathFont;
+    if (cachedFont == null) {
+      return TexMathSpan(
+        source,
+        overflow: overflow,
+        pathCache: effectiveCache,
+        style: style,
+        onLinkTap: onLinkTap,
+      );
+    }
+
+    final _CachedMathEntry entry = _lookupOrRender(
+      source,
+      displayMode: TexMathDisplayMode.inline,
+      font: cachedFont,
+    );
+    if (entry.error != null) {
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: TexMathErrorWidget(
+          source: source,
+          error: entry.error,
+          displayMode: TexMathDisplayMode.inline,
+        ),
+      );
+    }
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.baseline,
+      baseline: TextBaseline.alphabetic,
+      style: style,
+      child: TexMath.displayList(
+        entry.displayList!,
+        source: source,
+        displayMode: TexMathDisplayMode.inline,
+        font: cachedFont,
+        overflow: overflow,
+        pathCache: effectiveCache,
+        textStyle: style,
+        semanticsLabel: entry.spokenText,
+        selectable: true,
+        onLinkTap: onLinkTap,
+      ),
+    );
+  }
+}
+
 class LatexSyntax extends md.InlineSyntax {
-  LatexSyntax() : super(r'(\$\$[\s\S]*?\$\$)|(\$[^$]*\$)');
+  LatexSyntax() : super(r'(\$\$[\s\S]+?\$\$)|(\$[^$]+\$)');
 
   @override
   bool onMatch(md.InlineParser parser, Match match) {
     final raw = match.group(0)!;
     bool isBlock = raw.startsWith('\$\$');
+    final minLen = isBlock ? 5 : 3;
+    if (raw.length < minLen) {
+      return false;
+    }
     final content = isBlock
         ? raw.substring(2, raw.length - 2)
         : raw.substring(1, raw.length - 1);
@@ -530,31 +707,50 @@ class LatexSyntax extends md.InlineSyntax {
 
 class LatexBuilder extends MarkdownElementBuilder {
   final TextStyle? textStyle;
+  final double? fontSize;
+  final ValueChanged<String>? onLinkTap;
+  final TexMathPathCache? pathCache;
 
-  LatexBuilder({this.textStyle});
+  LatexBuilder({this.textStyle, this.fontSize, this.onLinkTap, this.pathCache});
 
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
-    final content = element.textContent;
+    final content = element.textContent.trim();
+    if (content.isEmpty) {
+      return const SizedBox.shrink();
+    }
     final mode = element.attributes['mode'];
+    final effectiveCache = pathCache ?? TexMathPathCache.shared;
+    final baseSize =
+        fontSize ?? textStyle?.fontSize ?? preferredStyle?.fontSize ?? 14.0;
+    final explicitColor = textStyle?.color;
 
     if (mode == 'block') {
       return Center(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Math.tex(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: SirenMathLayoutCache.shared.buildMathWidget(
             content,
-            textStyle: textStyle?.copyWith(
-              fontSize: (textStyle?.fontSize ?? 14) * 1.2,
+            displayMode: TexMathDisplayMode.display,
+            overflow: TexMathOverflow.scroll,
+            pathCache: effectiveCache,
+            textStyle: TextStyle(
+              fontSize: baseSize * 1.2,
+              color: explicitColor,
             ),
+            onLinkTap: onLinkTap,
           ),
         ),
       );
     } else {
-      return Math.tex(
-        content,
-        textStyle: textStyle ?? preferredStyle,
-        mathStyle: MathStyle.text,
+      return Text.rich(
+        SirenMathLayoutCache.shared.buildInlineSpan(
+          content,
+          overflow: TexMathOverflow.visible,
+          pathCache: effectiveCache,
+          style: TextStyle(fontSize: baseSize, color: explicitColor),
+          onLinkTap: onLinkTap,
+        ),
       );
     }
   }
@@ -874,6 +1070,19 @@ class FootnoteSectionBuilder extends MarkdownElementBuilder {
                 ),
               ),
             );
+          case 'latex':
+            final mathSource = node.textContent.trim();
+            if (mathSource.isNotEmpty) {
+              spans.add(
+                SirenMathLayoutCache.shared.buildInlineSpan(
+                  mathSource,
+                  overflow: TexMathOverflow.visible,
+                  pathCache: TexMathPathCache.shared,
+                  style: baseStyle,
+                  onLinkTap: (href) => onTapLink(href, href, ''),
+                ),
+              );
+            }
           case 'strong':
             spans.add(
               TextSpan(
@@ -3439,6 +3648,19 @@ class HtmlBlockBuilder extends MarkdownElementBuilder {
                 ),
               ),
             );
+          case 'latex':
+            final mathSource = node.textContent.trim();
+            if (mathSource.isNotEmpty) {
+              spans.add(
+                SirenMathLayoutCache.shared.buildInlineSpan(
+                  mathSource,
+                  overflow: TexMathOverflow.visible,
+                  pathCache: TexMathPathCache.shared,
+                  style: baseStyle,
+                  onLinkTap: (href) => onTapLink(href, href, ''),
+                ),
+              );
+            }
           case 'kbd':
             final kbdWidget = KbdBuilder(
               baseFontSize: fontSize,

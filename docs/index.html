@@ -10,8 +10,6 @@
 
   <!-- Base Docsify Theme -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css" />
-  <!-- KaTeX for LaTeX Math -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
 
   <style>
     /* Exact SirenTheme Light Tokens (from lib/theme.dart) */
@@ -666,6 +664,60 @@
       margin-bottom: 10px;
     }
 
+    .siren-math-block {
+      display: block;
+      text-align: center;
+      overflow-x: auto;
+      padding: 8px 0;
+      margin: 12px 0;
+    }
+
+    .siren-math-block svg {
+      vertical-align: middle;
+      max-width: none;
+    }
+
+    .siren-math-inline {
+      display: inline-block;
+      line-height: 0;
+    }
+
+    .siren-math-inline svg {
+      display: inline-block;
+      vertical-align: bottom;
+    }
+
+    html[data-theme="dark"] .siren-math-light {
+      display: none;
+    }
+
+    html:not([data-theme="dark"]) .siren-math-dark {
+      display: none;
+    }
+
+    .siren-math-error {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 6px 10px;
+      margin: 4px 0;
+      border-radius: 4px;
+      border: 1px solid color-mix(in srgb, #f85149 55%, transparent);
+      background: color-mix(in srgb, #f85149 10%, transparent);
+      font-size: 12px;
+    }
+
+    .siren-math-error code {
+      background: transparent !important;
+      padding: 0 !important;
+      color: var(--text-body);
+    }
+
+    .siren-math-error-msg {
+      color: #f85149;
+      font-size: 11px;
+    }
+
     .siren-footnotes {
       margin-top: 36px;
       padding-top: 16px;
@@ -722,10 +774,10 @@
 
   <div id="app">Loading Siren Documentation...</div>
 
-  <!-- Pre-rendered pure-Dart pele_dart SVGs (Light & Dark Siren palettes) + Mermaid/KaTeX -->
+  <!-- Pre-rendered pure-Dart pele_dart & tex_math SVGs (Light & Dark Siren palettes) + Mermaid fallback -->
   <script src="pele_diagrams.js"></script>
+  <script src="tex_math_svgs.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 
   <script>
     // Theme Management (Defaulting to Siren's signature Dark Theme unless user toggled Light)
@@ -905,24 +957,51 @@
         }
       );
 
-      // 2. Display LaTeX Math: $$ ... $$
-      content = content.replace(/\$\$([\s\S]+?)\$\$/g, function (match, tex) {
-        if (!window.katex) return match;
-        try {
-          return '<div class="siren-math-block">' + window.katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false }) + '</div>';
-        } catch (_) {
-          return match;
+      // Helper: Resolve pre-rendered pure-Dart tex_math SVG (Light & Dark Siren palettes)
+      const mathBlocks = [];
+      function pushMathPlaceholder(tex, isBlock) {
+        const trimmed = tex.trim();
+        const key = (isBlock ? 'block:' : 'inline:') + trimmed;
+        const entry = window.SIREN_TEX_MATH_SVGS && window.SIREN_TEX_MATH_SVGS[key];
+        let html;
+        if (entry && entry.light && entry.dark) {
+          const inner =
+            '<span class="siren-math-light">' + entry.light + '</span>' +
+            '<span class="siren-math-dark">' + entry.dark + '</span>';
+          if (isBlock) {
+            html = '<div class="siren-math-block">' + inner + '</div>';
+          } else {
+            const depthEm = typeof entry.depthEm === 'number' ? entry.depthEm : 0;
+            html =
+              '<span class="siren-math-inline" style="vertical-align:-' +
+              depthEm +
+              'em">' +
+              inner +
+              '</span>';
+          }
+        } else if (entry && entry.error) {
+          const tag = isBlock ? 'div' : 'span';
+          html =
+            '<' + tag + ' class="siren-math-error">' +
+              '<code>' + escapeHtml(trimmed) + '</code>' +
+              '<' + tag + ' class="siren-math-error-msg">' + escapeHtml(entry.error) + '</' + tag + '>' +
+            '</' + tag + '>';
+        } else {
+          html = '<code>' + escapeHtml(trimmed) + '</code>';
         }
+        const id = '@@SIREN_MATH_' + mathBlocks.length + '@@';
+        mathBlocks.push(html);
+        return id;
+      }
+
+      // 2. Display LaTeX Math: $$ ... $$
+      content = content.replace(/\$\$([\s\S]+?)\$\$/g, function (_, tex) {
+        return pushMathPlaceholder(tex, true);
       });
 
       // 3. Inline LaTeX Math: $ ... $
-      content = content.replace(/\$([^\$\n]+?)\$/g, function (match, tex) {
-        if (!window.katex) return match;
-        try {
-          return window.katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false });
-        } catch (_) {
-          return match;
-        }
+      content = content.replace(/\$([^\$\n]+?)\$/g, function (_, tex) {
+        return pushMathPlaceholder(tex, false);
       });
 
       // 4. Footnotes: [^id]: definition and [^id] citations
@@ -954,6 +1033,11 @@
       content = content.replace(/==([^=\n]+)==/g, '<mark>$1</mark>');
       content = content.replace(/\^([^\^\s\n]+)\^/g, '<sup>$1</sup>');
       content = content.replace(/(?<!~)~([^~\s\n]+)~(?!~)/g, '<sub>$1</sub>');
+
+      // Restore pre-rendered LaTeX math blocks
+      content = content.replace(/@@SIREN_MATH_(\d+)@@/g, function (_, idx) {
+        return mathBlocks[Number(idx)];
+      });
 
       // Restore inline code spans
       content = content.replace(/@@SIREN_INLINE_CODE_(\d+)@@/g, function (_, idx) {

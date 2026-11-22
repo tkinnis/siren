@@ -9,9 +9,13 @@ import 'package:siren/app_state.dart';
 import 'package:siren/image_zoom_dialog.dart';
 import 'package:siren/rendered_view.dart';
 import 'package:siren/theme.dart';
+import 'package:tex_math_flutter/tex_math_flutter.dart';
 
 void main() {
   testWidgets('Markdown audit test', (WidgetTester tester) async {
+    if (TexMathFontBundle.cachedMathFont == null) {
+      await tester.runAsync(TexMathFontBundle.loadMathFont);
+    }
     const markdownData = '''
 # Siren Markdown Feature Verification
 
@@ -164,10 +168,8 @@ void main() {
     // Verify Alert Content (using find.text containing)
     expect(find.textContaining('This is a', findRichText: true), findsWidgets);
 
-    // Verify Math (Inline math text is preserved if not parsed by LatexSyntax or if fallback)
-    // But LatexBuilder uses Math.tex, so text 'E = mc^2' might be inside the Math widget logic or semantic label.
-    // Instead of text, let's just assume if paint doesn't crash, it's fine for now.
-    // Or check for "Inline math:" prefix.
+    // Verify Math (LatexBuilder uses TexMath / TexMathSpan to render inline and block formulas)
+    expect(find.byType(TexMath), findsWidgets);
     expect(
       find.textContaining('Inline math:', findRichText: true),
       findsWidgets,

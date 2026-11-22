@@ -14,7 +14,7 @@ This document provides operational context, architectural invariants, and workfl
 * **Search Architecture**: 
   * Full-text search: Embedded `rg` (ripgrep) binary (`assets/bin/rg`) executed via `Process.start`.
   * Fuzzy file finding: Background Dart isolate (`quick_open.dart`) for asynchronous search without UI stutter.
-* **Markdown Rendering**: CommonMark and GitHub Flavored Markdown (GFM) compliant with custom extensions for YAML Frontmatter cards, footnotes, GitHub Alerts, embedded GFM HTML (`<kbd>`, `<details>`, `<table>`, `<dl>`, `<picture>`, sized `<img>`, vector SVG badges, `<p align="center">`, `<!-- comments -->`), LaTeX math typography, interactive image lightbox, pure-Dart offline vector Mermaid diagrams (`pele_dart` + `vector_graphics` with proportional font scaling and interactive zoom/pan/export modal), and code syntax highlighting.
+* **Markdown Rendering**: CommonMark and GitHub Flavored Markdown (GFM) compliant with custom extensions for YAML Frontmatter cards, footnotes, GitHub Alerts, embedded GFM HTML (`<kbd>`, `<details>`, `<table>`, `<dl>`, `<picture>`, sized `<img>`, vector SVG badges, `<p align="center">`, `<!-- comments -->`), pure-Dart OpenType `MATH` LaTeX typography (`tex_math_flutter`), interactive image lightbox, pure-Dart offline vector Mermaid diagrams (`pele_dart` + `vector_graphics` with proportional font scaling and interactive zoom/pan/export modal), and code syntax highlighting.
 
 ---
 
@@ -47,11 +47,13 @@ siren/
 │   ├── index.html     # Docsify GitHub Pages portal entrypoint (SirenTheme dark/light styling)
 │   ├── _sidebar.md    # Docsify sidebar navigation
 │   ├── pele_diagrams.js # Pre-rendered pele_dart SVGs for all Mermaid blocks in docs/*.md
+│   ├── tex_math_svgs.js # Pre-rendered tex_math SVGs for all LaTeX formulas in docs/*.md
 │   └── screenshots/   # Verification screenshots (NEVER bundled into app assets)
 └── tool/              # Native helper utilities and developer automation tools
     ├── SCREENSHOTS.md             # Release screenshot inventory & checklist
     ├── capture_screenshots.sh     # Automated UI-driven screenshot capture script
-    └── generate_docs_diagrams.dart# Pre-renders docs/*.md Mermaid blocks into docs/pele_diagrams.js
+    ├── generate_docs_diagrams.dart# Pre-renders docs/*.md Mermaid blocks into docs/pele_diagrams.js
+    └── generate_docs_math.dart    # Pre-renders docs/*.md LaTeX formulas into docs/tex_math_svgs.js
 ```
 
 ---
@@ -79,6 +81,7 @@ When modifying or adding code, you must respect the following project invariants
 * Maintain existing code comments and docstrings.
 * If a feature, shortcut, or UI behavior changes, update the corresponding documentation files in `docs/` (`features.md`, `shortcuts.md`, `markdown-guide.md`, `README.md`).
 * Whenever Mermaid code blocks in `docs/*.md` are added or modified, run `dart run tool/generate_docs_diagrams.dart` so `docs/pele_diagrams.js` stays in sync for the GitHub Pages documentation portal.
+* Whenever LaTeX formulas in `docs/*.md` are added or modified, run `dart run tool/generate_docs_math.dart` so `docs/tex_math_svgs.js` stays in sync for the GitHub Pages documentation portal.
 
 ---
 

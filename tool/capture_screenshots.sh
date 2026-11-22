@@ -45,11 +45,12 @@ trap cleanup EXIT
 # Helper: configure deterministic workspace preferences before launching Siren
 configure_prefs() {
   local theme_index="$1" # 1 = Light, 2 = Dark
-  local active_tab="$2"  # 0 = markdown-guide.md, 1 = mermaid-examples.md
+  local active_tab="$2"  # 0 = markdown-guide.md, 1 = mermaid-examples.md, 2 = latex-examples.md
   defaults write "$BUNDLE_ID" "flutter.explorer_root_path" -string "$REPO_ROOT"
   defaults write "$BUNDLE_ID" "flutter.open_file_paths" -array \
     "$REPO_ROOT/docs/markdown-guide.md" \
     "$REPO_ROOT/docs/mermaid-examples.md" \
+    "$REPO_ROOT/docs/latex-examples.md" \
     "$REPO_ROOT/docs/features.md" \
     "$REPO_ROOT/README.md"
   defaults write "$BUNDLE_ID" "flutter.active_tab_index" -int "$active_tab"
@@ -73,6 +74,26 @@ click_rel() {
   local dx="$1"
   local dy="$2"
   "$REPO_ROOT/tool/click_at" "$((WIN_X + dx))" "$((WIN_Y + dy))"
+}
+
+scroll_rel() {
+  local dx="$1"
+  local dy="$2"
+  local steps="$3"
+  local delta_y="$4"
+  swift -e "
+import ApplicationServices
+import Foundation
+let pt = CGPoint(x: Double($((WIN_X + dx))), y: Double($((WIN_Y + dy))))
+CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: pt, mouseButton: .left)?.post(tap: .cghidEventTap)
+usleep(50000)
+for _ in 0..<$steps {
+  let ev = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: $delta_y, wheel2: 0, wheel3: 0)
+  ev?.location = pt
+  ev?.post(tap: .cghidEventTap)
+  usleep(30000)
+}
+"
 }
 
 echo "==> Step 1: Launching Siren in Light Mode for Light theme capture..."
@@ -197,4 +218,28 @@ click_rel 700 580
 sleep 1.2
 capture_window "$SCREENSHOT_DIR/siren_mermaid_viewer.png"
 
-echo "==> All 12 release screenshots captured in $SCREENSHOT_DIR!"
+kill "$APP_PID" 2>/dev/null || true
+wait "$APP_PID" 2>/dev/null || true
+APP_PID=""
+sleep 0.8
+
+echo "==> Step 4: Launching Siren on docs/latex-examples.md for LaTeX Math capture..."
+configure_prefs 2 2
+"$APP_BIN" --standard-window >/dev/null 2>&1 &
+APP_PID=$!
+sleep 3.5
+
+WIN_INFO="$("$REPO_ROOT/tool/find_window" 2>&1 | awk '/Owner: Siren ID:/{flag=1} flag{print} flag && /\}/{flag=0}')"
+WID="$(echo "$WIN_INFO" | sed -n '1s/.*ID: \([0-9]*\).*/\1/p')"
+WIN_X="$(echo "$WIN_INFO" | awk -F'= ' '/X =/{gsub(/;/,"",$2); print int($2)}')"
+WIN_Y="$(echo "$WIN_INFO" | awk -F'= ' '/Y =/{gsub(/;/,"",$2); print int($2)}')"
+echo "    Window ID=$WID at ($WIN_X, $WIN_Y)"
+
+# Click inside the rendered pane, scroll to frame inline & display math examples, wait for scrollbar fade, and capture
+click_rel 700 400
+sleep 0.3
+scroll_rel 700 400 13 -52
+sleep 1.5
+capture_window "$SCREENSHOT_DIR/siren_latex_math.png"
+
+echo "==> All 13 release screenshots captured in $SCREENSHOT_DIR!"

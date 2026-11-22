@@ -3,14 +3,15 @@ import 'dart:io';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_highlighter/flutter_highlighter.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import 'package:tex_math_flutter/tex_math_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart';
 
 import 'app_state.dart';
 import 'mermaid_diagram.dart';
@@ -348,7 +349,9 @@ class _RenderedViewState extends State<RenderedView> {
         ),
         'blockquote': AlertBuilder(ctx, showFrontmatter: showFrontmatter),
         'latex': LatexBuilder(
-          textStyle: theme.textTheme.bodyMedium?.copyWith(fontSize: fontSize),
+          fontSize: fontSize,
+          pathCache: TexMathPathCache.shared,
+          onLinkTap: (href) => onTapLink(href, href, ''),
         ),
         'highlight': HighlightBuilder(ctx),
         'kbd': KbdBuilder(baseFontSize: fontSize),
@@ -453,11 +456,21 @@ class _RenderedViewState extends State<RenderedView> {
       child: SingleChildScrollView(
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
-        child: SelectionArea(
-          child: buildMarkdownBodyWidget(
-            context,
-            content,
-            bodyKey: ValueKey<bool>(showFrontmatter),
+        child: TexMathTheme(
+          data:
+              TexMathThemeData.fromColorScheme(
+                theme.colorScheme,
+                fontSize: fontSize,
+              ).copyWith(
+                foreground: theme.colorScheme.onSurface,
+                accent: theme.colorScheme.primary,
+              ),
+          child: SelectionArea(
+            child: buildMarkdownBodyWidget(
+              context,
+              content,
+              bodyKey: ValueKey<bool>(showFrontmatter),
+            ),
           ),
         ),
       ),
@@ -505,6 +518,7 @@ List<InlineSpan>? _parseInlineChildren(
   Color? codeBg,
   BuildContext? context,
   HtmlImageBuilder? htmlImageBuilder,
+  TextStyle? baseStyle,
 ]) {
   if (nodes == null) return null;
   final List<InlineSpan> spans = [];
@@ -523,6 +537,23 @@ List<InlineSpan>? _parseInlineChildren(
         }
         if (tag == 'br') {
           spans.add(const TextSpan(text: '\n'));
+          continue;
+        }
+        if (tag == 'latex') {
+          final mathSource = textContent.trim();
+          if (mathSource.isNotEmpty) {
+            spans.add(
+              SirenMathLayoutCache.shared.buildInlineSpan(
+                mathSource,
+                overflow: TexMathOverflow.visible,
+                pathCache: TexMathPathCache.shared,
+                style: baseStyle,
+                onLinkTap: onTapLink == null
+                    ? null
+                    : (href) => onTapLink(href, href, ''),
+              ),
+            );
+          }
           continue;
         }
         if (tag == 'html_img' && context != null && htmlImageBuilder != null) {
@@ -550,6 +581,10 @@ List<InlineSpan>? _parseInlineChildren(
           _ => null,
         };
 
+        final childBaseStyle = style == null
+            ? baseStyle
+            : (baseStyle == null ? style : baseStyle.merge(style));
+
         TapGestureRecognizer? recognizer;
         if (tag == 'a' && onTapLink != null) {
           final href = attributes['href'];
@@ -566,6 +601,7 @@ List<InlineSpan>? _parseInlineChildren(
               codeBg,
               context,
               htmlImageBuilder,
+              childBaseStyle,
             ),
             style: style,
             recognizer: recognizer,
@@ -690,12 +726,20 @@ class HeadingElementBuilder extends MarkdownElementBuilder {
       );
     }
 
+    final headingStyle = TextStyle(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w600,
+      color: color,
+      height: 1.25,
+    );
+
     final children = _parseInlineChildren(
       element.children,
       onTapLink,
       codeBg,
       context,
       htmlImageBuilder,
+      headingStyle,
     );
 
     return Semantics(
@@ -713,15 +757,7 @@ class HeadingElementBuilder extends MarkdownElementBuilder {
           children: [
             ...anchorWidgets,
             Text.rich(
-              TextSpan(
-                children: children,
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                  height: 1.25,
-                ),
-              ),
+              TextSpan(children: children, style: headingStyle),
               textAlign: textAlign,
             ),
           ],

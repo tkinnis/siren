@@ -55,6 +55,14 @@ graph TD
 - Caches compiled diagrams in an LRU memory cache (`(code, isDarkMode)`) for instant scrolling, proportional font scaling, interactive zoom/pan inspection, macOS clipboard PNG copy, and SVG/PNG file export (`lib/mermaid_zoom_dialog.dart`).
 - Normalizes and compiles complex SVG badges (`img.shields.io` with nested base64 `data:image/svg+xml` `<image>` logos and `transform="scale(.1)"` typography) and local `.svg` images into `vector_graphics` bytecode in pure Dart with in-memory LRU caching.
 
+### Pure-Dart OpenType MATH LaTeX Engine (`lib/markdown_extensions.dart`, `lib/rendered_view.dart`, `lib/main.dart`)
+- Uses `tex_math_flutter` (`TexMath` and `TexMathSpan`, backed by `tex_math`) to parse TeX math expressions and compute OpenType `MATH` layout against the bundled `NewCMMath-Regular.otf` font in pure Dart with zero `WebView` or JavaScript runtime dependencies.
+- `lib/main.dart` registers the `NewCMMath (tex_math_flutter)` GUST font license from `TexMathFontBundle.licenseAssetPath` in Flutter's `LicenseRegistry` and pre-warms `TexMathFontBundle.loadMathFont()` at application startup.
+- `LatexSyntax` and `LatexBuilder` (`lib/markdown_extensions.dart`), together with `_parseInlineChildren` (`lib/rendered_view.dart`), `HtmlBlockBuilder`, and `FootnoteSectionBuilder`, render display blocks (`$$...$$`) with `TexMathDisplayMode.display` and `TexMathOverflow.scroll` and inline formulas (`$...$`) on an alphabetic baseline (`PlaceholderAlignment.baseline`, `TextBaseline.alphabetic`) with `SelectionArea` copy-as-LaTeX, clickable `\href` callbacks (`onLinkTap`), and `TexMathErrorWidget` span diagnostics.
+- `SirenMathLayoutCache.shared` (`lib/markdown_extensions.dart`, bounded `LinkedHashMap` LRU with `maxEntries = 512`) caches `DisplayList` layouts and `toSpokenText()` labels keyed by `'${font.signature}|${displayMode.name}|$source'` and pairs with `TexMathPathCache.shared` so theme and font-size rebuilds reuse layouts and glyph `Path` objects without re-parsing or re-extracting outlines.
+- `MainApp` (`lib/main.dart`) sets `themeAnimationDuration: Duration.zero` on `MaterialApp`, `RenderedView` wraps the document tree in `TexMathTheme` driven by `TexMathThemeData.fromColorScheme`, and `_TabContent` (`lib/home_screen.dart`) subscribes only to `(state.isRenderedView, state.reloadRevision)` via `context.select`, enabling instant Light/Dark theme switching without animating intermediate frames or rebuilding cached math layouts.
+- For the GitHub Pages Docsify portal (`docs/index.html`), `tool/generate_docs_math.dart` extracts inline and display math formulas across `docs/*.md`, renders Light and Dark SVG pairs with `depthEm` baseline offsets (or `TexMathError.formattedMessage` entries) using `TexMathEngine` and `NewCMMath-Regular.otf`, and writes `docs/tex_math_svgs.js` (`window.SIREN_TEX_MATH_SVGS`).
+
 ---
 
 ## 3. Directory Structure
@@ -72,7 +80,7 @@ siren/
 │   ├── global_search_view.dart    # Workspace full-text search
 │   ├── home_screen.dart           # Main window scaffold, menus & shortcuts
 │   ├── image_zoom_dialog.dart     # Interactive image lightbox viewer
-│   ├── markdown_extensions.dart   # YAML frontmatter, GFM HTML, GitHub alerts, math & SVG compiler
+│   ├── markdown_extensions.dart   # YAML frontmatter, GFM HTML, GitHub alerts, SirenMathLayoutCache / LaTeX builders & SVG compiler
 │   ├── markdown_processor.dart    # HTML comment stripping & background heading anchor injection
 │   ├── mermaid_diagram.dart       # Scaled Mermaid vector diagram widget
 │   ├── mermaid_render_service.dart# Pure-Dart pele_dart SVG/vector compilation engine

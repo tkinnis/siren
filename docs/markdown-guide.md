@@ -58,7 +58,9 @@ Siren supports GitHub-style blockquote alerts with dedicated icons, left borders
 
 ## 2. LaTeX Mathematics
 
-Siren renders mathematical formulas using KaTeX.
+Siren renders LaTeX mathematical formulas natively in pure Dart using `tex_math_flutter` with OpenType `MATH` layout (`NewCMMath-Regular.otf`), inline baseline alignment, copy-as-LaTeX selection, and MathJax-aligned TeX packages.
+
+- **Comprehensive Examples**: Browse the **[LaTeX Math Examples Gallery](latex-examples.md)** for inline baseline alignment, tables, matrices, multi-line alignments, `multline`, macros, `mhchem`, `physics`, `units`, `bussproofs`, `\href` links, overflow scrolling, and error diagnostics.
 
 ### Inline Math
 Enclose formulas in single dollar signs:

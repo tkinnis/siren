@@ -1173,10 +1173,11 @@ class _TabContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
-    final rev = appState.reloadRevision;
+    final (isRenderedView, rev) = context.select<AppState, (bool, int)>(
+      (state) => (state.isRenderedView, state.reloadRevision),
+    );
 
-    return appState.isRenderedView
+    return isRenderedView
         ? RenderedView(
             key: ValueKey('rendered_${filePath}_$rev'),
             filePath: filePath,

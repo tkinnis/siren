@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import 'package:tex_math_flutter/tex_math_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app_state.dart';
@@ -19,6 +23,18 @@ Window? _currentNativeWindow() {
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  LicenseRegistry.addLicense(() async* {
+    try {
+      final licenseText = await rootBundle.loadString(
+        TexMathFontBundle.licenseAssetPath,
+      );
+      yield LicenseEntryWithLineBreaks(const <String>[
+        'NewCMMath (tex_math_flutter)',
+      ], licenseText);
+    } catch (_) {}
+  });
+  unawaited(TexMathFontBundle.loadMathFont().then((_) {}, onError: (_) {}));
 
   // Start loading state but don't block the first frame if we can help it
   // However, since AppState.create is currently async and needed for MainApp,
@@ -113,6 +129,7 @@ class _MainAppState extends State<MainApp> {
           return MaterialApp(
             title: 'Siren',
             debugShowCheckedModeBanner: false,
+            themeAnimationDuration: Duration.zero,
             theme: SirenTheme.light,
             darkTheme: SirenTheme.dark,
             themeMode: appState.themeMode,

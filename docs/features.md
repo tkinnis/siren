@@ -15,7 +15,7 @@ This guide provides a detailed walkthrough of all the features and capabilities 
 | Category | Feature | Description | Access / Shortcut |
 | :--- | :--- | :--- | :--- |
 | **Rendering** | **GitHub Alerts** | 5 color-coded alert levels (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) with custom icons | Automatic |
-| | **LaTeX Mathematics** | Typeset inline formulas (`$E = mc^2$`) and block equations (`$$\sum x_i$$`) | CommonMark math blocks |
+| | **LaTeX Mathematics** | Pure-Dart OpenType `MATH` typography (`tex_math_flutter` with bundled `NewCMMath-Regular.otf`) supporting inline baseline alignment (`$...$`), horizontally scrollable display equations (`$$...$$`), `SelectionArea` copy-as-LaTeX, clickable `\href` links, and error span diagnostics | `$...$` / `$$...$$` math blocks |
 | | **Mermaid Diagrams** | Pure-Dart `pele_dart` offline vector diagrams across all 33 standard, beta, and specialized Mermaid diagram families with proportional scaling, zoom/pan modal, and PNG/SVG export | ````mermaid```` code fences / Click diagram |
 | | **YAML Frontmatter & Footnotes** | Structured metadata card with pill badges for leading `---` YAML frontmatter (toggleable in Settings) and GitHub-styled hyperlinked footnotes (`[^1]`) | Automatic / `Cmd + ,` |
 | | **Image Lightbox** | Click any local or network Markdown image to inspect in an interactive zoom & pan lightbox | Click image |
@@ -31,7 +31,7 @@ This guide provides a detailed walkthrough of all the features and capabilities 
 | **Search** | **Workspace Ripgrep** | Embedded binary full-text search across thousands of files with match counts | `Cmd + Shift + F` |
 | | **Quick Open** | Background isolate fuzzy finder for instant file switching | `Cmd + P` |
 | | **In-File Find** | Active document search with regex support, match counter, and next/prev jumps | `Cmd + F` / `Cmd + G` |
-| **Appearance** | **Light & Dark Themes** | Seamless toggling between System, Light, and Dark themes with tailored typography and syntax highlighting | Toolbar icon / `Cmd + Shift + D` |
+| **Appearance** | **Light & Dark Themes** | Instant toggling between System, Light, and Dark themes with tailored typography, math colors, and syntax highlighting | Toolbar icon / `Cmd + Shift + D` |
 | | **Settings Configuration** | Modal dialog (`Cmd + ,`) to set default theme mode, toggle YAML frontmatter visibility, and customize regex file indexing patterns | `Cmd + ,` |
 | **Desktop Integration** | **Live File Watching** | Monitors open documents on disk and auto-reloads upon external edits | Automatic / `Cmd + R` |
 | | **Finder Drag & Drop** | Drag files or folders directly into the window to open immediately | Drag & drop |
@@ -46,6 +46,7 @@ Siren lets you inspect Markdown files in two distinct modes, toggleable at any t
 ### Rendered Mode
 - Clean, typography-focused Markdown rendering compliant with CommonMark.
 - Extended Markdown syntax support including **GitHub Alerts**, **LaTeX Math**, **YAML Frontmatter**, **Footnotes (`[^1]`)**, **Embedded GFM HTML** (`<kbd>`, `<details>`/`<summary>`, `<table>`, `<dl>`, `<picture>` dark/light media, sized `<img>` & vector SVG badges, `<p align="center">`, `<br>`), and **Mermaid Diagrams**.
+- **Pure-Dart OpenType MATH LaTeX Rendering**: Inline (`$...$`) and display (`$$...$$`) equations are typeset natively in pure Dart via `tex_math_flutter` and the bundled `NewCMMath-Regular.otf` font with zero WebView or JavaScript runtime dependencies, providing alphabetic inline baseline alignment, horizontal overflow scrolling on wide equations, `SelectionArea` copy-as-LaTeX, clickable `\href` links, `TexMathErrorWidget` span diagnostics, and instant Light/Dark theme switching with cached layouts and glyph paths.
 - **Pure-Dart Vector Mermaid Diagrams**: Diagrams are laid out and rendered offline in pure Dart via `pele_dart` and compiled into native Flutter vector graphics (`vector_graphics`) with zero WebView or JavaScript runtime dependencies, scaling proportionally with document font zoom (`+` / `-`, `Cmd+=` / `Cmd+-` / `Cmd+0`) and supporting an interactive **Zoom & Pan Inspector** with **Copy Image (PNG)** and **Export (SVG / PNG)** when clicked.
 - **Image Lightbox**: Click any rendered local or network image to open it in an interactive zoom and pan lightbox modal.
 - Full support for interactive clickable relative links, images, tables, and task lists.
@@ -54,6 +55,8 @@ Siren lets you inspect Markdown files in two distinct modes, toggleable at any t
 ![Siren Rendered View](screenshots/siren_comprehensive_rendered.png)
 
 ![Siren Mermaid Inspector](screenshots/siren_mermaid_viewer.png)
+
+![Siren LaTeX Math Examples](screenshots/siren_latex_math.png)
 
 ### Raw Mode
 - Full raw Markdown source view with a dedicated, aligned **line number gutter**.
@@ -150,7 +153,7 @@ Siren provides three levels of search for finding information instantly:
 
 ### Light & Dark Themes
 
-Siren natively supports **System**, **Light**, and **Dark** themes. Easily toggle between Light and Dark modes at any time with `Cmd+Shift+D` or via the toolbar moon/sun button. Syntax highlighting for code blocks and Markdown alerts adapt dynamically to maintain optimal legibility and contrast in any environment.
+Siren natively supports **System**, **Light**, and **Dark** themes. Instantly switch between Light and Dark modes at any time with `Cmd+Shift+D` or via the toolbar moon/sun button. Mathematical typography, syntax highlighting for code blocks, and Markdown alerts recolor dynamically with zero animation lag to maintain optimal legibility and contrast in any environment.
 
 ![Light and Dark Theme Support](screenshots/siren_theme_split.png)
 

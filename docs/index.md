@@ -18,9 +18,10 @@ Explore the documentation guides below:
 
 - **[Features Overview](features.md)** — A comprehensive breakdown of Siren's core features, including dual-mode viewing, document outline, multi-tab workspace, fuzzy search, and live file system watching.
 - **[Markdown Syntax Guide](markdown-guide.md)** — Complete reference for standard Markdown and extended features supported by Siren, such as GitHub Alerts, LaTeX Math, Mermaid diagrams, YAML frontmatter, footnotes, embedded GFM HTML (`<kbd>`, `<details>`, `<table>`, `<picture>`, sized `<img>` & SVG badges), highlighting, and task lists.
+- **[LaTeX Math Examples Gallery](latex-examples.md)** — Showcase of inline and display formulas, matrices, commutative diagrams, alignments, macros, and error diagnostics rendered natively in pure Dart with `tex_math_flutter`.
 - **[Mermaid Diagram Examples Gallery](mermaid-examples.md)** — Comprehensive gallery across all 33 standard, beta, and specialized Mermaid diagram families rendered offline in pure Dart with `pele_dart`.
 - **[Keyboard Shortcuts](shortcuts.md)** — Quick reference guide for all keyboard shortcuts and navigation commands.
-- **[Architecture & Development](architecture.md)** — Technical deep-dive into Siren's internals, isolate-powered indexing, Ripgrep integration, offline vector Mermaid engine, and development instructions.
+- **[Architecture & Development](architecture.md)** — Technical deep-dive into Siren's internals, isolate-powered indexing, Ripgrep integration, pure-Dart `tex_math_flutter` LaTeX engine, offline `pele_dart` vector Mermaid engine, and development instructions.
 
 ---
 
