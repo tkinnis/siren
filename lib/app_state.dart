@@ -6,14 +6,14 @@ import 'package:file_selector/file_selector.dart';
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:markdown_engine_flutter/markdown_engine_flutter.dart'
+    show MarkdownBuiltInRenderers;
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:watcher/watcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'watcher_service.dart';
-import 'markdown_processor.dart';
-import 'mermaid_render_service.dart';
 import 'file_indexer.dart';
 
 class _PersistenceKeys {
@@ -56,7 +56,6 @@ class AppState extends ChangeNotifier {
   final List<String> _openFilePaths = [];
   int _activeTabIndex = -1;
   final Map<String, String> _fileContents = {};
-  final Map<String, String> _processedContents = {};
   final Map<String, double> _scrollOffsets = {};
   int _reloadRevision = 0;
   int get reloadRevision => _reloadRevision;
@@ -160,22 +159,9 @@ class AppState extends ChangeNotifier {
     return '';
   }
 
-  String get currentProcessedContent {
-    final path = currentFilePath;
-    if (path != null) {
-      return getProcessedContent(path);
-    }
-    return '';
-  }
-
   String getFileContent(String filePath) {
     final canonical = path.canonicalize(filePath);
     return _fileContents[canonical] ?? _fileContents[filePath] ?? '';
-  }
-
-  String getProcessedContent(String filePath) {
-    final canonical = path.canonicalize(filePath);
-    return _processedContents[canonical] ?? _processedContents[filePath] ?? '';
   }
 
   void setIncludePatterns(List<String> patterns) {
@@ -504,9 +490,7 @@ class AppState extends ChangeNotifier {
             (p) => path.canonicalize(p) == canonical,
           );
           if (!alreadyOpen) {
-            final data = loadedFiles[filePath]!;
-            _fileContents[filePath] = data.raw;
-            _processedContents[filePath] = data.processed;
+            _fileContents[filePath] = loadedFiles[filePath]!;
             _openFilePaths.add(filePath);
           }
         }
@@ -556,17 +540,16 @@ class AppState extends ChangeNotifier {
   }
 
   /// Static method to run in the isolate. Reads multiple files in parallel.
-  static Future<Map<String, ({String raw, String processed})>>
-  _readFilesFromDisk(List<String> paths) async {
-    final Map<String, ({String raw, String processed})> results = {};
+  static Future<Map<String, String>> _readFilesFromDisk(
+    List<String> paths,
+  ) async {
+    final Map<String, String> results = {};
     await Future.wait(
       paths.map((path) async {
         try {
           final file = File(path);
           if (await file.exists()) {
-            final raw = await file.readAsString();
-            final processed = MarkdownProcessor.injectAnchors(raw);
-            results[path] = (raw: raw, processed: processed);
+            results[path] = await file.readAsString();
           }
         } catch (e) {
           // Ignore individual file errors in the isolate
@@ -590,13 +573,10 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  static Future<Map<String, ({String raw, String processed})>>
-  _runReadFilesFromDiskInIsolate(List<String> savedPaths) {
+  static Future<Map<String, String>> _runReadFilesFromDiskInIsolate(
+    List<String> savedPaths,
+  ) {
     return Isolate.run(() => _readFilesFromDisk(savedPaths));
-  }
-
-  static Future<String> _runInjectAnchorsInIsolate(String content) {
-    return Isolate.run(() => MarkdownProcessor.injectAnchors(content));
   }
 
   Future<void> _persistState() async {
@@ -715,13 +695,9 @@ class AppState extends ChangeNotifier {
         // Read raw content
         final content = await file.readAsString();
 
-        // Process in background to avoid jank
-        final processed = await _runInjectAnchorsInIsolate(content);
-
         // Only notify if content actually changed or forced reload
         if (forceNotify || _fileContents[path] != content) {
           _fileContents[path] = content;
-          _processedContents[path] = processed;
           if (_isFindInFileVisible &&
               _findInFileQuery.isNotEmpty &&
               path == currentFilePath) {
@@ -756,7 +732,7 @@ class AppState extends ChangeNotifier {
         PaintingBinding.instance.imageCache.clear();
         PaintingBinding.instance.imageCache.clearLiveImages();
       } catch (_) {}
-      MermaidRenderService.instance.clearCache();
+      MarkdownBuiltInRenderers.clearCaches();
       _startWatching(activePath);
       _reloadRevision++;
       await _onFileModified(activePath, forceNotify: true);
@@ -836,10 +812,7 @@ class AppState extends ChangeNotifier {
       if (await file.exists()) {
         final content = await file.readAsString();
 
-        final processed = await _runInjectAnchorsInIsolate(content);
-
         _fileContents[canonicalPath] = content;
-        _processedContents[canonicalPath] = processed;
         _addRecentFile(canonicalPath);
 
         // Stop watching previous active file
@@ -855,7 +828,6 @@ class AppState extends ChangeNotifier {
           _openFilePaths[_activeTabIndex] = canonicalPath;
           if (oldPath != canonicalPath) {
             _fileContents.remove(oldPath);
-            _processedContents.remove(oldPath);
             _scrollOffsets.remove(oldPath);
             _stopWatching(oldPath);
             _removeFromHistory(oldPath);
@@ -926,7 +898,6 @@ class AppState extends ChangeNotifier {
 
     _openFilePaths.removeAt(index);
     _fileContents.remove(targetPath);
-    _processedContents.remove(targetPath);
     _scrollOffsets.remove(targetPath);
     _stopWatching(targetPath);
 
@@ -973,7 +944,6 @@ class AppState extends ChangeNotifier {
     for (final path in _openFilePaths) {
       _stopWatching(path);
       _fileContents.remove(path);
-      _processedContents.remove(path);
       _scrollOffsets.remove(path);
     }
 

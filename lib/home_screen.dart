@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
@@ -5,13 +6,14 @@ import 'package:file_selector/file_selector.dart';
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:markdown_engine_flutter/markdown_engine_flutter.dart'
+    show MarkdownBuiltInRenderers;
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app_state.dart';
 import 'editor_tabs.dart';
-import 'mermaid_render_service.dart';
 import 'sidebar.dart';
 import 'raw_view.dart';
 import 'rendered_view.dart';
@@ -34,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    MermaidRenderService.instance.warmUp();
+    unawaited(MarkdownBuiltInRenderers.warmUp());
   }
 
   void _handleResize(DragUpdateDetails details, AppState appState) {

@@ -5,9 +5,10 @@ import 'package:flutter/foundation.dart';
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:markdown_engine_flutter/markdown_engine_flutter.dart'
+    show MarkdownBuiltInRenderers;
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
-import 'package:tex_math_flutter/tex_math_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app_state.dart';
@@ -28,14 +29,14 @@ void main(List<String> args) async {
   LicenseRegistry.addLicense(() async* {
     try {
       final licenseText = await rootBundle.loadString(
-        TexMathFontBundle.licenseAssetPath,
+        'packages/tex_math_flutter/assets/fonts/GUST-FONT-LICENSE.txt',
       );
       yield LicenseEntryWithLineBreaks(const <String>[
         'NewCMMath (tex_math_flutter)',
       ], licenseText);
     } catch (_) {}
   });
-  unawaited(TexMathFontBundle.loadMathFont().then((_) {}, onError: (_) {}));
+  unawaited(MarkdownBuiltInRenderers.warmUp().then((_) {}, onError: (_) {}));
 
   // Start loading state but don't block the first frame if we can help it
   // However, since AppState.create is currently async and needed for MainApp,

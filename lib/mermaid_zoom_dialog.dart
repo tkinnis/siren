@@ -8,9 +8,9 @@ import 'package:flutter/foundation.dart';
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:markdown_engine_flutter/markdown_engine_flutter.dart';
 import 'package:vector_graphics/vector_graphics_compat.dart';
 
-import 'mermaid_render_service.dart';
 import 'theme.dart';
 
 /// A [BytesLoader] that supplies pre-compiled `vector_graphics` bytes from memory.
@@ -31,56 +31,44 @@ class CompiledMermaidBytesLoader extends BytesLoader {
       other is CompiledMermaidBytesLoader && identical(bytes, other.bytes);
 }
 
-/// Renders the visual graphic for a [MermaidSvgRender] at the specified [size].
+/// Renders the visual graphic for a [MarkdownMermaidDiagram] at the specified [size].
 class MermaidGraphic extends StatelessWidget {
-  const MermaidGraphic({super.key, required this.result, required this.size});
+  const MermaidGraphic({super.key, required this.diagram, required this.size});
 
-  final MermaidRenderResult result;
+  final MarkdownMermaidDiagram diagram;
   final Size size;
 
   @override
   Widget build(BuildContext context) {
-    return switch (result) {
-      MermaidSvgRender(:final compiledBytes, :final semanticsLabel) =>
-        createCompatVectorGraphic(
-          loader: CompiledMermaidBytesLoader(compiledBytes),
-          width: size.width,
-          height: size.height,
-          fit: BoxFit.contain,
-          strategy: RenderingStrategy.picture,
-          semanticsLabel: semanticsLabel ?? 'Mermaid diagram',
-        ),
-      MermaidFailureResult() => const SizedBox.shrink(),
-    };
+    return createCompatVectorGraphic(
+      loader: CompiledMermaidBytesLoader(diagram.compiledBytes),
+      width: size.width,
+      height: size.height,
+      fit: BoxFit.contain,
+      strategy: RenderingStrategy.picture,
+      semanticsLabel: diagram.semanticsLabel.isNotEmpty
+          ? diagram.semanticsLabel
+          : 'Mermaid diagram',
+    );
   }
 }
 
 /// Modal dialog that allows interactive panning and zooming of a rendered
 /// Mermaid diagram.
 class MermaidZoomDialog extends StatefulWidget {
-  const MermaidZoomDialog({
-    super.key,
-    required this.result,
-    required this.code,
-    required this.isDark,
-  });
+  const MermaidZoomDialog({super.key, required this.diagram});
 
-  final MermaidRenderResult result;
-  final String code;
-  final bool isDark;
+  final MarkdownMermaidDiagram diagram;
 
-  /// Opens the interactive zoom/pan modal dialog for [result].
+  /// Opens the interactive zoom/pan modal dialog for [diagram].
   static Future<void> show(
     BuildContext context, {
-    required MermaidRenderResult result,
-    required String code,
-    required bool isDark,
+    required MarkdownMermaidDiagram diagram,
   }) {
     return showDialog<void>(
       context: context,
       barrierDismissible: true,
-      builder: (context) =>
-          MermaidZoomDialog(result: result, code: code, isDark: isDark),
+      builder: (context) => MermaidZoomDialog(diagram: diagram),
     );
   }
 
@@ -103,10 +91,7 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
   Timer? _copiedResetTimer;
   Timer? _copiedImageResetTimer;
 
-  Size get _logicalSize => switch (widget.result) {
-    MermaidSvgRender(:final logicalSize) => logicalSize,
-    MermaidFailureResult() => const Size(400, 300),
-  };
+  Size get _logicalSize => widget.diagram.logicalSize;
 
   @override
   void initState() {
@@ -176,9 +161,10 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
   }
 
   void _copySource() {
-    final cleanCode = widget.code.endsWith('\n')
-        ? widget.code.substring(0, widget.code.length - 1)
-        : widget.code;
+    final code = widget.diagram.code;
+    final cleanCode = code.endsWith('\n')
+        ? code.substring(0, code.length - 1)
+        : code;
     Clipboard.setData(ClipboardData(text: cleanCode));
     _copiedResetTimer?.cancel();
     setState(() {
@@ -194,51 +180,48 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
   }
 
   Future<Uint8List?> _capturePngBytes() async {
-    if (widget.result case MermaidSvgRender(:final compiledBytes)) {
+    final compiledBytes = widget.diagram.compiledBytes;
+    if (compiledBytes.isEmpty) return null;
+    try {
+      final pictureInfo = await vg.loadPicture(
+        CompiledMermaidBytesLoader(compiledBytes),
+        null,
+      );
       try {
-        final pictureInfo = await vg.loadPicture(
-          CompiledMermaidBytesLoader(compiledBytes),
-          null,
+        const double scaleFactor = 3.0;
+        final int targetWidth = math.max(
+          1,
+          (pictureInfo.size.width * scaleFactor).round(),
         );
+        final int targetHeight = math.max(
+          1,
+          (pictureInfo.size.height * scaleFactor).round(),
+        );
+        final recorder = ui.PictureRecorder();
+        final canvas = ui.Canvas(recorder);
+        canvas.scale(scaleFactor);
+        canvas.drawPicture(pictureInfo.picture);
+        final scaledPicture = recorder.endRecording();
         try {
-          const double scaleFactor = 3.0;
-          final int targetWidth = math.max(
-            1,
-            (pictureInfo.size.width * scaleFactor).round(),
-          );
-          final int targetHeight = math.max(
-            1,
-            (pictureInfo.size.height * scaleFactor).round(),
-          );
-          final recorder = ui.PictureRecorder();
-          final canvas = ui.Canvas(recorder);
-          canvas.scale(scaleFactor);
-          canvas.drawPicture(pictureInfo.picture);
-          final scaledPicture = recorder.endRecording();
+          final image = await scaledPicture.toImage(targetWidth, targetHeight);
           try {
-            final image = await scaledPicture.toImage(
-              targetWidth,
-              targetHeight,
+            final byteData = await image.toByteData(
+              format: ui.ImageByteFormat.png,
             );
-            try {
-              final byteData = await image.toByteData(
-                format: ui.ImageByteFormat.png,
-              );
-              if (byteData != null) {
-                return byteData.buffer.asUint8List();
-              }
-            } finally {
-              image.dispose();
+            if (byteData != null) {
+              return byteData.buffer.asUint8List();
             }
           } finally {
-            scaledPicture.dispose();
+            image.dispose();
           }
         } finally {
-          pictureInfo.picture.dispose();
+          scaledPicture.dispose();
         }
-      } catch (e) {
-        debugPrint('Failed to capture Mermaid PNG bytes: $e');
+      } finally {
+        pictureInfo.picture.dispose();
       }
+    } catch (e) {
+      debugPrint('Failed to capture Mermaid PNG bytes: $e');
     }
     return null;
   }
@@ -283,7 +266,7 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
   }
 
   Future<void> _exportDiagram() async {
-    final hasSvg = widget.result is MermaidSvgRender;
+    final hasSvg = widget.diagram.svg.trim().isNotEmpty;
     final typeGroups = <XTypeGroup>[
       const XTypeGroup(label: 'PNG Image', extensions: <String>['png']),
       if (hasSvg)
@@ -298,10 +281,8 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
 
     try {
       final targetPath = saveLocation.path;
-      if (targetPath.toLowerCase().endsWith('.svg') &&
-          widget.result is MermaidSvgRender) {
-        final svgContent = (widget.result as MermaidSvgRender).svg;
-        await File(targetPath).writeAsString(svgContent, flush: true);
+      if (targetPath.toLowerCase().endsWith('.svg') && hasSvg) {
+        await File(targetPath).writeAsString(widget.diagram.svg, flush: true);
       } else {
         final pngBytes = await _capturePngBytes();
         if (pngBytes != null) {
@@ -316,7 +297,8 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final sirenColors = theme.extension<SirenColors>()!;
+    final sirenColors = theme.extension<SirenColors>();
+    final isDark = widget.diagram.brightness == Brightness.dark;
     final screenSize = MediaQuery.sizeOf(context);
 
     final dialogWidth = math.max(
@@ -328,10 +310,12 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
       math.min(screenSize.height * 0.86, 960.0),
     );
 
-    final canvasBg = sirenColors.codeBlockBg ?? theme.colorScheme.surface;
+    final canvasBg =
+        sirenColors?.codeBlockBg ??
+        (isDark ? const Color(0xFF141424) : const Color(0xFFf8f8fc));
     final headerBg =
-        sirenColors.codeBlockHeaderBg ?? sirenColors.sidebarBg ?? canvasBg;
-    final borderColor = sirenColors.divider ?? theme.colorScheme.outline;
+        sirenColors?.codeBlockHeaderBg ?? sirenColors?.sidebarBg ?? canvasBg;
+    final borderColor = sirenColors?.divider ?? theme.colorScheme.outline;
 
     final zoomPercent = (_currentScale * 100).round();
 
@@ -482,7 +466,8 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
                             size: 16,
                             color: _copiedImage
                                 ? theme.colorScheme.primary
-                                : sirenColors.iconColor,
+                                : (sirenColors?.iconColor ??
+                                      theme.iconTheme.color),
                           ),
                           tooltip: _copiedImage
                               ? 'Image Copied!'
@@ -496,7 +481,8 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
                           icon: Icon(
                             Icons.download_rounded,
                             size: 17,
-                            color: sirenColors.iconColor,
+                            color:
+                                sirenColors?.iconColor ?? theme.iconTheme.color,
                           ),
                           tooltip: 'Export Diagram (SVG / PNG)...',
                           visualDensity: VisualDensity.compact,
@@ -510,7 +496,8 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
                             size: 16,
                             color: _copied
                                 ? theme.colorScheme.primary
-                                : sirenColors.iconColor,
+                                : (sirenColors?.iconColor ??
+                                      theme.iconTheme.color),
                           ),
                           tooltip: _copied ? 'Copied!' : 'Copy Mermaid Source',
                           visualDensity: VisualDensity.compact,
@@ -564,7 +551,7 @@ class _MermaidZoomDialogState extends State<MermaidZoomDialog> {
                                 child: SizedBox.fromSize(
                                   size: _logicalSize,
                                   child: MermaidGraphic(
-                                    result: widget.result,
+                                    diagram: widget.diagram,
                                     size: _logicalSize,
                                   ),
                                 ),

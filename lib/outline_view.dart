@@ -1,62 +1,15 @@
+import 'dart:math' as math;
+
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:markdown_engine_flutter/markdown_engine_flutter.dart'
+    show MarkdownEngine, MarkdownOutlineItem;
 import 'package:provider/provider.dart';
 
 import 'app_state.dart';
 
-class OutlineItem {
-  final String text;
-  final int level;
-  final int lineNumber;
-
-  OutlineItem({
-    required this.text,
-    required this.level,
-    required this.lineNumber,
-  });
-}
-
 class OutlineView extends StatelessWidget {
   const OutlineView({super.key});
-
-  List<OutlineItem> _parseOutline(String content) {
-    final List<OutlineItem> items = [];
-    final lines = content.split('\n');
-    final regex = RegExp(r'^(#{1,6})\s+(.*)');
-    bool inCodeBlock = false;
-    bool inFrontmatter = false;
-
-    for (int i = 0; i < lines.length; i++) {
-      final trimmed = lines[i].trim();
-      if (i == 0 && trimmed == '---') {
-        inFrontmatter = true;
-        continue;
-      }
-      if (inFrontmatter) {
-        if (trimmed == '---' || trimmed == '...') {
-          inFrontmatter = false;
-        }
-        continue;
-      }
-      if (trimmed.startsWith('```')) {
-        inCodeBlock = !inCodeBlock;
-        continue;
-      }
-      if (inCodeBlock) continue;
-
-      final match = regex.firstMatch(lines[i]);
-      if (match != null) {
-        items.add(
-          OutlineItem(
-            text: match.group(2)!.trim(),
-            level: match.group(1)!.length,
-            lineNumber: i,
-          ),
-        );
-      }
-    }
-    return items;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +27,7 @@ class OutlineView extends StatelessWidget {
       );
     }
 
-    final outlineItems = _parseOutline(content);
+    final outlineItems = const MarkdownEngine().parse(content).outline;
 
     if (outlineItems.isEmpty) {
       return Center(
@@ -93,7 +46,7 @@ class OutlineView extends StatelessWidget {
         final item = outlineItems[index];
         return _HoverableOutlineItem(
           item: item,
-          onTap: () => appState.scrollTo(item.lineNumber, item.text),
+          onTap: () => appState.scrollTo(math.max(0, item.line - 1), item.slug),
         );
       },
     );
@@ -101,7 +54,7 @@ class OutlineView extends StatelessWidget {
 }
 
 class _HoverableOutlineItem extends StatefulWidget {
-  final OutlineItem item;
+  final MarkdownOutlineItem item;
   final VoidCallback onTap;
 
   const _HoverableOutlineItem({required this.item, required this.onTap});

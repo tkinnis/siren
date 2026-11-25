@@ -21,7 +21,7 @@ Explore the documentation guides below:
 - **[LaTeX Math Examples Gallery](latex-examples.md)** — Showcase of inline and display formulas, matrices, commutative diagrams, alignments, macros, and error diagnostics rendered natively in pure Dart with `tex_math_flutter`.
 - **[Mermaid Diagram Examples Gallery](mermaid-examples.md)** — Comprehensive gallery across all 33 standard, beta, and specialized Mermaid diagram families rendered offline in pure Dart with `pele_dart`.
 - **[Keyboard Shortcuts](shortcuts.md)** — Quick reference guide for all keyboard shortcuts and navigation commands.
-- **[Architecture & Development](architecture.md)** — Technical deep-dive into Siren's internals, isolate-powered indexing, Ripgrep integration, pure-Dart `tex_math_flutter` LaTeX engine, offline `pele_dart` vector Mermaid engine, and development instructions.
+- **[Architecture & Development](architecture.md)** — Technical deep-dive into Siren's `markdown_engine_flutter` rendering pipeline, isolate-powered indexing, Ripgrep integration, pure-Dart `tex_math_flutter` LaTeX engine, offline `pele_dart` vector Mermaid engine, and development instructions.
 
 ---
 

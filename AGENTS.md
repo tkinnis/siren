@@ -14,7 +14,7 @@ This document provides operational context, architectural invariants, and workfl
 * **Search Architecture**: 
   * Full-text search: Embedded `rg` (ripgrep) binary (`assets/bin/rg`) executed via `Process.start`.
   * Fuzzy file finding: Background Dart isolate (`quick_open.dart`) for asynchronous search without UI stutter.
-* **Markdown Rendering**: CommonMark and GitHub Flavored Markdown (GFM) compliant with custom extensions for YAML Frontmatter cards, footnotes, GitHub Alerts, embedded GFM HTML (`<kbd>`, `<details>`, `<table>`, `<dl>`, `<picture>`, sized `<img>`, vector SVG badges, `<p align="center">`, `<!-- comments -->`), pure-Dart OpenType `MATH` LaTeX typography (`tex_math_flutter`), interactive image lightbox, pure-Dart offline vector Mermaid diagrams (`pele_dart` + `vector_graphics` with proportional font scaling and interactive zoom/pan/export modal), and code syntax highlighting.
+* **Markdown Rendering**: Powered by `markdown_engine` and `markdown_engine_flutter` for CommonMark `0.31.2` and GitHub Flavored Markdown (GFM) parsing/rendering, YAML/TOML Frontmatter cards, footnotes, GitHub Alerts, embedded GFM HTML (`<kbd>`, `<details>`, `<table>`, `<dl>`, `<figure>`, `<picture>`, sized `<img>`, `<p align="center">`, `<!-- comments -->`), pure-Dart OpenType `MATH` LaTeX typography (`tex_math_flutter`), pure-Dart offline vector Mermaid diagrams (`pele_dart` + `vector_graphics` with proportional font scaling and interactive `MermaidZoomDialog` pan/zoom/export modal), custom `SirenImageBuilder` (local path resolution, HTTP Content-Type/payload SVG detection, `img.shields.io` vector badge compilation, and interactive `ImageZoomDialog` lightbox), and code syntax highlighting (`flutter_highlighter`).
 
 ---
 
@@ -23,19 +23,16 @@ This document provides operational context, architectural invariants, and workfl
 ```text
 siren/
 ├── lib/               # Application source code
-│   ├── main.dart                  # Application entrypoint & multi-window handling
+│   ├── main.dart                  # Application entrypoint, multi-window handling & renderer warmup
 │   ├── home_screen.dart           # Main window shell, title bar, tabs, and menus
 │   ├── app_state.dart             # Central ChangeNotifier state manager
 │   ├── editor_tabs.dart           # Reorderable tab bar with right-click context menu
-│   ├── rendered_view.dart         # Formatted Markdown preview
+│   ├── rendered_view.dart         # MarkdownView-powered formatted Markdown preview & code blocks
 │   ├── raw_view.dart              # Raw Markdown source view with line gutter
-│   ├── markdown_processor.dart    # Markdown preprocessing & extension pipeline
-│   ├── markdown_extensions.dart   # Custom syntax parsers & builders (alerts, frontmatter, footnotes, GFM HTML, SVG compiler)
+│   ├── siren_image_builder.dart   # Custom image/SVG badge loader, path resolver & lightbox wiring
 │   ├── image_zoom_dialog.dart     # Interactive zoom & pan image lightbox modal
-│   ├── mermaid_diagram.dart       # Scaled Mermaid vector diagram widget
-│   ├── mermaid_render_service.dart# Pure-Dart pele_dart SVG/vector compilation engine
-│   ├── mermaid_zoom_dialog.dart   # Interactive zoom, pan & export diagram modal
-│   ├── outline_view.dart          # Heading hierarchy extractor & navigator
+│   ├── mermaid_zoom_dialog.dart   # Interactive zoom, pan & export modal for MarkdownMermaidDiagram
+│   ├── outline_view.dart          # Heading hierarchy extractor & navigator via MarkdownEngine
 │   ├── file_explorer.dart         # File tree viewer with hidden file support
 │   ├── global_search_view.dart    # Ripgrep global workspace search
 │   ├── file_search_modal.dart     # Isolate-based Quick Open fuzzy file finder

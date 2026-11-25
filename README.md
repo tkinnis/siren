@@ -21,7 +21,7 @@
 
 ## Overview
 
-**Siren** is a dedicated desktop Markdown viewer engineered for clarity, speed, and elegance. Designed for developers, technical writers, and researchers, Siren delivers full CommonMark rendering alongside modern extensions including GitHub Alerts, embedded GFM HTML & SVG badges, LaTeX mathematical typography, Mermaid diagrams, and code syntax highlighting.
+**Siren** is a dedicated desktop Markdown viewer engineered for clarity, speed, and elegance. Designed for developers, technical writers, and researchers, Siren uses [`markdown_engine_flutter`](https://pub.dev/packages/markdown_engine_flutter) to deliver virtualized CommonMark and GFM rendering alongside GitHub Alerts, embedded GFM HTML & SVG badges, OpenType `MATH` LaTeX typography, offline vector Mermaid diagrams, and code syntax highlighting.
 
 With built-in ripgrep-powered full-text search, an interactive document outline, live file-system watching, and instant toggling between rendered documents and raw source with line-number gutters, Siren provides a focused, native environment for reviewing documentation and notes.
 
@@ -132,7 +132,7 @@ Browse the interactive **[Siren User Manual & Documentation Website](https://tki
 - [LaTeX Math Examples Gallery](docs/latex-examples.md) — Showcase of inline formulas, fractions, nested radicals, matrices, commutative diagrams, multi-line alignments, and error diagnostics rendered natively in pure Dart with `tex_math_flutter`.
 - [Mermaid Diagram Examples Gallery](docs/mermaid-examples.md) — Examples across all supported standard, beta, and specialized Mermaid diagram categories.
 - [Keyboard Shortcuts](docs/shortcuts.md) — Exhaustive keyboard shortcut reference.
-- [Architecture & Internals](docs/architecture.md) — Technical overview of isolates, ripgrep bundling, pure-Dart `tex_math_flutter` OpenType `MATH` layout, pure-Dart `pele_dart` vector Mermaid engine, and state management.
+- [Architecture & Internals](docs/architecture.md) — Technical overview of `markdown_engine_flutter` virtualized rendering, isolates, ripgrep bundling, pure-Dart `tex_math_flutter` OpenType `MATH` layout, pure-Dart `pele_dart` vector Mermaid engine, and state management.
 
 ---
 
